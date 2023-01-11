@@ -37,7 +37,6 @@ let successNotification text closeMsg =
 
 let errorPropsNotification text = errorNotification text ClosePropertiesNotification
 let errorFilesNotification text  = errorNotification text CloseFilesNotification
-let successSimulationNotification text = successNotification text CloseSimulationNotification
 let successPropertiesNotification text = successNotification text ClosePropertiesNotification
 
 let warningNotification text closeMsg =
@@ -52,7 +51,6 @@ let warningNotification text closeMsg =
         ]
 
 let warningPropsNotification text = warningNotification text ClosePropertiesNotification
-let warningSimNotification text = warningNotification text CloseSimulationNotification
 
 let displayAlertOnError (dispatch: Msg -> Unit) res =
     match res with

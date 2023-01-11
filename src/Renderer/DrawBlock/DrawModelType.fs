@@ -60,7 +60,7 @@ module SymbolT =
     type RotationType = RotateClockwise | RotateAntiClockwise
 
     /// Wraps around the input and output port id types
-    type PortId = | InputId of InputPortId | OutputId of OutputPortId
+    type PortId = | Id of IOPortId
 
     /// data structures defining where ports are put on symbol boundary
     /// strings here are used for port ids
@@ -104,12 +104,7 @@ module SymbolT =
             /// Coordinates of the symbol's top left corner
             Pos: XYPos
         
-            /// Width of the input port 0
-            InWidth0: int option
-
-            /// Width of the output port 1
-            InWidth1: int option
-
+            
             LabelBoundingBox: BoundingBox
             LabelHasDefaultPos: bool
             LabelRotation: Rotation option
@@ -121,10 +116,9 @@ module SymbolT =
             Component : Component                 
 
             Moving: bool
-            IsClocked: bool
+            IsLinear: bool
             STransform: STransform
-            ReversedInputPorts: bool option
-
+            
             PortMaps : PortMaps
 
             HScale : float option
@@ -154,12 +148,9 @@ module SymbolT =
         /// Contains all the input and output ports in the model (currently rendered)
         Ports: Map<string, Port>
 
-        /// Contains all the inputports that have a wire connected to them.
+        /// Contains all the io ports that have a wire connected to them.
         /// If a port is in the set, it is connected, otherwise it is not
-        InputPortsConnected:  Set<InputPortId>
-
-        /// Represents the number of wires connected to each output port in the model
-        OutputPortsConnected: Map<OutputPortId, int>
+        IOPortsConnected:  Set<IOPortId>
 
         Theme: ThemeType
         }
@@ -172,7 +163,7 @@ module SymbolT =
         | AddSymbol of (LoadedComponent list) * pos:XYPos * compType:ComponentType * lbl: string
         | CopySymbols of ComponentId list
         | DeleteSymbols of sIds:ComponentId list
-        | ShowAllInputPorts | ShowAllOutputPorts | DeleteAllPorts
+        | ShowAllPorts | DeleteAllPorts
         | MoveSymbols of compList: ComponentId list * move: XYPos
         | MoveLabel of compId: ComponentId * move: XYPos
         | ShowPorts of ComponentId list
@@ -183,20 +174,10 @@ module SymbolT =
         | PasteSymbols of sIds: ComponentId list
         | ColorSymbols of compList : ComponentId list * colour : HighLightColor
         | ErrorSymbols of errorIds: ComponentId list * selectIds: ComponentId list * isDragAndDrop: bool
-        | ChangeNumberOfBits of compId:ComponentId * NewBits:int 
-        | ChangeLsb of compId: ComponentId * NewBits:int64 
-        | ChangeInputValue of compId: ComponentId * newVal: int
         | ChangeScale of compId:ComponentId * newScale:float * whichScale:ScaleAdjustment
         | ChangeConstant of compId: ComponentId * NewBits:int64 * NewText:string
-        | ChangeBusCompare of compId: ComponentId * NewBits:uint32 * NewText:string
-        | ChangeReversedInputs of compId: ComponentId
-        | ChangeAdderComponent of compId: ComponentId * oldComp: Component * newComp: ComponentType
-        | ChangeCounterComponent of compId: ComponentId * oldComp: Component * newComp: ComponentType
         | ResetModel // For Issie Integration
         | LoadComponents of  LoadedComponent list * Component list // For Issie Integration
-        | WriteMemoryLine of ComponentId * int64 * int64 // For Issie Integration 
-        | WriteMemoryType of ComponentId * ComponentType
-        | UpdateMemory of ComponentId * (Memory1 -> Memory1)
         | RotateLeft of compList : ComponentId list * RotationType
         | Flip of compList: ComponentId list * orientation: FlipType
         /// Taking the input and..
@@ -263,8 +244,8 @@ module BusWireT =
     type Wire =
         {
             WId: ConnectionId 
-            InputPort: InputPortId
-            OutputPort: OutputPortId
+            Port1: IOPortId
+            Port2: IOPortId
             Color: HighLightColor
             Width: int
             Segments: list<Segment>
@@ -291,7 +272,6 @@ module BusWireT =
             ErrorWires: list<ConnectionId>
             Notifications: Option<string>
             Type : WireType
-            ArrowDisplay: bool
         }
     
     //----------------------------Message Type-----------------------------------//
@@ -299,8 +279,8 @@ module BusWireT =
     /// BusWire messages: see BusWire.update for more info
     type Msg =
         | Symbol of SymbolT.Msg // record containing messages from Symbol module
-        | AddWire of (InputPortId * OutputPortId) // add a new wire between these ports to the model
-        | BusWidths
+        | AddWire of (IOPortId * IOPortId) // add a new wire between these ports to the model
+        //| BusWidths
         | CopyWires of list<ConnectionId>
         | DeleteWires of list<ConnectionId>
         | DeleteWiresOnPort of (Port option) list
@@ -314,7 +294,6 @@ module BusWireT =
         | ResetJumps of list<ConnectionId>
         | MakeJumps of list<ConnectionId>
         | UpdateWireDisplayType of WireType
-        | ToggleArrowDisplay
         | ResetModel // For Issie Integration
         | LoadConnections of list<Connection> // For Issie Integration
         | UpdateConnectedWires of list<ComponentId> // rotate each symbol separately. TODO - rotate as group? Custom comps do not rotate
@@ -341,8 +320,7 @@ module SheetT =
     /// Used to keep track of what the mouse is on
     type MouseOn =
         | Label of CommonTypes.ComponentId
-        | InputPort of CommonTypes.InputPortId * XYPos
-        | OutputPort of CommonTypes.OutputPortId * XYPos
+        | IOPort of CommonTypes.IOPortId * XYPos
         | Component of CommonTypes.ComponentId
         | Connection of CommonTypes.ConnectionId
         | Canvas
@@ -357,8 +335,7 @@ module SheetT =
         | DragAndDrop
         | Panning of offset: XYPos // panning sheet using shift/drag, offset = (initials) ScreenScrollPos + (initial) ScreenPage
         | MovingWire of SegmentId // Sends mouse messages on to BusWire
-        | ConnectingInput of CommonTypes.InputPortId // When trying to connect a wire from an input
-        | ConnectingOutput of CommonTypes.OutputPortId // When trying to connect a wire from an output
+        | ConnectingIO of CommonTypes.IOPortId // When trying to connect a wire from an input
         | Scrolling // For Automatic Scrolling by moving mouse to edge to screen
         | Idle
         // ------------------------------ Issie Actions ---------------------------- //
@@ -472,29 +449,7 @@ module SheetT =
         | IssieInterface of IssieInterfaceMsg
         | MovePort of MouseT //different from mousemsg because ctrl pressed too
         | SaveSymbols
-        // ------------------- Compilation and Debugging ----------------------
-        | StartCompiling of path: string * name: string * profile: Verilog.CompilationProfile
-        | StartCompilationStage of CompilationStageLabel * path: string * name: string * profile: Verilog.CompilationProfile
-        | StopCompilation
-        | TickCompilation of float
-        | FinishedCompilationStage
-        | DebugSingleStep
-        | DebugStepAndRead of parts: int 
-        | DebugRead of parts: int 
-        | OnDebugRead of data: int * viewer: int
-        | DebugConnect
-        | DebugDisconnect
-        | DebugUpdateMapping of string array
-        | DebugContinue
-        | DebugPause
-        | SetDebugDevice of string
-
-    type ReadLog = | ReadLog of int
-
-    type DebugState =
-        | NotDebugging
-        | Paused
-        | Running
+        
 
     type Model = {
         Wire: BusWireT.Model
@@ -539,14 +494,6 @@ module SheetT =
         CtrlKeyDown : bool
         ScrollUpdateIsOutstanding: bool
         PrevWireSelection : ConnectionId list
-        Compiling: bool
-        CompilationStatus: CompileStatus
-        CompilationProcess: ChildProcess option
-        DebugState: DebugState
-        DebugData: int list
-        DebugMappings: string array
-        DebugIsConnected: bool
-        DebugDevice: string option
         }
     
     open Operators

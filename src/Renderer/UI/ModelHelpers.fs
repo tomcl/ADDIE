@@ -5,40 +5,12 @@ open ModelType
 open Elmish
 
 
-let initWSModel  : WaveSimModel = {
-    TopSheet = ""
-    Sheets = Map.empty
-    State = Empty
-    AllWaves = Map.empty
-    SelectedWaves = List.empty
-    StartCycle = 0
-    ShownCycles = 5
-    CurrClkCycle = 0
-    ClkCycleBoxIsEmpty = false
-    Radix = Hex
-    WaveformColumnWidth = Constants.initialWaveformColWidth
-    WaveModalActive = false
-    RamModalActive = false
-    RamComps = []
-    SelectedRams = Map.empty
-    FastSim = 
-        printfn "Creating initWSModel"
-        FastCreate.simulationPlaceholder // placeholder
-    SearchString = ""
-    ShowComponentDetail = Set.empty
-    ShowSheetDetail = Set.empty
-    ShowGroupDetail = Set.empty
-    HoveredLabel = None
-    DraggedIndex = None
-    PrevSelectedWaves = None
-}
-
 /// This is needed because DrawBlock cannot directly access Issie Model.
 /// can be replaced when all Model is placed at start of compile order and DB
 /// model is refactored
 let drawBlockModelToUserData (model: Model) (userData: UserData)=
     let bwModel =model.Sheet.Wire
-    {userData with WireType = bwModel.Type; ArrowDisplay = bwModel.ArrowDisplay}
+    {userData with WireType = bwModel.Type;}
 
 /// This is needed because DrawBlock cannot directly access Issie Model.
 /// can be replaced when all Model is placed at start of compile order and DB
@@ -51,7 +23,6 @@ let userDataToDrawBlockModel (model: Model) =
                 Wire = {
                     model.Sheet.Wire with 
                         Type = userData.WireType
-                        ArrowDisplay = userData.ArrowDisplay
                         Symbol = {
                             model.Sheet.Wire.Symbol with Theme = userData.Theme
                         }}}}
@@ -71,8 +42,6 @@ let reduce (this: Model) = {|
          PopupDialogData = this.PopupDialogData
          TopMenu = this.TopMenuOpenState
          DragMode = this.DividerDragMode
-         ViewerWidth = this.WaveSimViewerWidth
-         ConnsToBeHighlighted = this.ConnsOfSelectedWavesAreHighlighted
 
  |} 
        
@@ -85,7 +54,6 @@ let reduceApprox (this: Model) = {|
          HasUnsavedChanges = false
          PopupDialogData = this.PopupDialogData
          DragMode = this.DividerDragMode
-         ViewerWidth = this.WaveSimViewerWidth
  |} 
 
 let mapFst mapFn (model,cmd) = mapFn model, cmd
@@ -104,47 +72,13 @@ let getComponentIds (model: Model) =
     |> extractIds
     |> Set.ofList
 
-//------------------------//
-// Saving WaveSim Model   //
-//------------------------//
-
-/// Get saveable record of WaveSimModel
-let getSavedWaveInfo (wsModel: WaveSimModel) : SavedWaveInfo =
-    {
-        SelectedWaves = Some wsModel.SelectedWaves
-        Radix = Some wsModel.Radix
-        WaveformColumnWidth = Some wsModel.WaveformColumnWidth
-        ShownCycles = Some wsModel.ShownCycles
-        SelectedFRams = Some wsModel.SelectedRams
-        SelectedRams = None
-
-        // The following fields are from the old waveform simulator.
-        // They are no longer used.
-        ClkWidth = None
-        Cursor = None
-        LastClk = None
-        DisplayedPortIds = None
-    }
-
-/// Setup current WaveSimModel from saved record
-/// NB: note that SavedWaveInfo can only be changed if code is added to make loading backwards compatible with
-/// old designs
-let loadWSModelFromSavedWaveInfo (swInfo: SavedWaveInfo) : WaveSimModel =
-    {
-        initWSModel with
-            SelectedWaves = Option.defaultValue initWSModel.SelectedWaves swInfo.SelectedWaves
-            Radix = Option.defaultValue initWSModel.Radix swInfo.Radix
-            WaveformColumnWidth = Option.defaultValue initWSModel.WaveformColumnWidth swInfo.WaveformColumnWidth
-            ShownCycles = Option.defaultValue initWSModel.ShownCycles swInfo.ShownCycles
-            SelectedRams = Option.defaultValue initWSModel.SelectedRams swInfo.SelectedFRams
-    }
 
 //----------------------Print functions-----------------------------//
 //------------------------------------------------------------------//
 
 let spComp (comp:Component) =
     match comp.Type with
-    | Custom {Name=name; InputLabels=il; OutputLabels=ol} -> sprintf "Custom:%s(ins=%A:outs=%A)" name il il
+    | Custom {Name=name; IOLabels=io} -> sprintf "Custom:%s(ins=%A)" name io 
     | x -> sprintf "%A" x
 
 let spConn (conn:Connection) = 
@@ -208,58 +142,6 @@ let getCurrSheets (model: Model) =
         |> Some
     | None -> None
 
-/// For reasons of space efficiency, ensure that no non-empty unused FastSimulation records are kept
-/// FastSimulation records can be very large and at most one should exist, it must be for the sheet referenced by
-/// model.WaveSimSheet
-let removeAllSimulationsFromModel (model:Model) =
-    let removeFastSimFromWaveSimMap (sheet:string) (wsM:Map<string,WaveSimModel>) =
-        let ws = wsM[sheet]
-        if ws.FastSim.SimulatedTopSheet = "" then wsM 
-        else 
-            Map.add sheet {ws with FastSim = FastCreate.emptyFastSimulation ""} wsM       
-    (model.WaveSim, model.WaveSim)
-    ||> Map.fold (fun wsM sheet ws -> removeFastSimFromWaveSimMap sheet wsM)
-    |> (fun wsM -> {model with WaveSim = wsM})
-        
-
-/// Set WaveSimModel of current sheet.
-let setWSModel (wsModel: WaveSimModel) (model: Model) =
-    match getCurrSheets model, model.WaveSimOrCurrentSheet with
-    | Some sheets, wsSheet when List.contains wsSheet sheets ->
-        { model with WaveSim = Map.add wsSheet wsModel model.WaveSim }
-    | Some sheets, wsSheet ->
-        failwithf $"What? can't find {wsSheet} in {sheets} to set WSModel"
-    | None, _ ->
-        printfn "\n\n******* What? trying to set wsmod when WaveSimSheet '%A' is not valid, project is closed" model.WaveSimSheet
-        model
-
-
-
-/// Update WaveSimModel of current sheet.
-let updateWSModel (updateFn: WaveSimModel -> WaveSimModel) (model: Model) =
-    match getCurrSheets model, model.WaveSimOrCurrentSheet with
-    | Some sheets, wsSheet when List.contains wsSheet sheets ->
-        let ws = model.WaveSim[wsSheet]
-        { model with WaveSim = Map.add wsSheet (updateFn ws) model.WaveSim }
-    | Some sheets, wsSheet ->
-        failwithf $"What? can't find {wsSheet} in {sheets} to set WSModel"
-    | None, _ ->
-        printfn "\n\n******* What? trying to set wsmod when WaveSimSheet '%A' is not valid, project is closed" model.WaveSimSheet
-        model
-
-/// Update WaveSimModel of given sheet - if it does not exist do nothing
-let updateWSModelOfSheet (sheet: string) (updateFn: WaveSimModel -> WaveSimModel) (model: Model) =
-    match getCurrSheets model, sheet with
-    | Some sheets, wsSheet when List.contains wsSheet sheets ->
-        let ws = model.WaveSim[wsSheet]
-        { model with WaveSim = Map.add wsSheet (updateFn ws) model.WaveSim }
-    | None, _ ->
-        printfn "\n\n******* What? trying to set wsmod when WaveSimSheet '%A' is not valid, project is closed" model.WaveSimSheet
-        model
-    | Some sheets, wsSheet ->
-        printfn "\n\n******* What? trying to set wsmod when WaveSimSheet '%A' is not valid, sheets=%A" wsSheet sheets
-        //failwithf "Help"
-        model
 
 /// a long function to be executed in a message after the view function has run at least once
 type ViewableJob = {

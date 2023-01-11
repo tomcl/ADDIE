@@ -67,7 +67,7 @@ let openInBrowser url =
 let extractLabelBase (text:string) : string =
     text.ToUpper()
     |> Seq.takeWhile (fun ch -> ch <> '(')
-    |> Seq.filter Char.IsLetterOrDigitOrUnderscore
+    |> Seq.filter (fun ch -> System.Char.IsLetterOrDigit ch || ch = '_')
     |> Seq.map (fun ch -> ch.ToString())
     |> String.concat ""
 
@@ -78,23 +78,8 @@ let formatLabelAsBus (width:int) (text:string) =
     | _ -> sprintf "%s(%d:%d)" (text'.ToUpper()) (width-1) 0
    
 
-let formatLabelFromType compType (text:string) =
-    let text' = extractLabelBase text
-    match compType with
-    | Input1 (1, _) | Output 1 -> text'
-    | _ -> text'
-
-
 let formatLabel (comp:Component) (text:string) =
-    formatLabelFromType comp.Type (text:string)
-
-
-
-
-
-
-
-
+    text
 
 /// Unclosable popup.
 let unclosablePopup maybeTitle (body:ReactElement) (maybeFoot: ReactElement option) extraStyle =

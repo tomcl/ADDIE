@@ -20,14 +20,13 @@ module Constants =
     let mergeSplitTextSize = "12px"
     let busSelectTextSize = "12px"
     let portTextSize = "12px"
-    let portTextCharWidth = 8.
+    let portTextCharWidth = 7.
     let portTextWeight = "bold"
     let customPortSpacing = 40.
     let portPosEdgeGap = 0.7
     let gatePortPosEdgeGap = 0.3
     let legendVertOffset = 5.
     let legendLineSpacingInPixels = 16.
-    let testShowLabelBoundingBoxes = false
 
     /// How large are component labels
     let labelFontSizeInPixels:float = 16 // otehr parameters scale correctly with this
@@ -38,7 +37,7 @@ module Constants =
         {defaultText with 
             TextAnchor = "start"; 
             FontSize = $"%.0f{labelFontSizeInPixels}px"; 
-            FontFamily = "Times"; 
+            FontFamily = "helvetica"; 
             FontWeight="600"}
 
     /// Style used by bus select bit legends
@@ -50,10 +49,8 @@ module Constants =
             FontWeight="600"}
 
     /// Offset between label position and symbol. This is also used as a margin for the label bounding box.
-    let componentLabelOffsetDistance: float =  // offset from symbol outline, otehr parameters scale correctly
-        if testShowLabelBoundingBoxes then 0. else 7.
-    let thinComponentLabelOffsetDistance: float = 
-        if testShowLabelBoundingBoxes then 0. else 3.
+    let componentLabelOffsetDistance: float = 7. // offset from symbol outline, otehr parameters scale correctly
+    let thinComponentLabelOffsetDistance: float = 3.
     
     /// Height of label text - used to determine where to print labels
     let componentLabelHeight: float = labelFontSizeInPixels
@@ -143,8 +140,7 @@ let moveSymbols  (offset: XYPos) (model:Model) =
             |> Map.map (fun _ symbol -> moveSymbol offset symbol)
     }
 
-let inline inputPortStr (InputPortId s) = s
-let inline outputPortStr (OutputPortId s) = s
+let inline ioPortStr (PortId s) = s
 
 let inline invertRotation (rot: RotationType) =
     match rot with
@@ -178,17 +174,8 @@ let getSymbolColour compType clocked (theme:ThemeType) =
     match theme with
     | White | Light -> "lightgray"
     | Colourful ->
-        match compType with
-        | Register _ | RegisterE _ 
-        | ROM1 _ | DFF | DFFE | RAM1 _ | AsyncRAM1 _ 
-        | Counter _ |CounterNoEnable _ | CounterNoLoad _  |CounterNoEnableLoad _ -> "lightblue"
-        | Custom _ when clocked
-            -> "lightblue"  //for clocked components
-        |Input _ |Input1 (_,_) |Output _ |Viewer _ |Constant _ |Constant1 _ 
-            -> "#E8D0A9"  //dark orange: for IO
-        | SplitWire _ | MergeWires _ | BusSelection _ | NbitSpreader _ | IOLabel ->
-            "rgb(120,120,120)"
-        | _ -> "rgba(255,255,217,1)" //lightyellow: for combinational components
+        "#E8D0A9"  //dark orange: for IO
+        //| _ -> "rgba(255,255,0,0.15)" //lightyellow: for combinational components
 
 
 
@@ -229,11 +216,11 @@ let calcLabelBoundingBox (sym: Symbol) =
 
     let margin = 
         match sym.Component.Type with
-        | IOLabel | BusSelection _ -> Constants.thinComponentLabelOffsetDistance
+        | IOLabel  -> Constants.thinComponentLabelOffsetDistance
         | _ -> Constants.componentLabelOffsetDistance
     let labH = Constants.componentLabelHeight //height of label text
     //let labW = getMonospaceWidth textStyle.FontSize comp.Label
-    let labW = getTextWidthInPixels textStyle comp.Label// width of label text
+    let labW = getTextWidthInPixels(comp.Label,textStyle)// width of label text
     let boxTopLeft =
         match labelRotation with 
         | Degree0 -> {X = centre.X - labW/2. - margin; Y = comp.Y - labH - 2.*margin }
@@ -284,133 +271,27 @@ let busSelectTitle (wob:int) (lsb:int) : string =
 ///Decodes the component type into component labels
 let getPrefix (compType:ComponentType) = 
     match compType with
-    | Not | And | Or | Xor | Nand | Nor | Xnor -> "G"
-    | Mux2 -> "MUX"
-    | Mux4 -> "MUX"
-    | Mux8 -> "MUX"
-    | Demux2 -> "DM"
-    | Demux4 -> "DM"
-    | Demux8 -> "DM"
-    | Shift _ -> "SHIFT"
-    | NbitsAdder _ | NbitsAdderNoCin _
-    | NbitsAdderNoCout _ | NbitsAdderNoCinCout _ 
-        -> "ADD"
-    | NbitsXor _ -> "NXOR"
-    | NbitsAnd _ -> "AND"
-    | NbitsOr _ -> "OR"
-    | NbitsNot _ -> "NOT"
-    | NbitSpreader _ -> "S"
-    | DFF | DFFE -> "FF"
-    | Register _ | RegisterE _ -> "REG"
-    | AsyncROM1 _ -> "AROM"
-    | ROM1 _ -> "ROM"
-    | RAM1 _ -> "RAM"
-    | AsyncRAM1 _ -> "ARAM"
+    | Resistor _ -> "R"
+    | Inductor _ -> "L"
+    | Capacitor _ -> "C"
+    | Diode -> "D"
+    | VoltageSource _ -> "VS"
+    | CurrentSource _ -> "CS"
+    | Ground -> "G"
     | Custom c ->
         c.Name.ToUpper() + (if c.Name |> Seq.last |> System.Char.IsDigit then "." else "")
-    | Constant1 _ -> "C"
-    | BusCompare _ |BusCompare1 _ -> "EQ"
-    | Decode4 -> "DEC"
-    | Counter _ |CounterNoEnable _
-    | CounterNoLoad _ |CounterNoEnableLoad _ -> "CNT"
-    | MergeWires -> "MW"
-    | SplitWire _ -> "SW"
     |_  -> ""
 
-
-
-// Text to be put inside different Symbols depending on their ComponentType
-let getComponentLegend (componentType:ComponentType) (rotation:Rotation) =
-    match componentType with
-    | And | Nand-> "&"
-    | Or | Nor-> "≥1"
-    | Xor | Xnor -> "=1"
-    | Not -> "1"
-    | Decode4 -> "Decode"
-    | NbitsAdder n | NbitsAdderNoCin n
-    | NbitsAdderNoCinCout n | NbitsAdderNoCout n -> busTitleAndBits "Adder" n
-    | Register n | RegisterE n-> 
-        match rotation with
-        |Degree90 |Degree270 -> busTitleAndBits "Reg" n
-        |_ -> busTitleAndBits "Register" n
-    | AsyncROM1 _ -> "Async.ROM"
-    | ROM1 _ -> "Sync.ROM"
-    | RAM1 _ -> "Sync.RAM"
-    | AsyncRAM1 _ -> "Async.RAM"
-    | DFF -> "DFF"
-    | DFFE -> "DFFE"
-    | Counter n |CounterNoEnable n
-    | CounterNoLoad n |CounterNoEnableLoad n -> busTitleAndBits "Counter" n
-    | NbitsXor (x)->   nBitsGateTitle "XOR" x
-    | NbitsOr (x)->   nBitsGateTitle "OR" x
-    | NbitsAnd (x)->   nBitsGateTitle "AND" x
-    | NbitsNot (x)->  nBitsGateTitle "NOT" x
-    | Shift (n,_,_) -> busTitleAndBits "Shift" n
-    | Custom x -> x.Name.ToUpper()
-    | _ -> ""
 
 // Input and Output names of the ports depending on their ComponentType
 let portNames (componentType:ComponentType)  = //(input port names, output port names)
     match componentType with
-    | Decode4 -> (["SEL";"DATA"]@["0"; "1";"2"; "3"])
-    | NbitsAdder _ -> (["CIN";"P";"Q"]@["SUM "; "COUT"])
-    | NbitsAdderNoCin _ -> (["P";"Q"]@["SUM "; "COUT"])
-    | NbitsAdderNoCinCout _ -> (["P";"Q"]@["SUM "])
-    | NbitsAdderNoCout _ -> (["CIN";"P";"Q"]@["SUM "])
-    | Register _ -> (["D"]@["Q"])
-    | RegisterE _ -> (["D"; "EN"]@["Q"])
-    | Counter _ -> (["D"; "LOAD"; "EN"]@["Q"])
-    |CounterNoEnable _ -> (["D"; "LOAD"]@["Q"])
-    | CounterNoLoad _ -> (["EN"]@["Q"])
-    |CounterNoEnableLoad _ ->  ([]@["Q"])
-    | ROM1 _ |AsyncROM1 _ -> (["ADDR"]@["DOUT"])
-    | RAM1 _ -> (["ADDR"; "DIN";"WEN" ]@["DOUT"])
-    | AsyncRAM1 _ -> (["ADDR"; "DIN";"WEN" ]@["DOUT"])
-    | DFF -> (["D"]@["Q"])
-    | DFFE -> (["D";"EN"]@["Q"])
-    | Mux2 -> (["0"; "1";"SEL"]@["OUT"])
-    | Mux4 -> (["0"; "1"; "2"; "3" ;"SEL"]@["OUT"])
-    | Mux8 -> (["0"; "1"; "2" ; "3" ; "4" ; "5" ; "6" ; "7";"SEL"]@["OUT"])
-    | Demux2 -> (["DATA" ; "SEL"]@["0"; "1"])
-    | Demux4 -> (["DATA"; "SEL"]@["0"; "1";"2"; "3";])
-    | Demux8 -> (["DATA"; "SEL"]@["0"; "1"; "2" ; "3" ; "4" ; "5" ; "6" ; "7"])
-    | NbitsXor _ | NbitsAnd _ | NbitsOr _ -> (["P"; "Q"]@ ["OUT"])
-    | NbitsNot _ -> (["IN"]@["OUT"])
-    | Shift _ -> (["IN" ; "SHIFTER"]@["OUT"])
-    | Custom x -> (List.map fst x.InputLabels)@ (List.map fst x.OutputLabels)
+    | Custom x -> (x.IOLabels)
     | _ -> ([]@[])
-   // |Demux8 -> (["IN"; "SEL"],["0"; "1"; "2" ; "3" ; "4" ; "5" ; "6" ; "7"])
-   // |_ -> ([],[])
-   // EXTENSION: Extra Components made that are not currently in Issie. Can be extended later by using this code as it is .
-
-/// By default all output ports are on the right, input ports on lefty, (of a normal orientation symbol).
-/// A few symbols have ports on top or bottom as defined here.
-/// Note that custom components can have ports positioned by user.
-let movePortsToCorrectEdgeForComponentType (ct: ComponentType) (portMaps: PortMaps): PortMaps =
-    match ct with //need to put some ports to different edges
-    | Mux2  -> //need to remove select port from left and move to bottom
-        movePortToBottom portMaps 2
-    | Mux4 -> //need to remove select port from left and move to right
-        movePortToBottom portMaps 4
-    | Mux8 ->
-        movePortToBottom portMaps 8
-    | NbitsAdder _ |NbitsAdderNoCout _ -> 
-        let rightSide = portMaps.Order[Right]
-        let newRightSide = List.rev rightSide
-        let newPortOrder = Map.add Right newRightSide portMaps.Order
-        let portMaps' = {portMaps with Order = newPortOrder}
-        movePortToBottom portMaps' 0
-    | DFFE ->
-        movePortToBottom portMaps 1
-    | RegisterE _ ->
-        movePortToBottom portMaps 1
-    | Demux2 | Demux4 | Demux8 ->
-        movePortToBottom portMaps 1
-    | _ -> portMaps
-
+   
 
 /// Genererates a list of ports:
-let portLists numOfPorts hostID portType =
+let portLists numOfPorts hostID =
     if numOfPorts < 1 
     then []
     else
@@ -419,7 +300,6 @@ let portLists numOfPorts hostID portType =
             [{
                 Id = JSHelpers.uuid ()
                 PortNumber = Some x
-                PortType = portType
                 HostId = hostID
             }])
 
@@ -459,22 +339,20 @@ let deletePortFromMaps (port: string) (portMaps: PortMaps) =
 /// also used for legacy circuits loaded without port layoiut info.
 let initPortOrientation (comp: Component) =
 
-    let defaultportOrder = 
-        (Map.empty, [Left; Right; Top; Bottom])
-        ||> List.fold (fun currMap edge -> Map.add edge [] currMap)
-
-    let inputMaps : PortMaps =
-        ({Order=defaultportOrder; Orientation=Map.empty}, comp.InputPorts)
-        ||> List.fold (fun maps port -> addPortToMaps Left maps port.Id)
-
-    let res = 
-        (inputMaps, (List.rev comp.OutputPorts))
-        ||> List.fold (fun maps port -> addPortToMaps Right maps port.Id)
-    movePortsToCorrectEdgeForComponentType comp.Type res
-
-
-
-    
+    match comp.Type with
+    | Ground -> 
+        let order = Map [ (Top, [comp.IOPorts[0].Id]); (Left,[]);(Bottom,[]);(Right,[]);]
+        let orientation = Map [ (comp.IOPorts[0].Id,Top);]
+        {Order = order; Orientation = orientation}
+    | VoltageSource _ | CurrentSource _ ->
+        let order = Map [ (Top, [comp.IOPorts[0].Id]); (Bottom, [comp.IOPorts[1].Id]);(Left,[]);(Right,[]); ]
+        let orientation = Map [ (comp.IOPorts[0].Id,Top); (comp.IOPorts[1].Id,Bottom) ]
+        {Order = order; Orientation = orientation}
+    |_ -> //TODO: Analyse this
+        let order = Map [ (Left, [comp.IOPorts[0].Id]); (Right, [comp.IOPorts[1].Id]);(Top,[]);(Bottom,[]); ]
+        let orientation = Map [ (comp.IOPorts[0].Id,Left); (comp.IOPorts[1].Id,Right) ]
+        {Order = order; Orientation = orientation}
+        
 
 (*
 /// helper function to initialise custom components
@@ -492,19 +370,12 @@ let getCustomPortIdMap (comp: Component)  =
         let label = comp.Label
         match comp.Type with
         | Custom customType ->
-            let inputPorts = comp.InputPorts
-            let outputPorts = comp.OutputPorts
-            let inputPortIdLabels = List.zip inputPorts customType.InputLabels
-            let outputPortIdLabels = List.zip outputPorts customType.OutputLabels
-
-            let inputMap =
-                (Map.empty, inputPortIdLabels) 
-                ||> List.fold (fun currMap (port,label) -> Map.add port.Id (fst label) currMap)
-            let finalMap =
-                (inputMap, outputPortIdLabels)
-                ||> List.fold (fun currMap (port, label) -> Map.add port.Id (fst label) currMap)
-
-            finalMap
+            let io = List.zip comp.IOPorts customType.IOLabels
+            let ioMap =
+                (Map.empty, io) 
+                ||> List.fold (fun currMap (port,label) -> Map.add port.Id label currMap)
+            
+            ioMap
         | _ -> Map.empty
 
 /// Needed because the I/Os of a custom component can be changed on anotehr sheet.
@@ -519,7 +390,7 @@ let makeMapsConsistent (portIdMap: Map<string,string>) (sym: Symbol) =
     (maps, addedPortIds) 
     ||> Set.fold (fun maps port -> 
                     let edgeToAddTo = // default add new outputs on right, inputs on left
-                        match List.exists (fun (p:Port) -> p.Id = port) sym.Component.InputPorts with
+                        match List.exists (fun (p:Port) -> p.Id = port) sym.Component.IOPorts with
                         | true -> Left
                         | false -> Right
                     addPortToMaps edgeToAddTo maps port)
@@ -530,9 +401,8 @@ let makeMapsConsistent (portIdMap: Map<string,string>) (sym: Symbol) =
 /// leaves other symbols unchanged
 let autoScaleHAndW (sym:Symbol) : Symbol =
     //height same as before, just take max of left and right
-        printfn "autoscaling..."
         match sym.Component.Type with
-        | Custom ct ->
+        | Custom comp ->
                 let portIdMap = getCustomPortIdMap sym.Component
                 let portMaps = makeMapsConsistent portIdMap sym
                 let convertIdsToLbls currMap edge idList =
@@ -541,30 +411,22 @@ let autoScaleHAndW (sym:Symbol) : Symbol =
                 let portLabels = 
                     (Map.empty, portMaps.Order) ||> Map.fold convertIdsToLbls
                 let h = float Constants.gridSize + Constants.customPortSpacing * float (max portLabels[Left].Length portLabels[Right].Length)
-                let getHorizontalSpace side =
-                    let labs = portLabels[side]
-                    match labs.Length % 2 with
-                    | 0 -> 0. // no space needed because we have even number of connections
-                    | _ -> // odd number
-                        labs[labs.Length / 2]
-                        |> fun s -> customStringToLength [s]
-                        
-                let leftSpace = getHorizontalSpace Left
-                let rightSpace = getHorizontalSpace Right
+
+                let maxLeftLength = customStringToLength portLabels[Left] 
+                let maxRightLength = customStringToLength portLabels[Right]
 
                 //need to check the sum of the lengths of top and bottom
                 let topLength = customStringToLength portLabels[Top] 
                 let bottomLength = customStringToLength portLabels[Bottom]
-                let labelLength = customStringToLength [ct.Name]
+                let labelLength = customStringToLength [sym.Component.Label]
                 //Divide by 5 is just abitrary as otherwise the symbols would be too wide 
                 let maxW = 
                     [
-                        (2.0*(max leftSpace rightSpace) + labelLength*1.333 + 10.) // 1.6 should be a constant - ratio of sizes - TODO. Also 10.
+                        (maxLeftLength + maxRightLength + labelLength*1.6)
                         float (portLabels[Top].Length + 1) * topLength
                         float (portLabels[Bottom].Length + 1) * bottomLength
                     ] |> List.max |> (*) 1.1
                 let w = maxW
-                printfn $"MaxW = {maxW}"
                 let scaledW = max w (float Constants.gridSize * 4.) //Ensures a minimum width if the labels are very small
                 let scaledH = max h (float Constants.gridSize*2.)
                 {sym with
@@ -576,68 +438,32 @@ let autoScaleHAndW (sym:Symbol) : Symbol =
             {sym with Component = {comp with X = sym.Pos.X; Y = sym.Pos.Y}}
         |> calcLabelBoundingBox
 
-/// return (num inputs, num outputs, height, width)
+/// return (num ports, height, width)
 let getComponentProperties (compType:ComponentType) (label: string)=
-    // match statement for each component type. the output is a 4-tuple that is used as an input to makecomponent (see below)
-    // 4-tuple of the form ( number of input ports, number of output ports, Height, Width)
+    // match statement for each component type. the output is a 3-tuple that is used as an input to makecomponent (see below)
+    // 3-tuple of the form ( number of ports, , Height, Width)
     let gS = float Constants.gridSize
     match compType with
-    | ROM _ | RAM _ | AsyncROM _ -> 
-        failwithf "What? Legacy RAM component types should never occur"
-    | Input _ ->
-        failwithf "Legacy Input component types should never occur"
-    | And | Or | Nand | Nor | Xor | Xnor ->  (2 , 1, 1.5*gS , 1.5*gS) 
-    | Not -> ( 1 , 1, 1.0*gS ,  1.0*gS) 
-    | Input1 _ -> ( 0 , 1, gS ,  2.*gS)                
-    | ComponentType.Output (a) -> (  1 , 0, gS ,  2.*gS) 
-    | ComponentType.Viewer a -> (  1 , 0, gS ,  gS) 
-    | ComponentType.IOLabel  ->(  1 , 1, gS/2. ,  gS) 
-    | Decode4 ->( 2 , 4 , 8.*gS  , 3.*gS) 
-    | Constant1 (a, b,_) | Constant(a, b) -> (  0 , 1, gS ,  2.*gS) 
-    | MergeWires -> ( 2 , 1, 2.*gS ,  2.*gS) 
-    | SplitWire (a) ->(  1 , 2 , 2.*gS ,  2.*gS) 
-    | Mux2 -> ( 3  , 1, 3.*gS ,  2.*gS) 
-    | Mux4 -> ( 5  , 1, 8.*gS ,  2.*gS)   
-    | Mux8 -> ( 9  , 1, 16.*gS ,  2.*gS) 
-    | Demux2 ->( 2  , 2, 3.*gS ,  2.*gS) 
-    | Demux4 -> ( 2  , 4, 8. * gS ,  2.*gS) 
-    | Demux8 -> ( 2  , 8, 16.*gS ,  2.*gS) 
-    | BusSelection (a, b) -> (  1 , 1, gS/2.,  2.*gS) 
-    | BusCompare _ | BusCompare1 _ -> ( 1 , 1, gS ,  2.*gS) 
-    | DFF -> (  1 , 1, 2.5*gS, 2.5*gS) 
-    | DFFE -> ( 2  , 1, 2.5*gS  , 2.5*gS) 
-    | Register (a) -> ( 1 , 1, 2.*gS, 4.*gS )
-    | RegisterE (a) -> ( 2 , 1, 2.*gS  , 4.*gS)
-    | Counter (a) -> (3 , 1 , 4.*gS , 5.*gS)
-    |CounterNoEnable (a) -> (2 , 1 , 3.*gS , 5.*gS)
-    | CounterNoLoad (a) -> (1 , 1 , 2.*gS , 5.*gS)
-    |CounterNoEnableLoad (a) -> (0 , 1 , 2.*gS , 3.5*gS)
-    | AsyncROM1 (a)  -> (  1 , 1, 4.*gS  , 5.*gS) 
-    | ROM1 (a) -> (   1 , 1, 4.*gS  , 5.*gS) 
-    | RAM1 (a) | AsyncRAM1 a -> ( 3 , 1, 4.*gS  , 5.*gS) 
-    | NbitsXor (n) | NbitsOr (n) |NbitsAnd (n) -> (  2 , 1, 4.*gS  , 4.*gS) 
-    | NbitsNot (n)  -> (  1 , 1, 3.*gS  , 4.*gS) 
-    | NbitSpreader (n) -> (1, 1, 2.*gS, 2.*gS)
-    | NbitsAdder (n) -> (  3 , 2, 3.*gS  , 4.*gS)
-    |NbitsAdderNoCin (n) -> (  2 , 2, 3.*gS  , 4.*gS)
-    | NbitsAdderNoCout (n)-> (  3 , 1, 3.*gS  , 4.*gS)
-    | NbitsAdderNoCinCout (n) -> (  2 , 1, 3.*gS  , 4.*gS)
-    | Shift _ -> (  2 , 1, 3.*gS  , 4.*gS)
-    | Custom cct -> cct.InputLabels.Length, cct.OutputLabels.Length, 0., 0.
+    | Diode  -> ( 2 , 1.0*gS ,  1.0*gS) 
+    | Capacitor _ -> ( 2 , 1.0*gS ,  2.0*gS)
+    | Resistor _ | Inductor _ -> ( 2 , gS ,  3.0*gS)
+    | VoltageSource _| CurrentSource _ -> (2, 2.*gS,2.*gS )
+    | Ground -> (1, gS, gS)
+    | IOLabel  ->(  2 , gS/2. ,  gS)
+    | IO -> ( 1 , gS ,  2.*gS)
+    | Custom cct -> cct.IOLabels.Length, 0., 0.
 
 /// make a completely new component
 let makeComponent (pos: XYPos) (compType: ComponentType) (id:string) (label:string) : Component =
     let defaultSTransform = {Rotation = Degree0; flipped = false}
     // function that helps avoid dublicate code by initialising parameters that are the same for all component types and takes as argument the others
-    let makeComponent' (n, nout, h, w) label : Component=
-        let inputPorts = portLists n id PortType.Input
-        let outputPorts = portLists nout id PortType.Output
+    let makeComponent' (n, h, w) label : Component=
+        let ioPorts = portLists n id
         {
             Id = id 
             Type = compType
             Label = label 
-            InputPorts = inputPorts
-            OutputPorts  = outputPorts
+            IOPorts = ioPorts
             X  = pos.X - float w / 2.0
             Y = pos.Y - float h / 2.0
             H = float h 
@@ -646,7 +472,6 @@ let makeComponent (pos: XYPos) (compType: ComponentType) (id:string) (label:stri
                 LabelBoundingBox = None
                 LabelRotation = None
                 STransform=defaultSTransform; 
-                ReversedInputPorts=None
                 PortOrder = Map.empty; 
                 PortOrientation=Map.empty
                 HScale = None
@@ -673,19 +498,16 @@ let createNewSymbol (ldcs: LoadedComponent list) (pos: XYPos) (comptype: Compone
           {
             HighlightLabel = false
             ShowPorts = ShowNone
-            Colour = getSymbolColour comptype (isClocked [] ldcs comp) theme
+            Colour = getSymbolColour comptype false theme
             Opacity = 1.0
           }
-      InWidth0 = None // set by BusWire
-      InWidth1 = None
       Id = ComponentId id
       Component = comp
       Moving = false
       PortMaps = initPortOrientation comp
       STransform = transform
-      ReversedInputPorts = Some false
       MovingPort = None
-      IsClocked = isClocked [] ldcs comp
+      IsLinear = true
       MovingPortTarget = None
       HScale = None
       VScale = None
@@ -698,18 +520,18 @@ let addToPortModel (model: Model) (sym: Symbol) =
     let addOnePort (currentPorts: Map<string, Port>) (port: Port) =
         Map.add port.Id port currentPorts
     
-    let addedInputPorts = (model.Ports, sym.Component.InputPorts) ||> List.fold addOnePort
-    (addedInputPorts, sym.Component.OutputPorts) ||> List.fold addOnePort
-
+    (model.Ports, sym.Component.IOPorts) ||> List.fold addOnePort
+    
 //-----------------------------------------GET PORT POSITION---------------------------------------------------
 // Function that calculates the positions of the ports 
 
 /// hack so that bounding box of splitwire, mergewires can be smaller height relative to ports
 let inline getPortPosEdgeGap (ct: ComponentType) =
-    match ct with
-    | MergeWires | SplitWire _  -> 0.25
-    | IsBinaryGate | Mux2 -> Constants.gatePortPosEdgeGap
-    | _ -> Constants.portPosEdgeGap
+    //match ct with
+    //| MergeWires | SplitWire _  -> 0.25
+    //| IsBinaryGate | Mux2 -> Constants.gatePortPosEdgeGap
+    //| _ -> 
+    Constants.portPosEdgeGap
 
 ///Given a symbol and a Port, it returns the orientation of the port
 let inline getSymbolPortOrientation (sym: Symbol) (port: Port): Edge =
@@ -726,40 +548,6 @@ let inline getPortBaseOffset (sym: Symbol) (side: Edge): XYPos=
     | Top -> {X = 0.0; Y = 0.0}
     | Bottom -> {X = 0.0; Y = h}
 
-/// Returns true if an edge has the select port of a mux
-let isMuxSel (sym:Symbol) (side:Edge): bool =
-    match sym.Component.Type with
-    | Mux2 | Mux4 | Mux8 | Demux2 | Demux4 | Demux8 ->
-        match sym.STransform.Rotation, side with
-        | Degree0, Bottom | Degree0, Top
-        | Degree90, Left | Degree90, Right
-        | Degree180, Bottom | Degree180, Top
-        | Degree270, Left | Degree270, Right
-             -> true
-        | _ -> false
-    | _ -> false
-
-
-/// Based on a symbol and an edge, if the port is a mux select, return an extra offset required for the port (because of the weird shape of the mux)
-let getMuxSelOffset (sym: Symbol) (side: Edge): XYPos =
-    let sideOffset offset =
-        match side with 
-            | Top -> {X = 0.0; Y = offset}
-            | Bottom -> {X = 0.0; Y = -offset}
-            | Left -> {X = offset; Y = 0.0}
-            | Right -> {X = -offset; Y = 0.0}
-    let compType = sym.Component.Type
-    if isMuxSel sym side then
-        match compType with
-        | Mux2 | Demux2 -> sideOffset 9.
-        | Mux4 | Demux4 -> sideOffset 9.5
-        | Mux8 | Demux8 -> sideOffset 9.5
-        | _ -> {X=0.; Y= 0.}
-    else    
-        {X = 0.; Y = 0.}
-
-    
-
 
 ///Given a symbol and a port, it returns the offset of the port from the top left corner of the symbol
 let getPortPos (sym: Symbol) (port: Port) : XYPos =
@@ -768,11 +556,11 @@ let getPortPos (sym: Symbol) (port: Port) : XYPos =
     let ports = sym.PortMaps.Order[side] //list of ports on the same side as port
     let numberOnSide = List.length ports
     let index = ( List.findIndex (fun (p:string)  -> p = port.Id) ports )
-    let index' = match sym.ReversedInputPorts with |Some true -> float (numberOnSide-1-index) | _ -> float(index)
+    let index' = float(index)
     let gap = getPortPosEdgeGap sym.Component.Type 
     let topBottomGap = gap + 0.3 // extra space for clk symbol
     let baseOffset = getPortBaseOffset sym side  //offset of the side component is on
-    let baseOffset' = baseOffset + getMuxSelOffset sym side
+    let baseOffset' = baseOffset
     let portDimension = float ports.Length - 1.0
     //printfn "symbol %A portDimension %f" sym.Component.Type portDimension
     let h,w = getRotatedHAndW sym
@@ -830,16 +618,11 @@ let inline getCompId (model: Model) (portId: string) =
 /// Returns the string of a PortId
 let inline getPortIdStr (portId: PortId) = 
     match portId with
-    | InputId (InputPortId id) -> id
-    | OutputId (OutputPortId id) -> id
-
-let inline getInputPortIdStr (portId: InputPortId) = 
+    | Id (PortId id) -> id
+    
+let inline getIOPortIdStr (portId: IOPortId) = 
     match portId with
-    | InputPortId s -> s
-
-let inline getOutputPortIdStr (portId: OutputPortId) = 
-    match portId with
-    | OutputPortId s -> s
+    | PortId s -> s
 
 /// returns what side of the symbol the port is on
 let inline getPortOrientation (model: Model)  (portId: PortId) : Edge =
@@ -848,12 +631,8 @@ let inline getPortOrientation (model: Model)  (portId: PortId) : Edge =
     let sId = ComponentId port.HostId
     model.Symbols[sId].PortMaps.Orientation[portIdStr]
 
-let inline getInputPortOrientation (model: Model) (portId: InputPortId): Edge =
-    getPortOrientation model (InputId portId)
-
-let inline getOutputPortOrientation (model: Model) (portId: OutputPortId): Edge =
-    getPortOrientation model (OutputId portId)
-
+let inline getIOPortOrientation (model: Model) (portId: IOPortId): Edge =
+    getPortOrientation model (Id portId)
 
 /// Returns the location of a given portId, with good efficiency
 let getPortLocation (defPos: XYPos option) (model: Model) (portId : string) : XYPos=
@@ -872,37 +651,18 @@ let getPortLocation (defPos: XYPos option) (model: Model) (portId : string) : XY
     | _ -> failwithf $"Can't find port or symbol: Port='{portOpt}', Symbol='{symOpt}"
 
 /// Returns the location of an input port based on their portId
-let inline getInputPortLocation defPos (model:Model) (portId: InputPortId)  = 
-    let id = getPortIdStr (InputId portId)
+let inline getIOPortLocation defPos (model:Model) (portId: IOPortId)  = 
+    let id = getPortIdStr (Id portId)
     getPortLocation defPos model id
 
-/// Returns the location of an output port based on their portId
-let inline getOutputPortLocation defPos (model:Model) (portId : OutputPortId) =
-    let id = getPortIdStr (OutputId portId)
-    getPortLocation defPos model id
-
-/// Returns the locations of a given input port and output port based on their portId
-let inline getTwoPortLocations (model: Model) (inputPortId: InputPortId ) (outputPortId: OutputPortId) =
-    (getInputPortLocation None model inputPortId, getOutputPortLocation None model outputPortId)
-
-///Returns the input port positions of the specified symbols in model
-let getInputPortsLocationMap (model: Model) (symbols: Symbol list)  = 
+///Returns the port positions of the specified symbols in model
+let getPortsLocationMap (model: Model) (symbols: Symbol list)  = 
     let getSymbolInputPortsLoc sym =
-        sym.Component.InputPorts 
-        |> List.map (fun port -> (InputPortId port.Id, (getPortPos sym port) + (sym.Pos)))
+        sym.Component.IOPorts 
+        |> List.map (fun port -> (port.Id, (getPortPos sym port) + (sym.Pos)))
         
     symbols
     |> List.collect getSymbolInputPortsLoc
-    |> Map.ofList
-
-/// Returns the output port positions of the specified symbols in model
-let getOutputPortsLocationMap (model: Model) (symbols: Symbol list)  =
-    let getSymbolOutputPortsLoc sym =
-        sym.Component.OutputPorts 
-        |> List.map (fun port -> (OutputPortId port.Id, (getPortPos sym port) + (sym.Pos)))
-        
-    symbols
-    |> List.collect getSymbolOutputPortsLoc
     |> Map.ofList
 
 
@@ -914,8 +674,8 @@ let getPortLocations (model: Model) (symbolIds: ComponentId list) =
         |> Map.toList
         |> List.map snd
         
-    let getInputPortMap = getInputPortsLocationMap model symbols
-    let getOutputPortMap = getOutputPortsLocationMap model symbols
-       
-    getInputPortMap , getOutputPortMap 
- 
+    getPortsLocationMap model symbols 
+
+/// Returns the locations of two given ports based on their portId
+let inline getTwoPortLocations (model: Model) (portId1: IOPortId ) (portId2: IOPortId) =
+    (getIOPortLocation None model portId1, getIOPortLocation None model portId2)

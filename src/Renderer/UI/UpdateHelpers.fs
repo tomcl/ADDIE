@@ -7,10 +7,6 @@ open Fable.React
 open Fable.React.Props
 open ElectronAPI
 open FilesIO
-open SimulatorTypes
-open TruthTableTypes
-open TruthTableCreate
-open TruthTableReduce
 open ModelType
 open ModelHelpers
 open CommonTypes
@@ -42,57 +38,12 @@ let matchMouseMsg (msgSelect: DrawHelpers.MouseT -> bool) (msg : Msg) : bool =
 
 let shortDSheetMsg msg = Some "Sheet message"
 
-let shortDWSM (ws: WaveSimModel) =
-    Some <| sprintf $"WS<{ws.FastSim.SimulatedTopSheet}->{ws.StartCycle}-{ws.CurrClkCycle}-\
-            {ws.ShownCycles} Waves:{ws.AllWaves.Count} ({ws.SelectedWaves.Length})>"
-
 let shortDisplayMsg (msg:Msg) =
     match msg with
-    | ShowExitDialog -> None
     | Sheet sheetMsg -> shortDSheetMsg sheetMsg
     | JSDiagramMsg (InitCanvas _ )-> Some "JSDiagramMsg.InitCanvas"
     | JSDiagramMsg _ -> None
     | KeyboardShortcutMsg _ -> None
-    | StartSimulation x -> Some $"""StartSimulation({match x with | Ok _ -> "OK" | Error x -> "Error"})"""
-    | AddWSModel (s,ws) -> Some $"AddWSModel:{s}->{shortDWSM ws}"
-    | SetWSModel ws -> Some $"SetWSModel:{ws.FastSim.SimulatedTopSheet}->{shortDWSM ws}"
-    | UpdateWSModel _ -> None
-    | SetWSModelAndSheet (ws,s)-> Some $"SetWSModelAndSheet:{s}->{shortDWSM ws}"
-    | GenerateWaveforms ws -> Some $"GenerateWaveforms:{shortDWSM ws}"
-    | GenerateCurrentWaveforms -> Some $"Generate Current Waveforms"
-    | RefreshWaveSim ws -> Some "RefreshWaveSim"
-    | SetWaveSheetSelectionOpen _
-    | SetWaveComponentSelectionOpen _-> Some "SetWaveComponentSelectionOpen"
-    | SetWaveGroupSelectionOpen _
-    | LockTabsToWaveSim 
-    | UnlockTabsFromWaveSim -> None
-    | SetSimulationGraph _ -> Some "SetSimulationGraph"
-    | SetSimulationBase _
-    | IncrementSimulationClockTick _
-    | EndSimulation
-    | EndWaveSim -> None
-    | GenerateTruthTable _ -> Some "GenerateTruthTable"
-    | RegenerateTruthTable
-    | FilterTruthTable
-    | SortTruthTable
-    | DCReduceTruthTable
-    | HideTTColumns
-    | CloseTruthTable
-    | ClearInputConstraints
-    | ClearOutputConstraints
-    | AddInputConstraint _
-    | AddOutputConstraint _
-    | DeleteInputConstraint _
-    | DeleteOutputConstraint _
-    | ToggleHideTTColumn _
-    | ClearHiddenTTColumns
-    | ClearDCMap
-    | SetTTSortType _
-    | MoveColumn _
-    | SetIOOrder _ -> Some "SetIOOrder"
-    | SetTTAlgebraInputs _ -> None
-    | SetTTBase _ -> None
-    | SetTTGridCache _ -> Some "SetTTGridCache"
     | ChangeRightTab _ -> None
     | ChangeSimSubTab _ -> None
     | SetHighlighted (comps,conns) -> Some $"SetHighlighted: {comps.Length} comps, {conns.Length} conns"
@@ -108,36 +59,13 @@ let shortDisplayMsg (msg:Msg) =
     | ClosePopup 
     | SetPopupDialogBadLabel _ 
     | SetPopupDialogText _ 
-    | SetPopupDialogCode _ 
-    | SetPopupDialogVerilogErrors _ 
     | SetPopupDialogInt _ 
     | SetPopupDialogInt2 _ 
     | SetPopupDialogTwoInts _ 
-    | SetPropertiesExtraDialogText _ 
     | SetPopupDialogBadLabel _ 
-    | SetPopupDialogMemorySetup _  
-    | SetPopupMemoryEditorData _ 
-    | SetPopupProgress _ 
-    | UpdatePopupProgress _ 
-    | SetPopupInputConstraints _ 
-    | SetPopupOutputConstraints _ 
-    | SetPopupConstraintTypeSel _ 
-    | SetPopupConstraintIOSel _ 
-    | SetPopupConstraintErrorMsg _ 
-    | SetPopupNewConstraint _ 
-    | SetPopupAlgebraInputs _ 
-    | SetPopupAlgebraError _ -> None
-    | TogglePopupAlgebraInput _ -> Some  "TogglePopupAlgebraInput"
-    | SimulateWithProgressBar _ 
-    | SetSelectedComponentMemoryLocation _ 
     | CloseDiagramNotification
-    | SetSimulationNotification _ 
-    | CloseSimulationNotification
-    | CloseWaveSimNotification
     | SetFilesNotification _ 
     | CloseFilesNotification
-    | SetMemoryEditorNotification _ 
-    | CloseMemoryEditorNotification
     | SetPropertiesNotification _ 
     | ClosePropertiesNotification
     | SetTopMenu _ 
@@ -149,17 +77,13 @@ let shortDisplayMsg (msg:Msg) =
     | DiagramMouseEvent
     | SelectionHasChanged
     | SetIsLoading _
-    | SetRouterInteractive _
     | CloseApp
-    | SetExitDialog _
     | ExecutePendingMessages _ 
     | DoNothing
     | StartUICmd _
     | FinishUICmd
-    | ChangeBuildTabVisibility
     | ReadUserData _
     | SetUserData _
-    | ChangeBuildTabVisibility
     | SetThemeUserData _ -> None
     | ExecCmd _ -> Some "ExecCmd"
     | ExecFuncInMessage _ -> Some "ExecFuncInMessage"
@@ -206,17 +130,4 @@ let traceMessage startOfUpdateTime (msg:Msg) ((model,cmdL): Model*Cmd<Msg>) =
         Cmd.map (fun msg -> printfn ">>Cmd:%s" (getMessageTraceString msg)) |> ignore
     model,cmdL
 
-let mutable lastMemoryUpdateCheck = 0.
-
-let updateAllMemoryCompsIfNeeded (model:Model) =
-    let time = TimeHelpers.getTimeMs()
-    if time - lastMemoryUpdateCheck > Constants.memoryUpdateCheckTime && (WaveSimHelpers.getWSModel model).State = Success then
-        printfn "checking update of memories"
-        lastMemoryUpdateCheck <- time
-        MemoryEditorView.updateAllMemoryComps model
-    else
-        model
-
-    
-    
     

@@ -37,12 +37,14 @@ let inline connsAreEqual (conn1:Connection) (conn2:Connection) =
     let portsEqual (p1: Port) (p2:Port) =
         p1.Id = p2.Id &&
         p1.HostId = p2.HostId &&
-        p1.PortNumber = p2.PortNumber
+        p1.PortNumber = p2.PortNumber &&
+        p1.PortType = p2.PortType
     portsEqual conn1.Source conn2.Source && portsEqual conn1.Target conn2.Target
 
 let inline compsAreEqual (comp1:Component) (comp2:Component) =
     comp1.Id = comp2.Id &&
-    comp1.IOPorts = comp2.IOPorts &&
+    comp1.InputPorts = comp2.InputPorts &&
+    comp1.OutputPorts = comp2.OutputPorts &&
     comp1.Type = comp2.Type
 
 /// Is circuit (not geometry) the same for two CanvasStates? fast comparison
@@ -108,11 +110,12 @@ let compareCanvas
 /// Compare the name and IOs of two sheets as loadedcomponents
 /// For backups, if these chnage something major has happened
 let compareIOs (ldc1:LoadedComponent)  (ldc2:LoadedComponent) =
-    Set(ldc1.IOLabels) = Set(ldc2.IOLabels) && ldc1.Name = ldc2.Name
+    Set(ldc1.InputLabels) = Set(ldc2.InputLabels) && ldc1.Name = ldc2.Name
 
 /// Is circuit (not geometry) the same for two LoadedComponents? They must also have the same name
 let loadedComponentIsEqual (ldc1: LoadedComponent) (ldc2: LoadedComponent) =
-    ldc1.IOLabels= ldc2.IOLabels&&
+    ldc1.InputLabels = ldc2.InputLabels &&
+    ldc1.OutputLabels = ldc2.OutputLabels &&
     stateIsEqual ldc1.CanvasState ldc2.CanvasState &&
     ldc1.Name = ldc2.Name
 
@@ -123,7 +126,8 @@ let getOrderedCompLabels compType ((comps,_): CanvasState) =
     |> List.collect (fun comp -> 
         let sortKey = comp.Y,comp.X
         match comp.Type, compType with 
-        | IO, IO -> [sortKey, (comp.Label)] 
+        | Input1 (n, defaultVal), Input1 _ -> [sortKey,(comp.Label, n)]
+        | Output n, Output _ -> [sortKey, (comp.Label,n)] 
         | _ -> [])
     |> List.sortBy fst
     |> List.map snd
@@ -132,21 +136,24 @@ let getOrderedCompLabels compType ((comps,_): CanvasState) =
 /// Extract the labels and bus widths of the inputs and outputs nodes as a signature.
 /// Form is inputs,outputs
 let parseDiagramSignature canvasState
-        : string list =
-    let io = getOrderedCompLabels (IO) canvasState
-    io
+        : (string * int) list * (string * int) list =
+    let inputs = getOrderedCompLabels (Input1 (0, None)) canvasState
+    let outputs = getOrderedCompLabels (Output 0) canvasState
+    inputs, outputs
 
 /// extract the fields compared to check circuit equality
 let extractLoadedSimulatorComponent (canvas: CanvasState)(name: string)=
-        let io = parseDiagramSignature canvas
+        let inputs, outputs = parseDiagramSignature canvas
         //printfn "parsed component"
         let ldc =
             {
                 Name = name
                 TimeStamp = System.DateTime.Now
+                WaveInfo = None
                 FilePath = ""
                 CanvasState = canvas
-                IOLabels = io
+                InputLabels = inputs
+                OutputLabels = outputs
                 Form = None
                 Description = None
             }
@@ -156,16 +163,17 @@ let extractLoadedSimulatorComponent (canvas: CanvasState)(name: string)=
 /// canvasState must be the project currently open state.
 let loadedComponentIsSameAsProject (canvasState: CanvasState) (ldc: LoadedComponent) (p: Project option) =
     let ldcIsEq ldc1 ldc2 =
-        ldc1.IOLabels= ldc2.IOLabels &&
+        ldc1.InputLabels = ldc2.InputLabels &&
+        ldc1.OutputLabels = ldc2.OutputLabels &&
         stateIsEqual ldc1.CanvasState ldc2.CanvasState 
 
     match ldc.Name, p with
     | "", _ 
     | _, None -> false
     | name, Some p when name = p.OpenFileName ->
-        let io = parseDiagramSignature canvasState
+        let ins, outs = parseDiagramSignature canvasState
         let sort = List.sort
-        stateIsEqual canvasState ldc.CanvasState && sort io = sort ldc.IOLabels
+        stateIsEqual canvasState ldc.CanvasState && sort ins = sort ldc.InputLabels && sort outs = sort ldc.OutputLabels
     | name, Some p ->
         List.tryFind (fun ldc -> ldc.Name = name) p.LoadedComponents
         |> Option.map (fun ldc' -> ldcIsEq ldc' ldc)
@@ -174,14 +182,16 @@ let loadedComponentIsSameAsProject (canvasState: CanvasState) (ldc: LoadedCompon
 
 /// add given name,state to loadedcomponent lits as a loaded component (overwriting existing if needed)
 let addStateToLoadedComponents openFileName canvasState loadedComponents =
-    let io = parseDiagramSignature canvasState
+    let ins, outs = parseDiagramSignature canvasState
     let ldc: LoadedComponent = 
         {
             Name = openFileName
-            IOLabels = io
+            InputLabels = ins
+            OutputLabels = outs
             CanvasState = canvasState
             Form = None
             Description = None
+            WaveInfo = None
             FilePath = ""
             TimeStamp = System.DateTime.Now
         }
@@ -197,6 +207,5 @@ let getStateAndDependencies (diagramName:string)  (ldcs:LoadedComponent list) =
     |> Option.map (fun ldc ->ldc.CanvasState)
     |> Option.map (fun cs -> diagramName, cs, List.filter (fun ldc -> ldc.Name <> diagramName) ldcs)
     |> Option.defaultWith (fun () -> failwithf $"Error - can't find {diagramName} in dependencies")
-
 
 

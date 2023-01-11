@@ -94,8 +94,7 @@ module CommonTypes
         Id : string
         // For example, an And would have input ports 0 and 1, and output port 0.
         // If the port is used in a Connection record as Source or Target, the Number is None. 
-        PortNumber : int option
-        PortType : PortType 
+        PortNumber : int option 
         HostId : string
     }
 
@@ -124,7 +123,6 @@ module CommonTypes
         |Library
         |ProtectedTopLevel
         |ProtectedSubSheet
-        |Verilog of string
 
 
     /// Name identifies the LoadedComponent used.
@@ -134,9 +132,7 @@ module CommonTypes
     /// Multiple CustomComponent instances are differentiated by Component data.
     type CustomComponentType = {
         Name: string
-        // Tuples with (label * connection width).
-        InputLabels: (string * int) list
-        OutputLabels: (string * int) list
+        IOLabels: string  list
         Form : CCForm option
         Description : string option
     }
@@ -180,73 +176,25 @@ module CommonTypes
     Data : Map<int64,int64>  
     } 
 
-    type ShiftComponentType =
-        |LSL
-        |LSR
-        |ASR
+    type VoltageSourceType =
+        |DC of Voltage:float
+        |ACAnalysis of Amplitude:float * Phase:float
+        |Sine of Amplitude:float * Offset:float * Frequency:float
+        |Pulse of V1:float * V2:float * Frequency:float
     
     // Types instantiating objects in the Digital extension.
     type ComponentType =
-        // Legacy component: to be deleted
-        | Input of BusWidth: int
-        | Input1 of BusWidth: int * DefaultValue: int option | Output of BusWidth: int | Viewer of BusWidth: int | IOLabel 
-        | BusCompare of BusWidth: int * CompareValue: uint32
-        | BusCompare1 of BusWidth: int * CompareValue: uint32 * DialogTextValue: string
-        | BusSelection of OutputWidth: int * OutputLSBit: int
-        | Constant of Width: int * ConstValue: int64 
-        | Constant1 of Width: int * ConstValue: int64 * DialogTextValue: string
-        | Not | And | Or | Xor | Nand | Nor | Xnor | Decode4
-        | Mux2 | Mux4 | Mux8 | Demux2 | Demux4 | Demux8
-        | NbitsAdder of BusWidth: int | NbitsAdderNoCin of BusWidth: int 
-        | NbitsAdderNoCout of BusWidth: int | NbitsAdderNoCinCout of BusWidth: int 
-        | NbitsXor of BusWidth:int
-        | NbitsAnd of BusWidth: int | NbitsNot of BusWidth: int
-        | NbitsOr of BusWidth: int | NbitSpreader of BusWidth: int
+        | IOLabel
+        | IO
+        | Resistor of Resistance:float
+        | Capacitor of Capacitance:float
+        | Inductor of Inductance:float
+        | VoltageSource of VoltageSourceType
+        | CurrentSource of Current:float
+        | Diode
+        | Ground
         | Custom of CustomComponentType // schematic sheet used as component
-        | MergeWires | SplitWire of BusWidth: int // int is bus width
-        // DFFE is a DFF with an enable signal.
-        // No initial state for DFF or Register? Default 0.
-        | DFF | DFFE | Register of BusWidth: int | RegisterE of BusWidth: int
-        | Counter of BusWidth:int | CounterNoLoad of BusWidth:int
-        | CounterNoEnable of BusWidth:int | CounterNoEnableLoad of BusWidth:int
-        | AsyncROM1 of Memory1 | ROM1 of Memory1 | RAM1 of Memory1 | AsyncRAM1 of Memory1
-        // legacy components - to be deleted
-        | AsyncROM of Memory | ROM of Memory | RAM of Memory
-        | Shift of BusWidth: int * ShifterWidth: int * ShiftType: ShiftComponentType
 
-
-    /// Active pattern which matches 2-input gate component types.
-    /// NB - NOT gates are not included here.
-    let (|IsBinaryGate|NotBinaryGate|) cType =
-        match cType with
-         | And | Or | Xor | Nand | Nor | Xnor -> IsBinaryGate
-         | _ -> NotBinaryGate
-
-    /// get memory component type constructor
-    /// NB only works with new-style memory components
-    let getMemType (cType: ComponentType) =
-        match cType with
-        | RAM1 _ -> RAM1
-        | AsyncRAM1 _ -> AsyncRAM1
-        | ROM1 _ -> ROM1
-        | AsyncROM1 _ -> AsyncROM1
-        | _ -> failwithf $"Can't get memory type from {cType}"
-
-    let (|Memory|_|) (typ:ComponentType) =
-        match typ with
-        | RAM1 mem 
-        | AsyncRAM1 mem
-        | ROM1 mem
-        | AsyncROM1 mem -> Some mem
-        | _ -> None
-
-    let (|MemoryAndType|_|) (typ:ComponentType) =
-        match typ with
-        | RAM1 mem -> Some(RAM1, mem)
-        | AsyncRAM1 mem -> Some(AsyncRAM1,mem)
-        | ROM1 mem -> Some(ROM1, mem)
-        | AsyncROM1 mem -> Some(AsyncROM1, mem)
-        | _ -> None
 
 
     // --------------- Types needed for symbol ---------------- //
@@ -279,7 +227,6 @@ module CommonTypes
         LabelBoundingBox: BoundingBox option
         LabelRotation: Rotation option
         STransform: STransform
-        ReversedInputPorts: bool option
         PortOrientation: Map<string, Edge>
         PortOrder: Map<Edge, string list>
         HScale: float option
@@ -329,8 +276,7 @@ module CommonTypes
         Id : string
         Type : ComponentType
         Label : string // All components have a label that may be empty.
-        InputPorts : Port list // position on this list determines inputPortNumber
-        OutputPorts : Port list // position in this lits determines OutputPortNumber
+        IOPorts : Port list // position on this list determines inputPortNumber
         X : float
         Y : float
         H : float
@@ -339,12 +285,11 @@ module CommonTypes
     }
 
     with member this.getPort (PortId portId: PortId) = 
-            List.tryFind (fun (port:Port) -> port.Id = portId ) (this.InputPorts @ this.OutputPorts)
+            List.tryFind (fun (port:Port) -> port.Id = portId ) (this.IOPorts)
      
      
     let type_ = Lens.create (fun c -> c.Type) (fun n c -> {c with Type = n})
-    let inputPorts_ = Lens.create (fun c -> c.InputPorts) (fun n c -> {c with InputPorts = n})
-    let outputPorts_ = Lens.create (fun c -> c.OutputPorts) (fun n c -> {c with OutputPorts = n})
+    let ioPorts_ = Lens.create (fun c -> c.IOPorts) (fun n c -> {c with IOPorts = n})
     let h_ = Lens.create (fun c -> c.H) (fun n c -> {c with H= n})
     let w_ = Lens.create (fun c -> c.W) (fun n c -> {c with W= n})
 
@@ -367,47 +312,6 @@ module CommonTypes
 
     let unreduced (ReducedCanvasState(rComps,rConns)) = rComps,rConns
 
-
-
-    //===================================================================================================//
-    //                                         LEGACY TYPES                                              //
-    //===================================================================================================//
-
-
-
-            
-            
-
-    let legacyTypesConvert (lComps, lConns) =
-        let convertConnection (c:LegacyCanvas.LegacyConnection) : Connection =
-            {
-                Id=c.Id; 
-                Source=c.Source;
-                Target=c.Target;
-                Vertices = 
-                    c.Vertices
-                    |> List.map (function 
-                        | (x,y) when x >= 0. && y >= 0. -> (x,y,false)
-                        | (x,y) -> (abs x, abs y, true))
-            }
-        let convertComponent (comp:LegacyCanvas.LegacyComponent) : Component =
-
-            {
-                Id = comp.Id
-                Type = comp.Type
-                Label = comp.Label // All components have a label that may be empty.
-                InputPorts = comp.InputPorts // position on this list determines inputPortNumber
-                OutputPorts = comp.OutputPorts // position in this lits determines OutputPortNumber
-                X = comp.X
-                Y = comp.Y
-                H = comp.H
-                W = comp.W
-                SymbolInfo = None
-                    
-            }
-        let comps = List.map convertComponent lComps
-        let conns = List.map convertConnection lConns
-        (comps,conns)
 
 
     //=======//
@@ -469,18 +373,10 @@ module CommonTypes
 
     /// SHA hash unique to a component port - common between JS and F#.
     /// Connection ports and connected component ports have the same port Id
-    /// InputPortId and OutputPortID wrap the hash to distinguish component
-    /// inputs and outputs some times (e.g. in simulation)
     [<Erase>]
-    type InputPortId      = | InputPortId of string
+    type IOPortId      = | PortId of string
 
-    /// SHA hash unique to a component port - common between JS and F#.
-    /// Connection ports and connected component ports have the same port Id
-    /// InputPortId and OutputPortID wrap the hash to distinguish component
-    /// inputs and outputs some times (e.g. in simulation)
-    [<Erase>]
-    type OutputPortId     = | OutputPortId of string
-
+    
     /// Port numbers are sequential unique with port lists.
     /// Inputs and Outputs are both numberd from 0 up.
     [<Erase>]
@@ -601,14 +497,10 @@ module CommonTypes
         TimeStamp: System.DateTime 
         /// Complete file path, including name and dgm extension
         FilePath : string
-        /// Info on WaveSim settings
-        WaveInfo: SavedWaveInfo option
         /// F# equivalent of Diagram components and connections including layout
         CanvasState : CanvasState
-        /// Input port names, and port numbers in any created custom component
-        InputLabels : (string * int) list
-        /// Output port names, and port numbers in any created custom component
-        OutputLabels : (string * int) list
+        /// IO port names, and port numbers in any created custom component
+        IOLabels : string list
         Form : CCForm option
         Description: string option
     }
@@ -618,26 +510,6 @@ module CommonTypes
     let canvasState_ = Lens.create (fun a -> a.CanvasState) (fun s a -> {a with CanvasState = s})
     let componentsState_ = canvasState_ >-> Optics.fst_
 
-    /// Returns true if a component is clocked
-    let rec isClocked (visitedSheets: string list) (ldcs: LoadedComponent list) (comp: Component) =
-        match comp.Type with
-        | Custom ct ->
-            let ldcOpt =
-                ldcs
-                |> List.tryFind (fun ldc -> ldc.Name = ct.Name)
-            match ldcOpt, List.contains ct.Name visitedSheets with
-            | _, true -> false
-            | None, _ -> false
-            | Some ldc, _ ->
-                let (comps, _) = ldc.CanvasState
-                List.exists (isClocked (ct.Name :: visitedSheets) ldcs) comps
-                        
-
-                            
-        | DFF | DFFE | Register _ | RegisterE _ | RAM _ | ROM _
-        | Counter _ |CounterNoEnable _ | CounterNoLoad _  |CounterNoEnableLoad _ ->
-            true
-        | _ -> false
 
     /// Type for an open project which represents a complete design.
     /// ProjectPath is directory containing project files.

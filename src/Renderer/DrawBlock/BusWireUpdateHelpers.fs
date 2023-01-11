@@ -135,11 +135,11 @@ let getWireList (model: Model) =
 /// Returns the IDs of the wires in the model connected to a list of components given by compIds
 let getConnectedWires model compIds =
     let containsPorts wire =
-        let inputPorts, outputPorts =
+        let ioPorts=
             Symbol.getPortLocations model.Symbol compIds
 
-        Map.containsKey wire.InputPort inputPorts
-        || Map.containsKey wire.OutputPort outputPorts
+        Map.containsKey (Symbol.ioPortStr wire.Port2) ioPorts
+        || Map.containsKey (Symbol.ioPortStr wire.Port1) ioPorts
 
     model
     |> getWireList
@@ -161,28 +161,17 @@ let getFilteredIdList condition wireLst =
 let filterWiresByCompMoved (model: Model) (compIds: list<ComponentId>) =
     let wireList = getWireList model
 
-    let inputPorts, outputPorts =
+    let ioPorts =
         Symbol.getPortLocations model.Symbol compIds
 
-    let containsInputPort wire =
-        Map.containsKey wire.InputPort inputPorts
+    let containsIOPort wire =
+        Map.containsKey (Symbol.ioPortStr wire.Port2) ioPorts || Map.containsKey (Symbol.ioPortStr wire.Port1) ioPorts 
 
-    let containsOutputPort wire =
-        Map.containsKey wire.OutputPort outputPorts
+    let allConns =
+        wireList |> getFilteredIdList containsIOPort
 
-    let containsBothPort wire =
-        containsInputPort wire && containsOutputPort wire
+    allConns
 
-    let inputWires =
-        wireList |> getFilteredIdList containsInputPort
-
-    let outputWires =
-        wireList |> getFilteredIdList containsOutputPort
-
-    let fullyConnected =
-        wireList |> getFilteredIdList containsBothPort
-
-    {| Inputs = inputWires; Outputs = outputWires; Both = fullyConnected |}
 
 //--------------------------------------------------------------------------------//
 
@@ -442,13 +431,13 @@ let rec rotateSegments (target: Edge) (wire: {| edge: Edge; segments: Segment li
 /// Returns a newly autorouted version of a wire for the given model
 let autoroute (model: Model) (wire: Wire) : Wire =
     let destPos, startPos =
-        Symbol.getTwoPortLocations (model.Symbol) (wire.InputPort) (wire.OutputPort)
+        Symbol.getTwoPortLocations (model.Symbol) (wire.Port2) (wire.Port1)
 
     let destEdge =
-        Symbol.getInputPortOrientation model.Symbol wire.InputPort
+        Symbol.getIOPortOrientation model.Symbol wire.Port2
 
     let startEdge =
-        Symbol.getOutputPortOrientation model.Symbol wire.OutputPort
+        Symbol.getIOPortOrientation model.Symbol wire.Port1
 
     let startPort = genPortInfo startEdge startPos
     let destPort = genPortInfo destEdge destPos
@@ -548,8 +537,8 @@ let partialAutoroute (model: Model) (wire: Wire) (newPortPos: XYPos) (reversed: 
         let relativeToFixed = relativePosition fixedPoint
         let portId = 
             match reversed with
-            | false -> OutputId wire.OutputPort
-            | true -> InputId wire.InputPort
+            | false -> Id wire.Port1
+            | true -> Id wire.Port2
         let portOrientation =
             Symbol.getPortOrientation model.Symbol portId
         if  getWireOutgoingEdge wire = portOrientation &&
@@ -613,8 +602,8 @@ let reverseWire (wire: Wire) =
 let updateWire (model : Model) (wire : Wire) (reverse : bool) =
     let newPort = 
         match reverse with
-        | true -> Symbol.getInputPortLocation None model.Symbol wire.InputPort
-        | false -> Symbol.getOutputPortLocation None model.Symbol wire.OutputPort
+        | true -> Symbol.getIOPortLocation None model.Symbol wire.Port2
+        | false -> Symbol.getIOPortLocation None model.Symbol wire.Port1
     if reverse then
         partialAutoroute model (reverseWire wire) newPort true
         |> Option.map reverseWire
@@ -645,7 +634,7 @@ let updateSegmentJumpsOrIntersections targetSeg intersectOrJump wireMap =
 let partitionWiresIntoNets (model:Model) =
     model.Wires
     |> Map.toList
-    |> List.groupBy (fun (_,wire) -> wire.OutputPort)
+    |> List.groupBy (fun (_,wire) -> wire.Port1)
 
 /// type used internally by modern wire circle calculation code
 /// For a horizontal segment (x1,y) -> (x2,y):
@@ -884,12 +873,12 @@ let updateWires (model : Model) (compIdList : ComponentId list) (diff : XYPos) =
         model.Wires
         |> Map.toList
         |> List.map (fun (cId, wire) -> 
-            if List.contains cId wires.Both //Translate wires that are connected to moving components on both sides
-            then (cId, moveWire wire diff)
-            elif List.contains cId wires.Inputs //Only route wires connected to ports that moved for efficiency
+            if List.contains cId wires //Translate wires that are connected to moving components on both sides
+            //then (cId, moveWire wire diff)
+            //elif List.contains cId wires.Inputs //Only route wires connected to ports that moved for efficiency
             then (cId, updateWire model wire true)
-            elif List.contains cId wires.Outputs
-            then (cId, updateWire model wire false)
+            //elif List.contains cId wires.Outputs
+            //then (cId, updateWire model wire false)
             else (cId, wire))
         |> Map.ofList
 
@@ -902,14 +891,14 @@ let updateSymbolWires (model: Model) (compId: ComponentId) =
         model.Wires
         |> Map.toList
         |> List.map (fun (cId, wire) ->
-            if List.contains cId wires.Both then // Update wires that are connected on both sides
+            if List.contains cId wires then // Update wires that are connected on both sides
                 cId, (
                     updateWire model wire true 
                     |> fun wire -> updateWire model wire false)
-            elif List.contains cId wires.Inputs then 
-                cId, updateWire model wire true
-            elif List.contains cId wires.Outputs then
-                cId, updateWire model wire false
+            //elif List.contains cId wires.Inputs then 
+            //    cId, updateWire model wire true
+            //elif List.contains cId wires.Outputs then
+            //    cId, updateWire model wire false
             else cId, wire)
         |> Map.ofList
     { model with Wires = newWires }

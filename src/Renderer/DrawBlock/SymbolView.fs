@@ -170,190 +170,73 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
     let W = float comp.W*(Option.defaultValue 1.0 symbol.HScale)
     let transform = symbol.STransform
 
-    let mergeSplitLine pos msb lsb  =
-        let text = 
-            match msb = lsb, msb >= lsb with
-            | _, false -> ""
-            | true, _ -> sprintf $"({msb})"
-            | false, _ -> sprintf $"({msb}:{lsb})"
-        addText pos text "middle" "bold" Constants.mergeSplitTextSize
-
-
-    let busSelectLine msb lsb  =
-        let text = 
-            match msb = lsb  with
-            | true -> sprintf $"({lsb})"
-            | false -> sprintf $"({msb}:{lsb})"
-        let pos, align = 
-            let rotate' = 
-                if not transform.flipped then 
-                    transform.Rotation
-                else
-                    match transform.Rotation with 
-                    | Degree90 -> Degree270 | Degree270 -> Degree90 | r -> r
-            match rotate' with
-            | Degree0 -> {X=w/2.; Y= h/2. + 7.}, "middle"
-            | Degree180 -> {X=w/2.; Y= -8.}, "middle"
-            | Degree270 -> {X= 4.; Y=h/2. - 7.}, "end"
-            | Degree90 -> {X= 5.+ w/2.; Y=h/2. }, "start"
-        addText pos text align "bold" Constants.busSelectTextSize
-
-    let clockTxtPos = 
-        match transform.Rotation, transform.flipped with
-        | Degree0, false -> {X = 17.; Y = H - 13.}
-        | Degree180, true -> {X = 17.; Y = 2.}
-        | Degree90, false -> {X = float w - 8.; Y = float h - 20.}
-        | Degree270, true ->  {X = float w - 10.; Y = 11.}
-        | Degree180, false -> {X = W - 19.; Y = 2.}
-        | Degree0, true -> {X = W - 17.; Y = H - 13.}
-        | Degree270, false -> {X = 10.; Y = 11.}
-        | Degree90, true -> {X = 8.; Y = float h - 20.}
 
     /// Points that define the edges of the symbol
     let points =
         let toString = Array.fold (fun x (pos:XYPos) -> x + (sprintf $" {pos.X},{pos.Y}")) "" 
         let originalPoints =
             match comp.Type with
-            // legacy component: to be deleted
-            | Input _
-            | Input1 _ |Output _ -> 
-                [|{X=0;Y=0};{X=0;Y=H};{X=W*4./5.;Y=H};{X=W;Y=H/2.};{X=W*0.8;Y=0}|] 
-            //| Output _ -> 
-            //    [|{X=W/5.;Y=0};{X=0;Y=H/2.};{X=W/5.;Y=H};{X=W;Y=H};{X=W;Y=0}|]
-            | Constant1 _ -> 
-                [|{X=W;Y=H/2.};{X=W/2.;Y=H/2.};{X=0;Y=H};{X=0;Y=0};{X=W/2.;Y=H/2.}|]
             | IOLabel ->
                 [|{X=0.;Y=H/2.};{X=W;Y=H/2.}|]
-            | Viewer _ ->
-                [|{X=W/5.;Y=0};{X=0;Y=H/2.};{X=W/5.;Y=H};{X=W;Y=H};{X=W;Y=0}|]
-            | MergeWires -> 
-                [|{X=0;Y=H/6.};{X=W/2.;Y=H/6.};{X=W/2.;Y=H/2.};{X=W;Y=H/2.};{X=W/2.;Y=H/2.};{X=W/2.;Y=5.*H/6.};{X=0;Y=5.*H/6.};{X=W/2.;Y=5.*H/6.};{X=W/2.;Y=H/6.}|]
-            | SplitWire _ -> 
-                [|{X=W;Y=H/6.};{X=W/2.;Y=H/6.};{X=W/2.;Y=H/2.};{X=0;Y=H/2.};{X=W/2.;Y=H/2.};{X=W/2.;Y=5.*H/6.};{X=W;Y=5.*H/6.};{X=W/2.;Y=5.*H/6.};{X=W/2.;Y=H/6.}|]
-            // EXTENSION: |Mux4|Mux8 ->(sprintf "%i,%i %i,%f  %i,%f %i,%i" 0 0 w (float(h)*0.2) w (float(h)*0.8) 0 h )
-            // EXTENSION: | Demux4 |Demux8 -> (sprintf "%i,%f %i,%f %i,%i %i,%i" 0 (float(h)*0.2) 0 (float(h)*0.8) w h w 0)
-            | Demux2 | Demux4 | Demux8 ->
-                [|{X=0;Y=0.3*W};{X=0;Y=H-0.3*W};{X=W;Y=H};{X=W;Y=0}|]
-            | Mux2 | Mux4 | Mux8 -> 
-                [|{X=0;Y=0};{X=0;Y=H};{X=W;Y=H-0.3*W};{X=W;Y=0.3*W}|]
-            | BusSelection _ -> 
-                [|{X=0;Y=H/2.}; {X=W;Y=H/2.}|]
-            | BusCompare _ |BusCompare1 _-> 
-                [|{X=0;Y=0};{X=0;Y=H};{X=W*0.6;Y=H};{X=W*0.8;Y=H*0.7};{X=W;Y=H*0.7};{X=W;Y =H*0.3};{X=W*0.8;Y=H*0.3};{X=W*0.6;Y=0}|]
-            | Not | Nand | Nor | Xnor -> 
-                [|{X=0;Y=0};{X=0;Y=H};{X=W;Y=H};{X=W;Y=H/2.};{X=W+9.;Y=H/2.};{X=W;Y=H/2.-8.};{X=W;Y=H/2.};{X=W;Y=0}|]
-            | DFF | DFFE | Register _ | RegisterE _ | ROM1 _ |RAM1 _ | AsyncRAM1 _ 
-            | Counter _ | CounterNoEnable _ 
-            | CounterNoLoad _ | CounterNoEnableLoad _ -> 
+            | Custom x -> 
                 [|{X=0;Y=H-13.};{X=8.;Y=H-7.};{X=0;Y=H-1.};{X=0;Y=0};{X=W;Y=0};{X=W;Y=H};{X=0;Y=H}|]
-            | Custom x when symbol.IsClocked = true -> 
-                [|{X=0;Y=H-13.};{X=8.;Y=H-7.};{X=0;Y=H-1.};{X=0;Y=0};{X=W;Y=0};{X=W;Y=H};{X=0;Y=H}|]
-            | NbitSpreader _ ->
-                [|{X=0;Y=H/2.};{X=W*0.4;Y=H/2.};{X=W*0.4;Y=H};{X=W*0.4;Y=0.};{X=W*0.4;Y=H/2.};{X=W;Y=H/2.}|]
+            | IO -> 
+                [|{X=0;Y=0};{X=0;Y=H};{X=W*4./5.;Y=H};{X=W;Y=H/2.};{X=W*0.8;Y=0}|] 
+            | Resistor _ ->
+                //[|{X=0;Y=0.5*H};{X=0.1*W;Y=0.5*H};{X=0.15*W;Y=H};{X=0.3*W;Y=0};{X=0.45*W;Y=H};{X=0.6*W;Y=0};{X=0.75*W;Y=H};{X=0.83*W;Y=0.5*H};{X=W;Y=0.5*H};{X=0.83*W;Y=0.5*H};{X=0.75*W;Y=H};{X=0.6*W;Y=0};{X=0.45*W;Y=H};{X=0.3*W;Y=0};{X=0.15*W;Y=H};{X=0.1*W;Y=0.5*H}|]
+                [|{X=0;Y=0.5*H};{X=0.125*W;Y=0.5*H};{X=0.1875*W;Y=0};{X=0.3125*W;Y=H};{X=0.4375*W;Y=0};{X=0.5625*W;Y=H};{X=0.6875*W;Y=0};{X=0.8125*W;Y=H};{X=0.875*W;Y=0.5*H};{X=W;Y=0.5*H};{X=0.875*W;Y=0.5*H};{X=0.8125*W;Y=H};{X=0.6875*W;Y=0};{X=0.5625*W;Y=H};{X=0.4375*W;Y=0};{X=0.3125*W;Y=H};{X=0.1875*W;Y=0};{X=0.125*W;Y=0.5*H}|]
+            | CurrentSource _ ->
+                [|{X=0.2;Y=0.5};{X=0.8;Y=0.5};{X=0.7;Y=0.4};{X=0.8;Y=0.5};{X=0.9;Y=0.4};{X=0.8;Y=0.5}|]
+            | Ground ->
+                [|{X=0;Y=0.3*H};{X=0.5*W;Y=H};{X=W;Y=0.3*H};{X=0.5*W;Y=0.3*H};{X=0.5*W;Y=0};{X=0.5*W;Y=0.3*H}|]
+            | Diode ->
+                [|{X=0;Y=0};{X=0;Y=H};{X=W;Y=0.5*H};{X=W;Y=H};{X=W;Y=0};{X=W;Y=0.5*H}|]
             | _ -> 
                 [|{X=0;Y=0};{X=0;Y=H};{X=W;Y=H};{X=W;Y=0}|]
         rotatePoints originalPoints {X=W/2.;Y=H/2.} transform
         |> toString 
 
 
-
-    let additions =       // Helper function to add certain characteristics on specific symbols (inverter, enables, clocks)
-        let mergeWiresTextPos =
-            let textPoints = rotatePoints [|{X=W/5.;Y=H/6.+2.};{X=W/5.;Y=H*5./6.+2.};{X=W*0.75;Y=H/2.+2.}|] {X=W/2.;Y=H/2.} transform
-            match transform.Rotation with
-            | Degree90 | Degree270 -> Array.map (fun pos -> pos + {X=12.;Y=0}) textPoints
-            | Degree180 -> Array.map (fun pos -> pos + {X=0;Y= +5.}) textPoints
-            | _ -> textPoints
-        let splitWiresTextPos =
-            let textPoints = rotatePoints [|{X=W*0.75;Y=H/6.+2.};{X=W*0.75;Y=H*5./6.+2.};{X=W/4.;Y=H/2.+2.}|] {X=W/2.;Y=H/2.} transform
-            match transform.Rotation with
-            | Degree90 | Degree270 -> Array.map (fun pos -> pos + {X=12.;Y=0}) textPoints
-            | Degree180 -> Array.map (fun pos -> pos + {X=0;Y= +5.}) textPoints
-            | _ -> textPoints
-        let NbitSpreaderTextPos =
-            let textPoints = rotatePoints [|{X=W/4.;Y=H/2.+2.};{X=W*0.7;Y=H/2.+4.}|] {X=W/2.;Y=H/2.} transform
-            match transform.Rotation with
-            | Degree90 -> Array.map (fun pos -> pos + {X=13.;Y=(-5.0)}) textPoints
-            | Degree180 -> Array.map (fun pos -> pos + {X=0;Y= +8.}) textPoints
-            | Degree270 -> Array.map (fun pos -> pos + {X=18.;Y=(-5.0)}) textPoints
-            | _ -> textPoints
-        let rotate1 pos = 
-            match rotatePoints [|pos|] {X=W/2.;Y=H/2.} transform with 
-            | [|pos'|]-> pos' 
-            | _ -> failwithf "What? Can't happen"
-
-        match comp.Type with
-        | MergeWires -> 
-            let lo, hi = 
-                match symbol.InWidth0, symbol.InWidth1  with 
-                | Some n, Some m  -> n, m
-                | _ -> -1,-1
-            let msb = hi + lo - 1
-            let midb = lo
-            let midt = lo - 1
-            let values = [(midt,0);(msb,midb);(msb,0)]
-            List.fold (fun og i ->
-                og @ mergeSplitLine 
-                        mergeWiresTextPos[i] 
-                        (fst values[i]) 
-                        (snd values[i])) [] [0..2]
-        | NbitSpreader n -> 
-            //let lo = 1
-            //let msb = hi + lo - 1
-            //let midb = lo
-            //let midt = lo - 1
-            let values = [(-1,0);((n-1),0)]
-            List.fold (fun og i ->
-                og @ mergeSplitLine 
-                        NbitSpreaderTextPos[i] 
-                        (fst values[i]) 
-                        (snd values[i])) [] [0..1]
-        | SplitWire mid -> 
-            let msb, mid' = match symbol.InWidth0 with | Some n -> n - 1, mid | _ -> -100, -50
-            let midb = mid'
-            let midt = mid'-1
-            let values = [(midt,0);(msb,midb);(msb,0)]
-            List.fold (fun og i -> 
-                og @ mergeSplitLine 
-                        splitWiresTextPos[i] 
-                        (fst values[i]) 
-                        (snd values[i])) [] [0..2]
-        | DFF | DFFE | Register _ |RegisterE _ | ROM1 _ |RAM1 _ | AsyncRAM1 _ | Counter _ | CounterNoEnable _ | CounterNoLoad _ | CounterNoEnableLoad _  -> 
-            (addText clockTxtPos " clk" "middle" "normal" "12px")
-        | BusSelection(nBits,lsb) ->           
-            busSelectLine (lsb + nBits - 1) lsb
-        | Constant1 (_, _, dialogVal) -> 
-            let align, yOffset, xOffset= 
-                match transform.flipped, transform.Rotation with
-                | false, Degree180
-                | true, Degree0 -> "end",0.,5.
-                | _, Degree90 -> "end",-15.,-5.
-                | _, Degree270 -> "end",0.,-5.
-                | _ -> "start",0.,-5.
-            let fontSize = if dialogVal.Length < 2 then "14px" else "12px"
-            addText {X = w/2. + xOffset; Y = h/1.5 + yOffset}  dialogVal align "normal" fontSize
-        | BusCompare (_,y) ->
-            (addText {X = w/2.-2.; Y = h/2.7-1.} ("=" + NumberHelpers.hex(int y)) "middle" "bold" "10px")
-        |BusCompare1 (_,_,t) -> 
-            (addText {X = w/2.-2.; Y = h/2.7-1.} ("= " + t) "middle" "bold" "10px")
-        // legacy component type: to be deleted
-        | Input x
-        | Input1 (x, _) | Output x-> 
-            (addText {X = w/2.; Y = h/2.7} (busTitleAndBits "" x) "middle" "normal" "12px")
-        | Viewer (x) -> 
-            (addText {X = w/2.; Y = h/2.7 - 1.25} (busTitleAndBits "" x) "middle" "normal" "9px")
-        | _ when symbol.IsClocked -> 
-            (addText (Array.head (rotatePoints [|{X = 15.; Y = float H - 11.}|] {X=W/2.;Y=H/2.} transform )) " clk" "middle" "normal" "12px")
-        | _ -> []
-
     let outlineColour, strokeWidth =
         match comp.Type with
-        | SplitWire _ | MergeWires -> outlineColor colour, "4.0"
-        |NbitSpreader _ -> outlineColor colour, "4.0"
         | IOLabel -> outlineColor colour, "4.0"
-        | BusSelection _ -> outlineColor colour, "4.0"
+        |Resistor _  -> "darkblue", "2.5"
         | _ -> "black", "1.0"
+
+
+    let capacitorLine = {defaultLine with StrokeWidth = "2.5px";} 
     
+    let createdSymbol = 
+        match comp.Type with
+        | CurrentSource _ -> 
+            match transform.Rotation with 
+            | Degree0 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 30 45 30 15 defaultLine; makeLine 20 25 30 15 defaultLine; makeLine 40 25 30 15 defaultLine]
+            | Degree90 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 15 30 45 30 defaultLine; makeLine 35 20 45 30 defaultLine; makeLine 35 40 45 30 defaultLine]
+            | Degree180 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 30 15 30 45 defaultLine; makeLine 20 35 30 45 defaultLine; makeLine 40 35 30 45 defaultLine]
+            | Degree270 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 45 30 15 30 defaultLine; makeLine 25 40 15 30 defaultLine; makeLine 25 20 15 30 defaultLine]
+        | VoltageSource _ -> 
+            match transform.Rotation with
+            | Degree0 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 22.5 50 37.5 50 defaultLine; makeLine 22.5 15 37.5 15 defaultLine; makeLine 30 22.5 30 7.5 defaultLine]
+            | Degree90 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 40 30 55 30 defaultLine; makeLine 47.5 37.5 47.5 22.5 defaultLine; makeLine 12.5 37.5 12.5 22.5 defaultLine]
+            | Degree180 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 22.5 45 37.5 45 defaultLine; makeLine 30 37.5 30 52.5 defaultLine; makeLine 22.5 15 37.5 15 defaultLine ]
+            | Degree270 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 45 37.5 45 22.5 defaultLine; makeLine 15 37.5 15 22.5 defaultLine; makeLine 7.5 30 22.5 30 defaultLine]
+        |Capacitor _ ->
+            match transform.Rotation with
+            | Degree0 | Degree180 -> [makeLine 0 15 25 15 capacitorLine; makeLine 25 0 25 30 capacitorLine;makeLine 35 0 35 30 capacitorLine;makeLine 35 15 60 15 capacitorLine]
+            | Degree90 | Degree270 -> [makeLine 15 60 15 35 capacitorLine; makeLine 0 35 30 35 capacitorLine; makeLine 0 25 30 25 capacitorLine; makeLine 15 25 15 0 capacitorLine]
+        | Inductor _ -> 
+            let arcs = [makePartArcAttr 10 10 10 10 10;makePartArcAttr 10 10 10 10 10;makePartArcAttr 10 10 10 10 10]
+            let startingPoint = {X=15;Y=15}
+
+            let renderedSegmentList : ReactElement List = 
+                arcs
+                |> String.concat " "
+                |> (fun attr -> [makeAnyPath startingPoint attr {defaultPath with StrokeWidth = "2.5px"}])
+            renderedSegmentList
+            |> List.append [makeLine 0 15 15 15 capacitorLine; makeLine 75 15 90 15 capacitorLine]
+
+        | _ -> createBiColorPolygon points colour outlineColour opacity strokeWidth comp
+
 
 
     /// to deal with the label
@@ -363,36 +246,30 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
         let box = symbol.LabelBoundingBox
         let margin = 
             match comp.Type with
-            | BusSelection _ | IOLabel -> Constants.thinComponentLabelOffsetDistance
+            | IOLabel -> Constants.thinComponentLabelOffsetDistance
             | _ -> Constants.componentLabelOffsetDistance
 
-
+        // uncomment this to display label bounding box corners for testing new fonts etc.
+        (*let dimW = {X=box.W;Y=0.}
+        let dimH = {X=0.;Y=box.H}
+        let corners = 
+            [box.TopLeft; box.TopLeft+dimW; box.TopLeft+dimH; box.TopLeft+dimW+dimH]
+            |> List.map (fun c -> 
+                let c' = c - symbol.Pos
+                makeCircle (c'.X) (c'.Y) {defaultCircle with R=3.})*)
         let pos = box.TopLeft - symbol.Pos + {X=margin;Y=margin} + Constants.labelCorrection
         let text = addStyledText {style with DominantBaseline="hanging"} pos comp.Label
-        match Constants.testShowLabelBoundingBoxes, colour with
-        | false, "lightgreen" ->
+        match colour with
+        | "lightgreen" ->
             let x,y = pos.X - margin*0.8, pos.Y - margin*0.8
             let w,h = box.W - margin*0.4, box.H - margin * 0.4
             let polyStyle = {defaultPolygon with Fill = "lightgreen"; StrokeWidth = "0"}
             let poly = makePolygon $"{x},{y} {x+w},{y} {x+w},{y+h} {x},{y+h}" polyStyle 
             [ poly ; text ]
-        | false, _ ->           
-            [text]
-        | true, _ ->
-            // Display label bounding box corners for testing new fonts etc.
-            let dimW = {X=box.W;Y=0.}
-            let dimH = {X=0.;Y=box.H}
-            let corners = 
-                [box.TopLeft; box.TopLeft+dimW; box.TopLeft+dimH; box.TopLeft+dimW+dimH]
-                |> List.map (fun c -> 
-                    let c' = c - symbol.Pos
-                    makeCircle (c'.X) (c'.Y) {defaultCircle with R=3.})
-            text :: corners
+        | _ ->
+            [text] // add ;corners (uncommenting corners) for box corner display
 
-
-
- 
-            
+    
     let labelcolour = outlineColor symbol.Appearance.Colour
     let legendOffset (compWidth: float) (compHeight:float) (symbol: Symbol) : XYPos=
         let pMap = symbol.PortMaps.Order
@@ -403,45 +280,43 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
             |> Option.defaultValue 0
         let lhsPortNum = getNum Edge.Left
         let rhsPortNum = getNum Edge.Right
-        let offset:XYPos = 
-            match lhsPortNum % 2, rhsPortNum % 2, symbol.Component.Type with
-            | _, _, Custom _ -> {X=0;Y=0}
-            | _, _, Not -> {X=0;Y=0}
-            | _, _, IsBinaryGate -> {X=0;Y=0}
-            | 1, 1, _ -> {X = 0.; Y = Constants.legendVertOffset * (if vertFlip then 0.5 else -3.)}
-            | 0, 0, _ -> {X = 0.; Y = 0.}
-            | 1, 0, _ -> {X = 10.; Y = 0.}
-            | 0, 1, _ -> {X = -10.; Y = 0.}
-            | _ -> failwithf "What? Can't happen"
-
+        let offset:XYPos = {X = 0.; Y = 0.}
+            
         {X=compWidth / 2.; Y=compHeight / 2. - 7.} + offset
     let legendFontSize (ct:ComponentType) =
         match ct with
         | Custom _ -> "16px"
         | _ -> "14px"
 
+
+    let componentValue =
+        match comp.Type with
+        |Capacitor v -> ((string v) + "F")
+        |Inductor v -> ((string v) + "H")
+        |Resistor v -> ((string v) + " Ohms")
+        |_ -> ""
+
+
     // Put everything together 
-    (drawPorts PortType.Output comp.OutputPorts showPorts symbol)
-    |> List.append (drawPorts PortType.Input comp.InputPorts showPorts symbol)
-    |> List.append (drawPortsText (comp.InputPorts @ comp.OutputPorts) (portNames comp.Type) symbol)
+    (drawPorts PortType.Output comp.IOPorts showPorts symbol)
+    |> List.append (drawPortsText comp.IOPorts (portNames comp.Type) symbol)
     |> List.append (addLegendText 
-                        (legendOffset w h symbol) 
-                        (getComponentLegend comp.Type transform.Rotation) 
+                        (legendOffset w (2.*h) symbol) 
+                        ("." + componentValue) 
                         "middle" 
                         "bold" 
                         (legendFontSize comp.Type))
     |> List.append (addComponentLabel comp transform labelcolour)
-    |> List.append (additions)
     |> List.append (drawMovingPortTarget symbol.MovingPortTarget symbol points)
-    |> List.append (createBiColorPolygon points colour outlineColour opacity strokeWidth comp)
+    |> List.append (createdSymbol)
 
 
 
 let init () = 
     { 
         Symbols = Map.empty; CopiedSymbols = Map.empty
-        Ports = Map.empty ; InputPortsConnected= Set.empty
-        OutputPortsConnected = Map.empty; Theme = Colourful
+        Ports = Map.empty ; IOPortsConnected= Set.empty
+        Theme = Colourful
     }, Cmd.none
 
 //----------------------------View Function for Symbols----------------------------//

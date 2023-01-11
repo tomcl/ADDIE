@@ -81,45 +81,11 @@ module SheetInterface =
         member this.ChangeLabel (dispatch: Dispatch<Msg>) (compId: ComponentId) (lbl: string) =
             dispatch <| (Wire (BusWireT.Symbol (SymbolT.ChangeLabel (compId, lbl) ) ) )
 
-        /// Run Bus Width Inference check
-        member this.DoBusWidthInference dispatch =
-            dispatch <| (Wire (BusWireT.BusWidths))
-
-        /// Given a compId and a width, update the width of the Component specified by compId
-        member this.ChangeWidth (dispatch: Dispatch<Msg>) (compId: ComponentId) (width: int) =
-            dispatch <| (Wire (BusWireT.Symbol (SymbolT.ChangeNumberOfBits (compId, width) ) ) )
-            this.DoBusWidthInference dispatch
 
         /// Given a compId and a width, update the width of the Component specified by compId
         member this.ChangeScale (dispatch: Dispatch<Msg>) (compId: ComponentId) (newScale: float) (whichScale:ScaleAdjustment) =
             dispatch <| (Wire (BusWireT.Symbol (SymbolT.ChangeScale (compId, newScale, whichScale) ) ) )
             dispatch <| (Wire (BusWireT.UpdateSymbolWires compId))
-
-        member this.ChangeAdderComp (dispatch: Dispatch<Msg>) (compId: ComponentId) (newComp:ComponentType) =
-            dispatch <| (Wire (BusWireT.Symbol (SymbolT.ChangeAdderComponent (compId,(this.GetComponentById compId), newComp) ) ) )
-            let delPorts = SymbolUpdatePortHelpers.findDeletedPorts this.Wire.Symbol compId (this.GetComponentById compId) newComp
-            dispatch <| (Wire (BusWireT.DeleteWiresOnPort delPorts))
-            dispatch <| (Wire (BusWireT.UpdateSymbolWires compId))
-            //this.DoBusWidthInference dispatch
-        
-        member this.ChangeCounterComp (dispatch: Dispatch<Msg>) (compId: ComponentId) (newComp:ComponentType) =
-            dispatch <| (Wire (BusWireT.Symbol (SymbolT.ChangeCounterComponent (compId,(this.GetComponentById compId), newComp) ) ) )
-            let delPorts = SymbolUpdatePortHelpers.findDeletedPorts this.Wire.Symbol compId (this.GetComponentById compId) newComp
-            dispatch <| (Wire (BusWireT.DeleteWiresOnPort delPorts))
-            dispatch <| (Wire (BusWireT.UpdateSymbolWires compId))
-        
-        /// Given a compId, update the ReversedInputs property of the Component specified by compId
-        member this.ChangeReversedInputs (dispatch: Dispatch<Msg>) (compId: ComponentId) =
-            dispatch <| (Wire (BusWireT.Symbol (SymbolT.ChangeReversedInputs (compId) ) ) )
-            dispatch <| (Wire (BusWireT.UpdateSymbolWires compId))
-            this.DoBusWidthInference dispatch
-
-        /// Given a compId and a LSB, update the LSB of the Component specified by compId
-        member this.ChangeLSB (dispatch: Dispatch<Msg>) (compId: ComponentId) (lsb: int64) =
-            dispatch <| (Wire (BusWireT.Symbol (SymbolT.ChangeLsb (compId, lsb) ) ) )
-
-        member this.ChangeInputValue (dispatch: Dispatch<Msg>) (compId: ComponentId) (newVal: int) =
-            dispatch <| (Wire (BusWireT.Symbol (SymbolT.ChangeInputValue (compId, newVal))))
 
         /// Return Some string if Sheet / BusWire / Symbol has a notification, if there is none then return None
         member this.GetNotifications =
@@ -168,17 +134,7 @@ module SheetInterface =
         /// Given a list of connIds, select those connections
         member this.SelectConnections dispatch on connIds =
             dispatch <| UpdateSelectedWires (connIds, on)
-        /// Update the memory of component
-        member this.WriteMemoryType dispatch compId mem =
-            dispatch <| (Wire (BusWireT.Symbol (SymbolT.WriteMemoryType (compId,mem))))
-                /// Update the memory of component
-        member this.UpdateMemory dispatch compId mem =
-            dispatch <| (Wire (BusWireT.Symbol (SymbolT.UpdateMemory (compId,mem))))
-
-        /// Update the memory of component specified by connId at location addr with data value
-        member this.WriteMemoryLine dispatch connId addr value =
-            dispatch <| (Wire (BusWireT.Symbol (SymbolT.WriteMemoryLine (connId, addr, value))))
-
+        
 //-------------------------------------------------------------------------------------------------//
 // ------------------------------------------- Helper Functions ------------------------------------------- //
 //-------------------------------------------------------------------------------------------------//
@@ -205,6 +161,7 @@ let getScreenEdgeCoords (model:Model) =
     let topScreenEdge = canvas.scrollTop
     let bottomScreenEdge = topScreenEdge + rightSelection.offsetHeight - topMenu.clientHeight
     {|Left=leftScreenEdge;Right=rightScreenEdge;Top=topScreenEdge;Bottom=bottomScreenEdge|}
+    
 
 let centreOfScreen model : XYPos =
     let edge = getScreenEdgeCoords model
@@ -371,7 +328,7 @@ let addBoxMargin (fractionalMargin:float) (absoluteMargin:float) (box: BoundingB
 /// returns new model with all positions updated if need be.
 let ensureCanvasExtendsBeyondScreen model : Model =
     let boxParas = Constants.boxParameters
-    let edge = getScreenEdgeCoords model
+    //let edge = getScreenEdgeCoords model
     let box = 
         symbolWireBBUnion model
         |> addBoxMargin boxParas.CanvasExtensionFraction  boxParas.BoxMin
@@ -529,31 +486,28 @@ let mouseOnPort portList (pos: XYPos) (margin: float) =
 
 /// Returns the ports of all model.NearbyComponents
 let findNearbyPorts (model: Model) =
-    let inputPortsMap, outputPortsMap = Symbol.getPortLocations model.Wire.Symbol model.NearbyComponents
+    let ioPortsMap = Symbol.getPortLocations model.Wire.Symbol model.NearbyComponents
 
-    (inputPortsMap, outputPortsMap) ||> (fun x y -> (Map.toList x), (Map.toList y))
+    (ioPortsMap) |> (fun x -> (Map.toList x))
 
 /// Returns what is located at pos.
-/// Priority Order: InputPort -> OutputPort -> Label -> Wire -> Component -> Canvas
+/// Priority Order: Port -> Label -> Wire -> Component -> Canvas
 let mouseOn (model: Model) (pos: XYPos) : MouseOn =
 
-    let inputPorts, outputPorts = findNearbyPorts model
-    match mouseOnPort inputPorts pos 2.5 with
-    | Some (portId, portLoc) -> InputPort (portId, portLoc)
+    let ioPorts = findNearbyPorts model
+    match mouseOnPort ioPorts pos 2.5 with
+    | Some (portId, portLoc) -> IOPort (PortId portId, portLoc)
     | None ->
-        match mouseOnPort outputPorts pos 2.5 with
-        | Some (portId, portLoc) -> OutputPort (portId, portLoc)
+        match tryInsideLabelBox model pos with
+        | Some sym -> 
+            Label sym.Id
         | None ->
-            match tryInsideLabelBox model pos with
-            | Some sym -> 
-                Label sym.Id
+            match BusWireUpdate.getClickedWire model.Wire pos (Constants.wireBoundingBoxSize/model.Zoom) with
+            | Some connId -> Connection connId
             | None ->
-                match BusWireUpdate.getClickedWire model.Wire pos (Constants.wireBoundingBoxSize/model.Zoom) with
-                | Some connId -> Connection connId
-                | None ->
-                    match insideBoxMap model.BoundingBoxes pos with
-                    | Some compId -> Component compId
-                    | None -> Canvas
+                match insideBoxMap model.BoundingBoxes pos with
+                | Some compId -> Component compId
+                | None -> Canvas
 
 
 let notIntersectingComponents (model: Model) (box1: BoundingBox) (inputId: CommonTypes.ComponentId) =
@@ -642,32 +596,7 @@ let emptySnap: SnapXY =
 /// snap to each other.
 let symbolMatch (symbol: SymbolT.Symbol) =
     match symbol.Component.Type with
-    // legacy component - to be deleted
-    | Input _
-    | Input1 _ | Output _| IOLabel -> 
-        Input1 (0, None)
-
-    | BusCompare _
-    | BusSelection _ -> 
-        BusCompare (0,0u)
-
-    | Constant _
-    | Constant1 _ -> 
-        Constant (0, 0L)
-
-    | NbitsAdder _ | NbitsXor _ -> 
-        NbitsAdder 0
-
-    | MergeWires | SplitWire _ -> 
-        MergeWires
-
-    | DFF | DFFE | Register _ | RegisterE _ -> 
-        DFF
-
-    | AsyncROM x | ROM x | RAM x -> RAM x 
-    | AsyncROM1 x | ROM1 x | RAM1 x | AsyncRAM1 x -> 
-        ROM1 { x with Data = Map.empty}
-
+    // TODO: snaping rules here
     | otherCompType -> 
         otherCompType
 
@@ -707,10 +636,10 @@ let getNewSymbolSnapInfo
             wires
             |> Map.toArray 
             |> Array.collect (fun (_,wire) -> 
-                if wire.OutputPort = OutputPortId pId then 
-                    match wire.InputPort with | InputPortId pId' -> [|portMap[pId']|]
-                elif wire.InputPort = InputPortId pId then
-                    match wire.OutputPort with | OutputPortId pId' -> [|portMap[pId']|]
+                if wire.Port1 = PortId pId then 
+                    match wire.Port2 with | PortId pId' -> [|portMap[pId']|]
+                elif wire.Port2 = PortId pId then
+                    match wire.Port1 with | PortId pId' -> [|portMap[pId']|]
                 else
                     [||])
         ports
@@ -774,7 +703,7 @@ let getNewSegmentSnapInfo
             [||] // probably this should never happen, since we cannot move 0 length segments by dragging
         | Some ori ->
             model.Wire.Wires
-            |> Map.filter (fun wid otherWire -> otherWire.OutputPort = thisWire.OutputPort)
+            |> Map.filter (fun wid otherWire -> otherWire.Port1 = thisWire.Port1)
             |> Map.toArray
             |> Array.map snd
             |> Array.collect (BusWire.getNonZeroAbsSegments >> List.toArray)
@@ -1030,7 +959,7 @@ let view
     match model.Action with // Display differently depending on what state Sheet is in
     | Selecting ->
         displaySvgWithZoom model headerHeight style ( displayElements @ [ dragToSelectBox ] ) dispatch
-    | ConnectingInput _ | ConnectingOutput _ ->
+    | ConnectingIO _ ->
         displaySvgWithZoom model headerHeight style ( displayElements @ connectingPortsWire ) dispatch
     | MovingSymbols | DragAndDrop ->
         displaySvgWithZoom model headerHeight style ( displayElements @ snaps) dispatch

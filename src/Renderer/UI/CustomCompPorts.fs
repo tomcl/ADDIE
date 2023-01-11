@@ -47,13 +47,11 @@ let getCorrectFileName (project:Project) =
 /// Save any changed sheets to disk in the project directory
 let syncLoadedComponentsToDisk newProj oldProj =
     let needToSave ldc' ldc =
-       (not <| compareCanvas 10. ldc'.CanvasState ldc.CanvasState) ||
-       ldc'.WaveInfo <> ldc.WaveInfo
+       (not <| compareCanvas 10. ldc'.CanvasState ldc.CanvasState)
     let saveToDisk ldc =
         let state = ldc.CanvasState
-        let waveInfo = ldc.WaveInfo
         let sheetInfo = {Form=ldc.Form;Description=ldc.Description}
-        saveStateToFile newProj.ProjectPath ldc.Name (state,waveInfo,Some sheetInfo)
+        saveStateToFile newProj.ProjectPath ldc.Name (state,sheetInfo)
         |> ignore
         removeFileWithExtn ".dgmauto" oldProj.ProjectPath ldc.Name
 
@@ -120,8 +118,8 @@ type PortChange = {
     Message: string
     }
 
-/// Names and widths of ports, ordered. Input ports, Output ports.
-type Signature = (string*int) list * (string*int) list
+/// Names of ports, ordered. IO ports
+type Signature = string list
 
 let getIOMatchFromSig (inputs, outputs)  =
 
@@ -137,6 +135,9 @@ let getIOMatchFromSig (inputs, outputs)  =
 
 /// compare two I/O signature lists 
 let ioCompareSigs (sig1: Signature) (sig2: Signature) =
+    //let sorted1, sorted2 = List.sort sig1, List.sort sig2
+    Seq.empty
+    (*
     let map (sg: Signature) = 
         getIOMatchFromSig sg
         |> List.map (fun m -> (m.MDir, m.MLabel), m)
@@ -173,6 +174,7 @@ let ioCompareSigs (sig1: Signature) (sig2: Signature) =
                 New = newLW
                 Old = oldLW
             })
+    *)
 
 let guessAtRenamedPorts (matches: PortChange seq)  : PortChange array =
     let matches = Seq.toList matches
@@ -235,14 +237,14 @@ let findInstancesOfCurrentSheet (project:Project) =
 
 type Deps =
     | NoDependents
-    | OneSig of ((string * int) list * (string * int) list) * (string * (ComponentId * CustomComponentType)) list
+    | OneSig of (string list) * (string * (ComponentId * CustomComponentType)) list
     | Mixed of (string * int) list
 
 let getDependentsInfo (p: Project)  =
     let instances = findInstancesOfCurrentSheet p
     let gps = 
         instances
-        |> List.groupBy (fun (_, (_,{InputLabels=ips; OutputLabels=ops})) -> (ips |> List.sort), (ops |> List.sort))
+        |> List.groupBy (fun (_, (_,{IOLabels=io})) -> (io |> List.sort))
         |> List.sortByDescending (fun (tag,items) -> items.Length)
 
     match gps with
@@ -275,14 +277,13 @@ let getDependents (model:Model)  =
                  fst ldc.CanvasState
                  |> List.collect (
                      function 
-                         | {Type = Custom { Name=name; InputLabels=ins; OutputLabels=outs}
-                            Id = cid} when name = sheetName-> [ldc.Name, cid,  (ins,outs)]
+                         | {Type = Custom { Name=name; IOLabels=io}
+                            Id = cid} when name = sheetName-> [ldc.Name, cid, io]
                          | _ -> []))
          Some(newSig, instances)
 
 let dependencyDoesNotMatchSignature newSig oldSig =
-    let sortLists (a,b) = a, b // we now require signature order to match
-    sortLists newSig <> sortLists oldSig
+    newSig <> oldSig
 
 
 /// check whether any instance dependent on current sheet has different signature from current
@@ -302,8 +303,7 @@ let deleteIncompleteConnections ((comps,conns): CanvasState) =
         |> Array.map (fun p -> p.Id)
     let okPorts = 
         Array.ofList comps
-        |> Array.collect (fun comp ->
-            Array.append (arrayOfIds comp.InputPorts) (arrayOfIds comp.OutputPorts))
+        |> Array.collect (fun comp -> arrayOfIds comp.IOPorts)
         |> Set
     let conns' = List.filter (fun (conn:Connection) -> 
         Set.contains conn.Source.Id okPorts && 
@@ -341,23 +341,18 @@ let changeInstance (comp:Component) (change: PortChange) =
 
     let updateInfo (dir: IODirection) (f: PortInfo -> PortInfo) (comp: Component)=
         match dir with
-        | InputIO ->
-            let labels,ct = 
-                match comp.Type with 
-                | Custom ct -> ct.InputLabels,ct
-                | cType -> failwithf $"What? '{cType}' not allowed"
-            let ports = comp.InputPorts
-            let (labels,ports) = f (labels,ports)
-            {comp with InputPorts = ports; Type = Custom {ct with InputLabels = labels }}
+        | InputIO 
         | OutputIO ->
-            let labels,ct = 
-                match comp.Type with 
-                | Custom ct -> ct.OutputLabels,ct 
-                | cType -> failwithf $"What? '{cType}' not allowed"
-            let ports = comp.OutputPorts
-            let (labels, ports) = f (labels,ports)
-            {comp with OutputPorts = ports; Type = Custom {ct with OutputLabels = labels }}
-
+            comp
+            //let labels,ct = 
+            //    match comp.Type with 
+            //    | Custom ct -> ct.InputLabels,ct
+            //    | cType -> failwithf $"What? '{cType}' not allowed"
+            //let ports = comp.InputPorts
+            //let (labels,ports) = f (labels,ports)
+            //{comp with InputPorts = ports; Type = Custom {ct with InputLabels = labels }}
+            
+            
     /// To change a port width only InputLabels (or OutputLabels) need change
     let changePortWidth (dir: IODirection) (name: string) (newWidth:int) (comp: Component) = 
         let upf = fun (labels,ports) ->
@@ -379,7 +374,6 @@ let changeInstance (comp:Component) (change: PortChange) =
                     Id = JSHelpers.uuid ()
                     PortNumber = Some ports.Length // next available number
                     HostId = comp.Id
-                    PortType = match dir with | InputIO -> PortType.Input | OutputIO -> PortType.Output
                 }
             let ports = ports @ [newPort]
             labels,ports
@@ -425,7 +419,7 @@ let updateInstance (newSig: Signature) (sheet:string,cid:string,oldSig:Signature
     let reorderInstancePorts (newSig: Signature) (comp: Component) =
         let reorderPorts newNames oldNames (oldPorts: Port list) =
             newNames
-            |> List.map (fun (name,_) -> List.findIndex (fun (name',_) -> name'=name) oldNames)
+            |> List.map (fun (name) -> List.findIndex (fun (name') -> name'=name) oldNames)
             |> List.map (fun n -> oldPorts[n])
             |> List.mapi (fun i p -> {p with PortNumber = Some i})
         match comp.Type with
@@ -433,15 +427,14 @@ let updateInstance (newSig: Signature) (sheet:string,cid:string,oldSig:Signature
                 if oldSig = newSig then 
                     printfn "Order matches!"
                     comp
-                elif mapPair List.sort newSig = mapPair List.sort oldSig then
+                elif List.sort newSig = List.sort oldSig then
                     printfn $"Reordering {comp.Label}"
-                    let oldSig = ct.InputLabels, ct.OutputLabels
-                    let newIn,newOut = newSig
-                    let oldIn,oldOut = oldSig
-                    let newInPorts = reorderPorts newIn oldIn comp.InputPorts
-                    let newOutPorts = reorderPorts newOut oldOut comp.OutputPorts
-                    let ct' = {ct with InputLabels = fst newSig; OutputLabels = snd newSig}
-                    {comp with Type = Custom ct'; InputPorts=newInPorts; OutputPorts=newOutPorts}
+                    let oldSig = ct.IOLabels
+                    let newIO = newSig
+                    let oldIO = oldSig
+                    let newIOPorts = reorderPorts newIO oldIO comp.IOPorts
+                    let ct' = {ct with IOLabels = newSig}
+                    {comp with Type = Custom ct'; IOPorts=newIOPorts;}
 
                 else
                     printfn "What? Signatures do not match after changes are made"
@@ -501,7 +494,7 @@ let checkCanvasStateIsOk (model:Model) =
         let comps,conns = ldc.CanvasState
         let ioNames =
             comps
-            |> List.filter (fun comp -> match comp.Type with | Input1 _ | Output _ -> true | _ -> false)
+            |> List.filter (fun comp -> match comp.Type with | IO -> true | _ -> false)
             |> List.map (fun comp -> comp.Label)
         ioNames.Length = (List.distinct ioNames).Length
         )

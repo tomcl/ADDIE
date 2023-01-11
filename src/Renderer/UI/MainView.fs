@@ -7,9 +7,6 @@ open Fable.React.Props
 open DiagramStyle
 open ModelType
 open FileMenuView
-open WaveSimHelpers
-open WaveSimStyle
-open WaveSim
 open Sheet.SheetInterface
 open DrawModelType
 open CommonTypes
@@ -53,7 +50,6 @@ let init() = {
     Spinner = None
     UserData = {
         WireType = BusWireT.Radial
-        ArrowDisplay = true
         UserAppDir = None
         LastUsedDirectory = None
         RecentProjects = None
@@ -69,21 +65,8 @@ let init() = {
     CurrentSelected = [],[]
     SelectedComponent = None
     LastUsedDialogWidth = 1
-    CurrentStepSimulationStep = None
-    CurrentTruthTable = None
-    TTBitLimit = 10
-    TTInputConstraints = TruthTableTypes.emptyConstraintSet
-    TTOutputConstraints = TruthTableTypes.emptyConstraintSet
-    TTHiddenColumns = []
-    TTSortType = None
-    TTIOOrder = [||]
-    TTGridStyles = Map.empty
-    TTGridCache = None
-    TTAlgebraInputs = []
-    WaveSim = Map.empty
-    WaveSimSheet = None
     RightPaneTabVisible = Catalogue
-    SimSubTabVisible = StepSim
+    SimSubTabVisible = DCsim
     CurrentProj = None
     Hilighted = ([], []), []
     Clipboard = [], []
@@ -95,17 +78,6 @@ let init() = {
         Text = None
         Int = None
         Int2 = None
-        MemorySetup = None
-        MemoryEditorData = None
-        Progress = None
-        ConstraintTypeSel = None
-        ConstraintIOSel = None
-        ConstraintErrorMsg = None
-        NewConstraint = None
-        AlgebraInputs = None
-        AlgebraError = None
-        VerilogCode = None
-        VerilogErrors = []
         BadLabel = false
     }
     Notifications = {
@@ -118,11 +90,10 @@ let init() = {
     }
     TopMenuOpenState = Closed
     DividerDragMode = DragModeOff
-    WaveSimViewerWidth = rightSectionWidthViewerDefault
-    ConnsOfSelectedWavesAreHighlighted= false
     Pending = []
     UIState = None
-    BuildVisible = false
+    WaveSimViewerWidth = rightSectionWidthViewerDefault
+    ConnsOfSelectedWavesAreHighlighted = false
 }
 
 
@@ -134,25 +105,18 @@ let makeSelectionChangeMsg (model:Model) (dispatch: Msg -> Unit) (ev: 'a) =
 
 let viewSimSubTab canvasState model dispatch =
     match model.SimSubTabVisible with
-    | StepSim -> 
-        div [ Style [Width "90%"; MarginLeft "5%"; MarginTop "15px" ] ] [
-            Heading.h4 [] [ str "Step Simulation" ]
-            SimulationView.viewSimulation canvasState model dispatch
-        ]
-    | TruthTable ->
-        div [ Style [Width "90%"; MarginLeft "5%"; MarginTop "15px" ] ] [
-            Heading.h4 [] [ str "Truth Tables" ]
-            TruthTableView.viewTruthTable canvasState model dispatch
-        ]
-    | WaveSim -> 
-        div [ Style [Width "100%"; Height "calc(100% - 72px)"; MarginTop "15px" ] ]
-            [ viewWaveSim canvasState model dispatch ]
+    | DCsim -> 
+        div [] [str "placeholder"]
+    | ACsim ->
+        div [] [str "placeholder"]
+    | TimeSim -> 
+        div [] [str "placeholder"]
 
 /// Display the content of the right tab.
 let private  viewRightTab canvasState model dispatch =
     let pane = model.RightPaneTabVisible
     match pane with
-    | Catalogue | Transition ->
+    | Catalogue ->
         
         div [ Style [Width "90%"; MarginLeft "5%"; MarginTop "15px" ; Height "calc(100%-100px)"] ] [
             Heading.h4 [] [ str "Catalogue" ]
@@ -172,16 +136,16 @@ let private  viewRightTab canvasState model dispatch =
                         Tabs.Props [Style [Margin 0] ] ]  
                     [                 
                     Tabs.tab // step simulation subtab
-                        [ Tabs.Tab.IsActive (model.SimSubTabVisible = StepSim) ]
-                        [ a [  OnClick (fun _ -> dispatch <| ChangeSimSubTab StepSim ) ] [str "Step Simulation"] ]  
+                        [ Tabs.Tab.IsActive (model.SimSubTabVisible = DCsim) ]
+                        [ a [  OnClick (fun _ -> dispatch <| ChangeSimSubTab DCsim) ] [str "Step Simulation"] ]  
 
                     (Tabs.tab // truth table tab to display truth table for combinational logic
-                    [ Tabs.Tab.IsActive (model.SimSubTabVisible = TruthTable) ]
-                    [ a [  OnClick (fun _ -> dispatch <| ChangeSimSubTab TruthTable ) ] [str "Truth Tables"] ])
+                    [ Tabs.Tab.IsActive (model.SimSubTabVisible = ACsim) ]
+                    [ a [  OnClick (fun _ -> dispatch <| ChangeSimSubTab ACsim) ] [str "Truth Tables"] ])
 
                     (Tabs.tab // wavesim tab
-                    [ Tabs.Tab.IsActive (model.SimSubTabVisible = WaveSim) ]
-                    [ a [  OnClick (fun _ -> dispatch <| ChangeSimSubTab WaveSim) ] [str "Wave Simulation"] ])
+                    [ Tabs.Tab.IsActive (model.SimSubTabVisible = TimeSim) ]
+                    [ a [  OnClick (fun _ -> dispatch <| ChangeSimSubTab TimeSim) ] [str "Wave Simulation"] ])
                     ]
         div [ HTMLAttr.Id "RightSelection2"; Style [Height "100%"]] 
             [
@@ -189,13 +153,7 @@ let private  viewRightTab canvasState model dispatch =
                 subtabs
                 viewSimSubTab canvasState model dispatch
             ]
-    | Build ->
-        div [ Style [Width "90%"; MarginLeft "5%"; MarginTop "15px" ] ] [
-            Heading.h4 [] [ str "Build" ]
-            div [ Style [ MarginBottom "15px" ] ] [ str "Compile your design and upload it to one of the supported devices" ]
-            BuildView.viewBuild model dispatch
-        ]
-
+    
 /// determine whether moving the mouse drags the bar or not
 let inline setDragMode (modeIsOn:bool) (model:Model) dispatch =
     fun (ev: Browser.Types.MouseEvent) ->        
@@ -212,8 +170,8 @@ let inline setDragMode (modeIsOn:bool) (model:Model) dispatch =
 let dividerbar (model:Model) dispatch =
     let isDraggable = 
         model.RightPaneTabVisible = Simulation 
-        && (model.SimSubTabVisible = WaveSim 
-        || model.SimSubTabVisible = TruthTable)
+        && (model.SimSubTabVisible = TimeSim 
+        || model.SimSubTabVisible = ACsim)
     let heightAttr = 
         let rightSection = document.getElementById "RightSection"
         if (isNull rightSection) then Height "100%"
@@ -246,22 +204,9 @@ let viewRightTabs canvasState model dispatch =
     /// Not fully understood.
     /// This code temporarily switches the scrollbar off during the transition.
     let scrollType = 
-        if model.RightPaneTabVisible = Transition then 
-            dispatch <| ChangeRightTab Catalogue // after one view in transition it is OK to go to Catalogue
-            OverflowOptions.Clip // ensure no scrollbar temporarily after the transition
-        else 
             OverflowOptions.Auto
     
     let buildTab =
-        if model.BuildVisible then
-            Tabs.tab
-                [ Tabs.Tab.IsActive (model.RightPaneTabVisible = Build)]
-                [ a [  OnClick (fun _ -> 
-                        if model.RightPaneTabVisible <> Simulation 
-                        then
-                            dispatch <| ChangeRightTab Build ) 
-                    ] [str "Build"] ]
-        else
             null
     
     div [HTMLAttr.Id "RightSelection";Style [ Height "100%"; OverflowY OverflowOptions.Auto]] [
@@ -277,7 +222,7 @@ let viewRightTabs canvasState model dispatch =
                 [ a [ OnClick (fun _ -> 
                         let target = 
                             if model.RightPaneTabVisible = Simulation then
-                                Transition else
+                                Catalogue else
                                 Catalogue
                         dispatch <| ChangeRightTab target ) ] [str "Catalogue" ] ]
             Tabs.tab // Properties tab to view/change component properties
@@ -321,25 +266,26 @@ let displayView model dispatch =
         //printfn "X=%d, buttons=%d, mode=%A, width=%A, " (int ev.clientX) (int ev.buttons) model.DragMode model.ViewerWidth
         if ev.buttons = 1. then 
             dispatch SelectionHasChanged
-        match model.DividerDragMode, ev.buttons, keyUp with
-        | DragModeOn pos , 1., false-> 
-            let newWidth = model.WaveSimViewerWidth - int ev.clientX + pos
-            let w = 
-                newWidth
-                |> max minViewerWidth
-                |> min (windowX - minEditorWidth())
-            dispatch <| SetDragMode (DragModeOn (int ev.clientX - w + newWidth))
-            dispatch <| SetViewerWidth w 
-        | DragModeOn pos, _, true ->
-            let newWidth = model.WaveSimViewerWidth - int ev.clientX + pos
-            let w =
-                newWidth
-                |> max minViewerWidth
-                |> min (windowX - minEditorWidth())
-            setViewerWidthInWaveSim w model dispatch
-            dispatch <| SetDragMode DragModeOff
-            dispatch <| SetViewerWidth w 
-        | _ -> ()
+        //match model.DividerDragMode, ev.buttons, keyUp with
+        //| DragModeOn pos , 1., false-> 
+        //    let newWidth = model.WaveSimViewerWidth - int ev.clientX + pos
+        //    let w = 
+        //        newWidth
+        //        |> max minViewerWidth
+        //        |> min (windowX - minEditorWidth())
+        //    dispatch <| SetDragMode (DragModeOn (int ev.clientX - w + newWidth))
+        //    dispatch <| SetViewerWidth w 
+        //| DragModeOn pos, _, true ->
+        //    let newWidth = model.WaveSimViewerWidth - int ev.clientX + pos
+        //    let w =
+        //        newWidth
+        //        |> max minViewerWidth
+        //        |> min (windowX - minEditorWidth())
+        //    setViewerWidthInWaveSim w model dispatch
+        //    dispatch <| SetDragMode DragModeOff
+        //    dispatch <| SetViewerWidth w 
+        //| _ -> 
+        ()
 
     let headerHeight = getHeaderHeight
     let sheetDispatch sMsg = dispatch (Sheet sMsg)
@@ -378,26 +324,24 @@ let displayView model dispatch =
         // main top bar function is early in compile order
         FileMenuView.viewTopMenu model dispatch
 
-        if model.PopupDialogData.Progress = None then
-            Sheet.view model.Sheet headerHeight (canvasVisibleStyleList model) sheetDispatch
+        //if model.PopupDialogData.Progress = None then
+        Sheet.view model.Sheet headerHeight (canvasVisibleStyleList model) sheetDispatch
         
         // transient pop-ups
         Notifications.viewNotifications model dispatch
         // editing buttons overlaid bottom-left on canvas
-        if model.PopupDialogData.Progress <> None  then
-            div [] []
-        else
-            viewOnDiagramButtons model dispatch
+        viewOnDiagramButtons model dispatch
 
-            //--------------------------------------------------------------------------------------//
-            //------------------------ left section for Sheet (NOT USED) ---------------------------//
-            // div [ leftSectionStyle model ] [ div [ Style [ Height "100%" ] ] [ Sheet.view model.Sheet sheetDispatch ] ]
+        //--------------------------------------------------------------------------------------//
+        //------------------------ left section for Sheet (NOT USED) ---------------------------//
+        // div [ leftSectionStyle model ] [ div [ Style [ Height "100%" ] ] [ Sheet.view model.Sheet sheetDispatch ] ]
 
-            //--------------------------------------------------------------------------------------//
-            //---------------------------------right section----------------------------------------//
-            // right section has horizontal divider bar and tabs
-            div [ HTMLAttr.Id "RightSection"; rightSectionStyle model ]
-                  // vertical and draggable divider bar
-                [ dividerbar model dispatch
-                  // tabs for different functions
-                  viewRightTabs canvasState model dispatch ] ]
+        //--------------------------------------------------------------------------------------//
+        //---------------------------------right section----------------------------------------//
+        // right section has horizontal divider bar and tabs
+        div [ HTMLAttr.Id "RightSection"; rightSectionStyle model ]
+                // vertical and draggable divider bar
+            [ 
+                dividerbar model dispatch
+                // tabs for different functions
+                viewRightTabs canvasState model dispatch ] ]

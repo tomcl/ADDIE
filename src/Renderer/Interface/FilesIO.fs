@@ -54,7 +54,7 @@ let baseNameWithoutExtension =
 
 let fileNameIsBad name = 
     name 
-    |> Seq.filter (fun ch -> not (ch = ' ' || Char.IsLetterOrDigitOrUnderscore ch))
+    |> Seq.filter (fun ch -> not (ch = ' ' || System.Char.IsLetter ch || System.Char.IsDigit ch))
     |> Seq.isEmpty
     |> not
 
@@ -288,7 +288,7 @@ let rec askForNewProjectPath (defaultPath:string option) : string option =
 
     
 let tryCreateFolder (path : string) =
-    if Seq.exists (Char.IsLetterOrDigitOrUnderscore >> not) (baseName path) then 
+    if Seq.exists (fun (ch:char) -> (not (System.Char.IsLetterOrDigit ch || ch = '_'))) (baseName path) then 
         Result.Error <| "File or project names must contain only letters, digits, or underscores"
     else
         try
@@ -328,96 +328,12 @@ let removeAutoFile folderPath baseName =
     let path = path.join [| folderPath; baseName + ".dgmauto" |]
     fs.unlink (U2.Case1 path, ignore) // Asynchronous.
 
-let readMemDefnLine (addressWidth:int) (wordWidth: int) (lineNo: int) (s:string) =
-    let nums = String.splitRemoveEmptyEntries [|' ';'\t';',';';';'"'|] s 
-    match nums with
-    | [|addr;data|] ->
-        let addrNum = NumberHelpers.strToIntCheckWidth addressWidth addr
-        let dataNum = NumberHelpers.strToIntCheckWidth wordWidth data
-        match addrNum,dataNum with
-        | Ok a, Ok d -> Ok (a,d)
-        | Error aErr,_ -> Error $"Line {lineNo}:'%s{s}' has invalid address ({addr}). {aErr}"
-        | _, Error dErr -> Error $"Line '%s{s}' has invalid data item ({data}). {dErr}"
-    | x -> Error $"Line {lineNo}:'%s{s}' has {x.Length} items: valid lines consist of two numbers"
-
-let readMemLines (addressWidth:int) (wordWidth: int) (lines: string array) =
-    let parse = 
-        Array.map String.trim lines
-        |> Array.filter ((<>) "")
-        |> Array.mapi (readMemDefnLine addressWidth wordWidth)
-    match Array.tryFind (function | Error _ -> true | _ -> false) parse with
-    | None ->
-        let defs = (Array.map (function |Ok x -> x | _ -> failwithf "What?") parse)
-        let repeats =
-            Array.groupBy fst defs
-            |> Array.filter (fun (num, vals) -> vals.Length > 1)
-        if repeats <> [||] then 
-            repeats
-            |> Array.map fst
-            |> fun aLst -> Error $"Memory addresses %A{aLst} are repeated"
-        else
-            Ok defs
-
-    | Some (Error firstErr) -> 
-        Error firstErr
-    | _ -> failwithf "What? can't happen"
-
-let readMemDefns (addressWidth:int) (wordWidth: int) (fPath: string) =
-    printfn "starting defn read"
-    tryReadFileSync fPath
-    |> Result.bind (
-        //(fun contents -> printfn "read file:\n contents={contents}"; contents)
-        String.splitRemoveEmptyEntries [|'\n';'\r'|]
-        >> readMemLines addressWidth wordWidth 
-        >> (fun x -> printfn "read lines"; x)
-        >> Result.map Map.ofArray)
-
-    
-    
-
-let writeMemDefns (fPath: string) (mem: Memory1) =
-    try
-        Map.toArray mem.Data
-        |> Array.sortBy fst
-        |> Array.map (fun (a,b) -> $"{NumberHelpers.hex64 a}\t{NumberHelpers.hex64 b}")
-        |> String.concat "\n"
-        |> writeFile fPath
-        |> Ok
-    with
-        | e -> Error $"Error writing file '{fPath}': {e.Message}"
-
-/// Return data for memory if it is linked to a ram.
-/// Return mem data if it is unlinked
-/// Error if the read fails ot the file parse fails.
-let initialiseMem (mem: Memory1) (projectPath:string) =
-
-    let memResult =
-        match mem.Init with
-
-        | FromFile name ->
-            let fPath = pathJoin [| projectPath; name + ".ram"|]
-            readMemDefns mem.AddressWidth mem.WordWidth fPath
-
-        | FromData ->
-            Ok mem.Data
-
-        | _ -> Error $"Unsupported legacy memory type '{mem.Init}'"
-       
-    memResult
-    |> Result.map (fun data -> {mem with Data = data})
-
-
-
-
 
 /// Save a PNG file (encoded base64, as from draw2d)
 /// Overwrite existing file if needed
 let savePngFile folderPath baseName png = // TODO: catch error?
     let path = pathJoin [| folderPath; baseName + ".png" |]
     writeFileBase64 path png
-
-let formatSavedState (canvas,wave) =
-    CanvasWithFileWaveInfo(canvas,wave,System.DateTime.Now)
 
 
 
@@ -429,7 +345,7 @@ let saveStateToFile folderPath baseName state = // TODO: catch error?
 
 /// Create new empty diagram file. Automatically add the .dgm suffix.
 let createEmptyDgmFile folderPath baseName =
-    saveStateToFile folderPath baseName (([],[]), None, Some {Form=Some User;Description=None})
+    saveStateToFile folderPath baseName (([],[]), {Form=Some User;Description=None})
 
 let stripVertices (conn: LegacyCanvas.LegacyConnection) =
     {conn with Vertices = []}
@@ -451,20 +367,7 @@ let magnifySheet magnification (comp: LegacyCanvas.LegacyComponent) =
 /// type to the new one so that the rest of issie need only process new types, but compatibility
 /// with saved old types remains.
 let getLatestComp (comp: Component) =
-    let updateMem (mem:Memory) : Memory1 =
-        {
-            Init = FromData
-            Data = mem.Data
-            AddressWidth = mem.AddressWidth
-            WordWidth = mem.WordWidth
-        }
-    match comp.Type with
-    | RAM mem -> {comp with Type = RAM1 (updateMem mem)}
-    | ROM mem -> {comp with Type = ROM1 (updateMem mem)}
-    | AsyncROM mem -> { comp with Type = AsyncROM1 (updateMem mem)}
-    | Constant(width,cVal) -> {comp with Type = Constant1(width, cVal, $"%d{cVal}")}
-    | Input width -> { comp with Type = Input1 (width, None)}
-    | _ -> comp
+    comp
 
 
 /// Interface function that can read old-style circuits (without wire vertices)
@@ -472,69 +375,36 @@ let getLatestComp (comp: Component) =
 /// since new symbols are larger (in units) than old ones.
 let getLatestCanvas state =
     let oldCircuitMagnification = 1.25
-    let stripConns (canvas: LegacyCanvas.LegacyCanvasState) =
-        let (comps,conns) = canvas
-        let noVertexConns = List.map stripVertices conns
-        let expandedComps = List.map (magnifySheet oldCircuitMagnification) comps
-        (expandedComps, noVertexConns)
-        |> legacyTypesConvert
+    //let stripConns (canvas: LegacyCanvas.LegacyCanvasState) =
+    //    let (comps,conns) = canvas
+    //    let noVertexConns = List.map stripVertices conns
+    //    let expandedComps = List.map (magnifySheet oldCircuitMagnification) comps
+    //    (expandedComps, noVertexConns)
+    //    |> legacyTypesConvert
     let comps,conns =
         match state  with
-        | CanvasOnly canvas -> stripConns canvas
-        | CanvasWithFileWaveInfo(canvas, _, _) -> stripConns canvas
-        | CanvasWithFileWaveInfoAndNewConns(canvas, _, _) -> legacyTypesConvert canvas
-        | NewCanvasWithFileWaveInfoAndNewConns(canvas,_,_) -> canvas
-        | NewCanvasWithFileWaveSheetInfoAndNewConns (canvas,_,_,_) -> canvas
+        | CanvasAndSheetInfo (canvas,_,_) -> canvas
     List.map getLatestComp comps, conns
 
 
-let checkMemoryContents (projectPath:string) (comp: Component) : Component =
-    match comp.Type with
-    | RAM1 mem | ROM1 mem | AsyncROM1 mem | AsyncRAM1 mem when not (String.endsWith "backup" (String.toLower projectPath))->
-        match mem.Init with
-        | FromFile fName ->
-            let fPath = pathJoin [|projectPath ; (fName + ".ram")|]
-            let memData = readMemDefns mem.AddressWidth mem.WordWidth fPath
-            match memData with
-            | Ok memDat -> 
-                if memDat <> mem.Data then
-                    printfn "%s" $"Warning! RAM file {fPath} has changed so component {comp.Label} is now different"
-                let mem = {mem with Data = memDat}
-                {comp with Type = getMemType comp.Type mem}
-            | Error msg ->
-                printfn $"Error reloading component {comp.Label} from its file {fPath}:\n{msg}"
-                comp // ignore errors for now
-        | _ -> comp
-    | _ -> comp
-
 /// load a component from its canvas and other elements
-let makeLoadedComponentFromCanvasData (canvas: CanvasState) filePath timeStamp waveInfo (sheetInfo:SheetInfo option) =
+let makeLoadedComponentFromCanvasData (canvas: CanvasState) filePath timeStamp (sheetInfo:SheetInfo) =
     let projectPath = path.dirname filePath
-    let inputs, outputs = Extractor.parseDiagramSignature canvas
+    let io = Extractor.parseDiagramSignature canvas
     //printfn "parsed component"
-    let comps,conns = canvas
-    let comps' = List.map (checkMemoryContents projectPath) comps
-    //printfn "checked component"
-    let canvas = comps',conns
-    let ramChanges = 
-        List.zip comps' comps
-        |> List.filter (fun (c1,c2) -> c1.Type <> c2.Type)
-        |> List.map fst
     //printfn "ram changes processed"
-    let form,description = match sheetInfo with |None -> (Some User),None |Some sI -> sI.Form,sI.Description
+    let form,description = sheetInfo.Form,sheetInfo.Description
     let ldc =
         {
             Name = getBaseNameNoExtension filePath
             TimeStamp = timeStamp
-            WaveInfo = waveInfo
             FilePath = filePath
             CanvasState = canvas
-            InputLabels = inputs
-            OutputLabels = outputs
+            IOLabels = io
             Form = form
             Description = description
         }
-    ldc, ramChanges
+    ldc
 
 
 /// Make a loadedComponent from the file read from filePath.
@@ -550,9 +420,7 @@ let tryLoadComponentFromPath filePath : Result<LoadedComponent, string> =
             canvas
             filePath 
             state.getTimeStamp 
-            state.getWaveInfo
             state.getSheetInfo
-        |> fst // ignore ram change info, they will always be loaded
         |> Result.Ok
 
 
@@ -619,9 +487,8 @@ let saveAllProjectFilesFromLoadedComponentsToDisk (proj: Project) =
     |> List.iter (fun ldc ->
         let name = ldc.Name
         let state = ldc.CanvasState
-        let waveInfo = ldc.WaveInfo
         let sheetInfo = {Form=ldc.Form;Description=ldc.Description}
-        saveStateToFile proj.ProjectPath name (state,waveInfo,Some sheetInfo) |> ignore
+        saveStateToFile proj.ProjectPath name (state,sheetInfo) |> ignore
         removeFileWithExtn ".dgmauto" proj.ProjectPath name)
 
 let openWriteDialogAndWriteMemory mem path =
@@ -629,13 +496,7 @@ let openWriteDialogAndWriteMemory mem path =
     | None -> 
         None
     | Some fpath ->
-        let fpath' =
-            if not (String.contains "." fpath) then
-                fpath + ".ram"
-            else
-                fpath
-        writeMemDefns fpath' mem |> ignore
-        Some fpath'
+        Some fpath
     
 
 

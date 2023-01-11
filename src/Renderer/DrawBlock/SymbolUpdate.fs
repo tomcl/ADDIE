@@ -92,7 +92,7 @@ let generateLabel (model: Model) (compType: ComponentType) : string =
     let listSymbols = List.map snd (Map.toList model.Symbols) 
     let prefix = getPrefix compType
     match compType with
-    | IOLabel | BusSelection _ -> prefix
+    | IOLabel -> prefix
     | _ -> prefix + (generateLabelNumber listSymbols compType)
 
 let generateCopiedLabel (model: Model) (oldSymbol:Symbol) (compType: ComponentType) : string =
@@ -100,21 +100,16 @@ let generateCopiedLabel (model: Model) (oldSymbol:Symbol) (compType: ComponentTy
     let prefix = getPrefix compType
     match compType with
     | IOLabel -> oldSymbol.Component.Label
-    | BusSelection _ -> prefix
-    |Input _ | Input1 (_,_) |Output _ |Viewer _ -> generateIOLabel model compType oldSymbol.Component.Label
     | _ -> prefix + (generateLabelNumber listSymbols compType)
 
 
 /// Initialises and returns the PortMaps of a pasted symbol
 let initCopiedPorts (oldSymbol:Symbol) (newComp: Component): PortMaps =
-    let inPortIds = List.map (fun (p:Port) -> p.Id)  newComp.InputPorts
-    let outPortIds = List.map (fun (p:Port) -> p.Id) newComp.OutputPorts
-    let oldInPortIds =  
-        List.map (fun (p:Port) -> p.Id) oldSymbol.Component.InputPorts
-    let oldOutPortIds =
-        List.map (fun (p:Port) -> p.Id) oldSymbol.Component.OutputPorts
+    let ioPortIds = List.map (fun (p:Port) -> p.Id)  newComp.IOPorts
+    let oldIOPortIds =  
+        List.map (fun (p:Port) -> p.Id) oldSymbol.Component.IOPorts
     let equivPortIds = 
-        List.zip oldInPortIds inPortIds @ List.zip oldOutPortIds outPortIds
+        List.zip oldIOPortIds ioPortIds
         |> Map.ofList
     let portOrientation = 
         (Map.empty,oldSymbol.PortMaps.Orientation)
@@ -156,17 +151,17 @@ let pasteSymbols (model: Model) (wireMap:Map<ConnectionId,DrawModelType.BusWireT
             match compType with
             | IOLabel  -> //Wire label is special case: if the driver of the wire label is not included -> keep same name
                           //else generate new label (cannot have wire labels with same name driven by 2 different components)
-                let inPortId = oldSymbol.Component.InputPorts[0].Id
+                let inPortId = oldSymbol.Component.IOPorts[0].Id
                 let wires = wireMap |> Map.toList |> List.map snd
                 let targetWire = 
                     wires
-                    |> List.tryFind (fun w -> w.InputPort = (InputPortId inPortId)) 
+                    |> List.tryFind (fun w -> w.Port1 = (PortId inPortId)) 
                 match targetWire with
                 |Some w -> 
-                    let origSymPortId = match w.OutputPort with |OutputPortId id -> id
+                    let origSymPortId = match w.Port2 with |PortId id -> id
                     let origSym = 
                         oldSymbolsList 
-                        |> List.tryFind (fun s -> (List.exists (fun (p:Port) -> p.Id = origSymPortId) s.Component.OutputPorts))
+                        |> List.tryFind (fun s -> (List.exists (fun (p:Port) -> p.Id = origSymPortId) s.Component.IOPorts))
                     
                     match origSym with 
                     |Some s -> generateIOLabel { model with Symbols = currSymbolModel.Symbols} compType oldSymbol.Component.Label
@@ -226,16 +221,6 @@ let tryGetPastedEl copiedIds pastedIds target =
     | Some (index, _) -> List.tryItem index pastedIds
     | _ -> None
 
-/// Returns a tuple of the list of input ports of a given input symbol, and list of output ports of a given output symbol
-let getPortIds (input: Symbol) (output: Symbol) : (string list * string list)=
-    let inPortIds = 
-        input.Component.InputPorts
-        |> List.map (fun port -> port.Id)
-    let outPortIds =
-        output.Component.OutputPorts
-        |> List.map (fun port -> port.Id)
-    inPortIds, outPortIds
-
 /// Given a tuple of options, returns an Some (v1, v2) if both tuple elements are some, else None
 let mergeOptions =
     function
@@ -251,7 +236,7 @@ let getCopiedSymbol model portId =
 /// ComponentIds at same index in both list 1 and list 2 need to be of the same ComponentType.
 /// CompIds1 need to be in model.CopiedSymbols.
 /// Assumes ports are in the same order in equivalent symbols
-let getEquivalentCopiedPorts (model: Model) (copiedIds) (pastedIds) (InputPortId copiedInputPort, OutputPortId copiedOutputPort) =
+let getEquivalentCopiedPorts2 (model: Model) (copiedIds) (pastedIds) (PortId copiedInputPort, PortId copiedOutputPort) =
     let findEquivalentPorts compId1 compId2 =
         let copiedComponent = model.CopiedSymbols[compId1].Component
         let pastedComponent = model.Symbols[compId2].Component // TODO: These can be different for an output gate for some reason.
@@ -266,10 +251,41 @@ let getEquivalentCopiedPorts (model: Model) (copiedIds) (pastedIds) (InputPortId
                     Some pastedPorts[portIndex].Id // Get the equivalent port in pastedPorts. Assumes ports at the same index are the same (should be the case unless copy pasting went wrong).
                 | _ -> None
         
-        let pastedInputPortId = tryFindEquivalentPort copiedComponent.InputPorts pastedComponent.InputPorts copiedInputPort
-        let pastedOutputPortId = tryFindEquivalentPort copiedComponent.OutputPorts pastedComponent.OutputPorts copiedOutputPort
+        let pastedIOPortId = tryFindEquivalentPort copiedComponent.IOPorts pastedComponent.IOPorts copiedInputPort
     
-        pastedInputPortId, pastedOutputPortId
+        pastedIOPortId
+        
+    let foundPastedPorts =
+        List.zip copiedIds pastedIds
+        |> List.map (fun (compId1, compId2) -> findEquivalentPorts compId1 compId2)
+    
+    let foundPastedIOPort = List.collect (function | Some a -> [a] | _ -> []) foundPastedPorts
+    
+    match foundPastedIOPort with 
+    | [pastedInputPort] -> Some (pastedInputPort) 
+    | _ -> None // If either of source or target component of the wire was not copied then we discard the wire
+
+
+
+let getEquivalentCopiedPorts (model: Model) (copiedIds) (pastedIds) (PortId copiedInputPort, PortId copiedOutputPort) =
+    let findEquivalentPorts compId1 compId2 =
+        let copiedComponent = model.CopiedSymbols[compId1].Component
+        let pastedComponent = model.Symbols[compId2].Component // TODO: These can be different for an output gate for some reason.
+        
+        let tryFindEquivalentPort (copiedPorts: Port list) (pastedPorts: Port list) targetPort =
+            if copiedPorts.Length = 0 || pastedPorts.Length = 0
+            then None
+            else
+                match List.tryFindIndex ( fun (port: Port) -> port.Id = targetPort ) copiedPorts with
+                | Some portIndex -> 
+
+                    Some pastedPorts[portIndex].Id // Get the equivalent port in pastedPorts. Assumes ports at the same index are the same (should be the case unless copy pasting went wrong).
+                | _ -> None
+        
+        let pastedPort1Id = tryFindEquivalentPort copiedComponent.IOPorts pastedComponent.IOPorts copiedInputPort
+        let pastedPort2Id = tryFindEquivalentPort copiedComponent.IOPorts pastedComponent.IOPorts copiedOutputPort
+    
+        pastedPort1Id, pastedPort2Id
         
     let foundPastedPorts =
         List.zip copiedIds pastedIds
@@ -281,6 +297,9 @@ let getEquivalentCopiedPorts (model: Model) (copiedIds) (pastedIds) (InputPortId
     match foundPastedInputPort, foundPastedOutputPort with 
     | [pastedInputPort], [pastedOutputPort] -> Some (pastedInputPort, pastedOutputPort) 
     | _ -> None // If either of source or target component of the wire was not copied then we discard the wire
+
+
+
 
 /// Creates and adds a symbol into model, returns the updated model and the component id
 let addSymbol (ldcs: LoadedComponent list) (model: Model) pos compType lbl =
@@ -344,7 +363,7 @@ let moveSymbols (model:Model) (compList: ComponentId list) (offset: XYPos)=
 let inline symbolsHaveError model compList =
     let resetSymbols = 
         model.Symbols
-        |> Map.map (fun _ sym -> set (appearance_ >-> colour_) (getSymbolColour sym.Component.Type sym.IsClocked model.Theme) sym)
+        |> Map.map (fun _ sym -> set (appearance_ >-> colour_) (getSymbolColour sym.Component.Type sym.IsLinear model.Theme) sym)
 
     let setSymColorToRed prevSymbols sId =
         Map.add sId (set (appearance_ >-> colour_)  "Red" resetSymbols[sId]) prevSymbols
@@ -361,7 +380,7 @@ let inline selectSymbols model compList =
         |> Map.map (fun _ sym -> 
             sym
             |> map appearance_ (
-                set colour_ (getSymbolColour sym.Component.Type sym.IsClocked model.Theme) >> 
+                set colour_ (getSymbolColour sym.Component.Type sym.IsLinear model.Theme) >> 
                 set opacity_ 1.0 
             )
         )
@@ -380,7 +399,7 @@ let inline errorSymbols model (errorCompList,selectCompList,isDragAndDrop) =
     let resetSymbols = 
         model.Symbols
         |> Map.map 
-            (fun _ sym ->  Optic.map appearance_ (set colour_ (getSymbolColour sym.Component.Type sym.IsClocked model.Theme) >> set opacity_ 1.0) sym)
+            (fun _ sym ->  Optic.map appearance_ (set colour_ (getSymbolColour sym.Component.Type sym.IsLinear model.Theme) >> set opacity_ 1.0) sym)
             
     let updateSymbolStyle prevSymbols sId =
         if not isDragAndDrop then 
@@ -428,7 +447,7 @@ let inline colorSymbols (model: Model) compList colour =
 
 /// Given a map of current symbols and a component, initialises a symbol containing the component and returns the updated symbol map containing the new symbol
 let createSymbol ldcs theme prevSymbols comp =
-        let clocked = isClocked [] ldcs comp
+        let linear = true
         let portMaps = 
             match comp.SymbolInfo with
                 | None -> 
@@ -443,7 +462,7 @@ let createSymbol ldcs theme prevSymbols comp =
                 comp'.H,comp'.W
             else
                 // recompute height and width on load in case component have changed.
-                let (_, _, height, width) = getComponentProperties comp.Type comp.Label
+                let (_, height, width) = getComponentProperties comp.Type comp.Label
                 height,width
         let hasDefault, labelBoundingBox =
             match comp.SymbolInfo with
@@ -459,21 +478,18 @@ let createSymbol ldcs theme prevSymbols comp =
                     HighlightLabel = false
                     ShowPorts = ShowNone //do not show input ports initially
                     // ShowOutputPorts = false //do not show output ports initially
-                    Colour = getSymbolColour comp.Type clocked theme
+                    Colour = getSymbolColour comp.Type linear theme
                     Opacity = 1.0
                 }
                 Id = ComponentId comp.Id
                 Component = {comp with H=h ; W = w}
                 
                 Moving = false
-                InWidth0 = None
-                InWidth1 = None
                 STransform = getSTransformWithDefault comp.SymbolInfo
-                ReversedInputPorts = match comp.SymbolInfo with |Some si -> si.ReversedInputPorts |_ -> None
                 PortMaps = portMaps
                 
                 MovingPort = None
-                IsClocked = clocked
+                IsLinear = linear
                 MovingPortTarget = None
                 HScale = match comp.SymbolInfo with |Some si -> si.HScale |_ -> None
                 VScale = match comp.SymbolInfo with |Some si -> si.VScale |_ -> None
@@ -494,60 +510,6 @@ let loadComponents loadedComponents model comps=
     let newModel = ( model, symbolMap ) ||> Map.fold addPortsToModel
 
     { newModel with Symbols = symbolMap }
-
-/// Given a model, a component id, an address and a value it updates the data in the component and returns the new model.
-let inline writeMemoryLine model (compId, addr, value) =
-    let symbol = model.Symbols[compId]
-    let comp = symbol.Component
-
-    let newCompType =
-        match comp.Type with
-        | RAM1 mem -> RAM1 { mem with Data = Map.add addr value mem.Data }
-        | AsyncRAM1 mem -> AsyncRAM1 { mem with Data = Map.add addr value mem.Data }
-        | ROM1 mem -> ROM1 { mem with Data = Map.add addr value mem.Data }
-        | AsyncROM1 mem -> AsyncROM1 { mem with Data = Map.add addr value mem.Data }
-        | _ -> comp.Type
-
-
-    let newSym = (set (component_ >-> type_) newCompType symbol)
-    set (symbolOf_ compId) newSym model
-
-    
-/// Given a model, a component Id and a memory component type, updates the type of the component to the specified memory type and returns the updated model.
-let inline writeMemoryType model compId memory =
-    let symbol = model.Symbols[compId]
-    let comp = symbol.Component 
-    
-    let newCompType =
-        match comp.Type with
-        | RAM1 _ | AsyncRAM1 _ | ROM1 _ | AsyncROM1 _ -> memory
-        | _ -> 
-            printfn $"Warning: improper use of WriteMemoryType on {comp} ignored"
-            comp.Type
-    
-    let newComp = { comp with Type = newCompType }
-    
-    set (symbolOf_ compId >-> component_) newComp model
-
-/// Given a model, a component Id and a memory component type, updates the type of the component to the specified memory and returns the updated model.
-let inline updateMemory model compId updateFn =
-    let symbol = model.Symbols[compId]
-    let comp = symbol.Component 
-    
-    let newCompType =
-        match comp.Type with
-        | RAM1 m -> RAM1 (updateFn m)
-        | ROM1 m -> ROM1 (updateFn m)
-        | AsyncROM1 m -> AsyncROM1 (updateFn m)
-        | AsyncRAM1 m -> AsyncRAM1 (updateFn m)
-        | _ -> 
-            printfn $"Warning: improper use of WriteMemoryType on {comp} ignored"
-            comp.Type
-    
-    let newComp = { comp with Type = newCompType }
-    
-    Optic.set (symbolOf_ compId >-> component_) newComp model
-
 
 let rotateSide (rotation: RotationType) (side:Edge) :Edge =
     match rotation, side with
@@ -734,7 +696,6 @@ let private modifySymbolsByCompIds
 /// It is saved in extra SymbolInfo type and corresp field in Component.
 let getLayoutInfoFromSymbol symbol =
     { STransform = symbol.STransform
-      ReversedInputPorts = symbol.ReversedInputPorts
       PortOrientation = symbol.PortMaps.Orientation
       PortOrder = symbol.PortMaps.Order 
       LabelRotation = symbol.LabelRotation
@@ -776,11 +737,8 @@ let update (msg : Msg) (model : Model): Model*Cmd<'a>  =
     | CopySymbols compIds ->
         (copySymbols model compIds), Cmd.none
 
-    | ShowAllInputPorts ->
-        (showAllInputPorts model), Cmd.none
-
-    | ShowAllOutputPorts ->
-        (showAllOutputPorts model), Cmd.none
+    | ShowAllPorts ->
+        (showAllPorts model), Cmd.none
 
     | DeleteAllPorts ->
         (deleteAllPorts model), Cmd.none 
@@ -820,10 +778,6 @@ let update (msg : Msg) (model : Model): Model*Cmd<'a>  =
     | ColorSymbols (compList, colour) -> 
         (colorSymbols model compList colour), Cmd.none 
     
-    | ChangeNumberOfBits (compId, newBits) ->
-        let newsymbol = changeNumberOfBitsf model compId newBits
-        (replaceSymbol model newsymbol compId), Cmd.none
-    
     | ChangeScale (compId,newScale,whichScale) ->
         let symbol = Map.find compId model.Symbols
         let newSymbol = 
@@ -832,50 +786,16 @@ let update (msg : Msg) (model : Model): Model*Cmd<'a>  =
             |Vertical -> {symbol with VScale=Some newScale}
         (replaceSymbol model newSymbol compId), Cmd.none
 
-    | ChangeLsb (compId, newLsb) -> 
-        let newsymbol = changeLsbf model compId newLsb
-        (replaceSymbol model newsymbol compId), Cmd.none
-
-    | ChangeInputValue (compId, newVal) ->
-        let newSymbol = changeInputValue model compId newVal
-        (replaceSymbol model newSymbol compId), Cmd.none
-
-    | ChangeReversedInputs (compId) ->
-        let newSymbol = changeReversedInputs model compId
-        (replaceSymbol model newSymbol compId), Cmd.none
-    | ChangeAdderComponent (compId, oldComp, newComp) ->
-        let newSymbol = changeAdderComponent model compId oldComp newComp
-        let newPorts = addToPortModel model newSymbol
-        let newModel = {model with Ports = newPorts}  
-        (replaceSymbol newModel newSymbol compId), Cmd.none
-    | ChangeCounterComponent (compId, oldComp, newComp) ->
-        let newSymbol = changeCounterComponent model compId oldComp newComp
-        let newPorts = addToPortModel model newSymbol
-        let newModel = {model with Ports = newPorts}  
-        (replaceSymbol newModel newSymbol compId), Cmd.none
     | ChangeConstant (compId, newVal, newText) -> 
         let newsymbol = changeConstantf model compId newVal newText
         (replaceSymbol model newsymbol compId), Cmd.none
     
-    | ChangeBusCompare (compId, newVal, newText) -> 
-        let newsymbol = changeBusComparef model compId newVal newText
-        (replaceSymbol model newsymbol compId), Cmd.none
-
     | ResetModel -> 
         { model with Symbols = Map.empty; Ports = Map.empty; }, Cmd.none
     
     | LoadComponents (ldcs,comps) ->
         (loadComponents ldcs model comps), Cmd.none
  
-    | WriteMemoryLine (compId, addr, value) ->
-        writeMemoryLine model (compId, addr, value), Cmd.none
-
-    | WriteMemoryType (compId, memory) ->
-        (writeMemoryType model compId memory), Cmd.none
-
-    | UpdateMemory (compId, updateFn) ->  
-        (updateMemory model compId updateFn), Cmd.none
-
     | RotateLeft(compList, rotation) ->
         (transformSymbols (rotateSymbol rotation) model compList), Cmd.none
 
@@ -889,9 +809,7 @@ let update (msg : Msg) (model : Model): Model*Cmd<'a>  =
         let port = model.Ports[portId]
         let symId = ComponentId port.HostId
         let oldSymbol = model.Symbols[symId]
-        let newSymbol = 
-            {(updatePortPos oldSymbol pos portId) with MovingPortTarget = None}
-            |> autoScaleHAndW
+        let newSymbol = {(updatePortPos oldSymbol pos portId) with MovingPortTarget = None}
         set (symbolOf_ symId) newSymbol model, Cmd.ofMsg (unbox UpdateBoundingBoxes)
     | SaveSymbols -> // want to add this message later, currently not used
         let newSymbols = Map.map storeLayoutInfoInComponent model.Symbols
@@ -900,7 +818,7 @@ let update (msg : Msg) (model : Model): Model*Cmd<'a>  =
         let resetSymbols = 
             model.Symbols
             |> Map.map 
-                (fun _ sym ->  Optic.map appearance_ (set colour_ (getSymbolColour sym.Component.Type sym.IsClocked theme)) sym)
+                (fun _ sym ->  Optic.map appearance_ (set colour_ (getSymbolColour sym.Component.Type sym.IsLinear theme)) sym)
         {model with Theme=theme; Symbols = resetSymbols}, Cmd.none
 
 

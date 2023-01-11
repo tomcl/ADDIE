@@ -11,31 +11,11 @@ open Optic
 open Operators
 
 
-/// Helper function to find which ports were deleted when changing Adder & Counter component type via properties
-let findDeletedPorts (symModel: Model) (compId: ComponentId) (oldComp:Component) (newComp: ComponentType) =
-    let symbol = Map.find compId symModel.Symbols
-    let oldCompType = oldComp.Type
-    let removedIds = 
-        match oldCompType,newComp with
-        |NbitsAdder _,NbitsAdderNoCin _
-        |NbitsAdderNoCout _,NbitsAdderNoCinCout _-> [symbol.Component.InputPorts[0].Id]
-        |NbitsAdder _,NbitsAdderNoCout _
-        |NbitsAdderNoCin _,NbitsAdderNoCinCout _-> [symbol.Component.OutputPorts[1].Id]
-        |Counter _,CounterNoLoad _
-        |CounterNoEnable _,CounterNoEnableLoad _-> [symbol.Component.InputPorts[0].Id;symbol.Component.InputPorts[1].Id]
-        |Counter _,CounterNoEnable _ -> [symbol.Component.InputPorts[2].Id]
-        |CounterNoLoad _,CounterNoEnableLoad _-> [symbol.Component.InputPorts[0].Id]
-        |_,_ -> []
-    removedIds
-    |> List.map (fun x -> Map.tryFind x symModel.Ports)
-
 //////////////  Show Ports Helpers  /////////////////////
 
-let showSymbolInPorts _ sym = 
-    set (appearance_ >-> showPorts_) ShowInput sym
 
-let showSymbolOutPorts _ sym = 
-     set (appearance_ >-> showPorts_) ShowOutput sym 
+let showAllSymbolPorts _ sym = 
+     set (appearance_ >-> showPorts_) ShowBoth sym 
 
 let showSymbolBothForPortMovementPorts _ sym =
     set (appearance_ >-> showPorts_) ShowBothForPortMovement sym 
@@ -49,20 +29,14 @@ let showSymbolPorts sym =
 /////////////////////////////////////////////////////////
 
 /// Given a model it shows all input ports and hides all output ports, then returns the updated model
-let inline showAllInputPorts (model: Model) =
+let inline showAllPorts (model: Model) =
     let newSymbols = 
         model.Symbols
-        |> Map.map showSymbolInPorts
+        |> Map.map showAllSymbolPorts
 
     { model with Symbols = newSymbols }
 
-/// Given a model it shows all output ports and hides all input ports, then returns the updated model
-let inline showAllOutputPorts (model: Model) =
-    let newSymbols = 
-        model.Symbols
-        |> Map.map showSymbolOutPorts
 
-    { model with Symbols = newSymbols }
 
 /// Given a model it shows all ports of custom components and hides all other ports, then returns the updated model
 let inline showAllCustomPorts (model: Model) =
@@ -247,7 +221,7 @@ let movePortUpdate (model:Model) (portId:string) (pos:XYPos) : Model*Cmd<'a> =
         let gap = getPortPosEdgeGap sym.Component.Type 
         let topBottomGap = gap + 0.3 // extra space for clk symbol
         let baseOffset = getPortBaseOffset sym side  //offset of the side component is on
-        let baseOffset' = baseOffset + getMuxSelOffset sym side
+        let baseOffset' = baseOffset
         let portDimension = float portsNumber - 1.0
         let h,w = getRotatedHAndW sym
         match side with
@@ -356,7 +330,8 @@ let movePortUpdate (model:Model) (portId:string) (pos:XYPos) : Model*Cmd<'a> =
                 oldSymbol
                 |> set movingPort_ (Some {|PortId = portId; CurrPos = pos|}) 
                 |> set movingPortTarget_ target
-                |> set (appearance_ >-> showPorts_) (ShowOneTouching port)            
+                |> set (appearance_ >-> showPorts_) (ShowOneTouching port)
+            
             
             set (symbolOf_ symId) newSymbol model, Cmd.none
     

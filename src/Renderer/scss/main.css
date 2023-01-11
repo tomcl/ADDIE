@@ -11582,3 +11582,41 @@ th, td {
 
 
 .info::before { content: "\1f6c8"; }
+
+
+.test-button {
+  font-size: 1.25em;
+  font-weight: bold;
+  line-height: 1;
+  text-transform: uppercase;
+  position: relative;
+  border: .1875em solid;
+  padding: 1em;
+  color: rgba(0, 0, 0, 0.05);
+  /* background: transparent; */
+  border-radius: .125em;
+  /* transition: background .3s; */
+  
+}
+
+.test-svg-icon {
+  /* Place the icon on the text baseline. */
+  position: relative;
+  top: .125em;
+
+  /* Prevent the icon from shrinking inside a flex container. */
+  flex-shrink: 0;
+
+  /* Scale the icon to match the font-size of the parent element. */
+  height: 1em;
+  width: 1em;
+
+  /* Let the icon take whatever color the parent has. */
+  fill: black;
+
+  /*
+   * If the icon is used on a link, which has a color transition,
+   * we can also use a transition on the fill value.
+  */
+ transition: fill .3s;
+}

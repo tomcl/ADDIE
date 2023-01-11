@@ -5,8 +5,10 @@
 *)
 
 module FileMenuView
-open EEExtensions
+
 open Fulma
+open Fable.Core
+open Node
 open Fable.React
 open Fable.React.Props
 open Fulma.Extensions.Wikiki
@@ -23,8 +25,10 @@ open Notifications
 open PopupView
 open DrawModelType
 open Sheet.SheetInterface
-
 open System
+
+[<Emit("__static")>]
+let staticDir() :string = jsNative
 
 module Constants =
     let numberOfRecentProjects: int  = 5
@@ -56,7 +60,7 @@ let quantifyChanges (ldc1:LoadedComponent) (ldc2:LoadedComponent) =
 ////------------------------------------------Backup facility-------------------------------------------//
 
 let writeComponentToFile comp =
-    let data =  stateToJsonString (comp.CanvasState,comp.WaveInfo,Some {Form=comp.Form;Description=comp.Description})
+    let data =  stateToJsonString (comp.CanvasState,{Form=comp.Form;Description=comp.Description})
     writeFile comp.FilePath data
 
 /// return an option containing sequence data and file name and directory of the latest
@@ -126,18 +130,14 @@ let writeComponentToBackupFile (numCircuitChanges: int) (numHours:float) comp (d
                 ()
         | _ -> ()
 
-/// returns a WaveSimModel option if a file is loaded, otherwise None
-let currWaveSimModel (model: Model) =
-    match getCurrFile model with
-    | Some fileName -> Map.tryFind fileName model.WaveSim
-    | _ -> None
+
 
 let private displayFileErrorNotification err dispatch =
     let note = errorFilesNotification err
     dispatch <| SetFilesNotification note
 
 /// Send messages to change Diagram Canvas and specified sheet waveSim in model
-let private loadStateIntoModel (finishUI:bool) (compToSetup:LoadedComponent) waveSim ldComps (model:Model) dispatch =
+let private loadStateIntoModel (finishUI:bool) (compToSetup:LoadedComponent) ldComps (model:Model) dispatch =
     // it seems still need this, however code has been deleted!
     //Sheet.checkForTopMenu () // A bit hacky, but need to call this once after everything has loaded to compensate mouse coordinates.
     let ldcs = tryGetLoadedComponents model
@@ -166,16 +166,14 @@ let private loadStateIntoModel (finishUI:bool) (compToSetup:LoadedComponent) wav
             // Run the a connection widths inference.
             //printfn "Check 4..."
     
-            Sheet (SheetT.Wire (BusWireT.BusWidths))
+            //Sheet (SheetT.Wire (BusWireT.BusWidths))
             // JSdispatch <| InferWidths()
             //printfn "Check 5..."
             // Set no unsaved changes.
 
             Sheet SheetT.UpdateBoundingBoxes
 
-            // set waveSim data
-            AddWSModel (name, waveSim)
-
+            
             // this message actually changes the project in model
             SetProject {
                 ProjectPath = dirName compToSetup.FilePath
@@ -227,12 +225,11 @@ let updateProjectFromCanvas (model:Model) (dispatch:Msg -> Unit) =
     | canvasState ->  
         canvasState
         |> fun canvas ->
-            let inputs, outputs = parseDiagramSignature canvas
+            let io = parseDiagramSignature canvas
             let setLc lc =
                 { lc with
                     CanvasState = canvas
-                    InputLabels = inputs
-                    OutputLabels = outputs
+                    IOLabels = io
                 }
             model.CurrentProj
             |> Option.map (fun p -> 
@@ -240,11 +237,6 @@ let updateProjectFromCanvas (model:Model) (dispatch:Msg -> Unit) =
                     p with LoadedComponents = updateLoadedComponents p.OpenFileName setLc p.LoadedComponents dispatch
                 })
 
-/// extract SavedWaveInfo from model to be saved
-let getSavedWave (model: Model) : SavedWaveInfo option = 
-    match currWaveSimModel model with
-    | Some wsModel -> Some (getSavedWaveInfo wsModel)
-    | None -> None
 
 /// Save the sheet currently open, return  the new sheet's Loadedcomponent if this has changed.
 /// Do not change model.
@@ -258,7 +250,7 @@ let saveOpenFileAction isAuto model (dispatch: Msg -> Unit)=
         // printfn "DEBUG: %A" project.OpenFileName
         let ldc = project.LoadedComponents |> List.find (fun lc -> lc.Name = project.OpenFileName)
         let sheetInfo = {Form = ldc.Form; Description = ldc.Description} //only user defined sheets are editable and thus saveable
-        let savedState = canvasState, getSavedWave model,(Some sheetInfo)
+        let savedState = canvasState, sheetInfo
         if isAuto then
             failwithf "Auto saving is no longer used"
             None
@@ -269,22 +261,10 @@ let saveOpenFileAction isAuto model (dispatch: Msg -> Unit)=
             let origLdComp =
                 project.LoadedComponents
                 |> List.find (fun lc -> lc.Name = project.OpenFileName)
-            let savedWaveSim =
-                Map.tryFind project.OpenFileName model.WaveSim
-                |> Option.map getSavedWaveInfo
-            let (SheetInfo:SheetInfo option) = match origLdComp.Form with |None -> None |Some form -> Some {Form=Some form;Description=origLdComp.Description}
-            let (newLdc, ramCheck) = makeLoadedComponentFromCanvasData canvasState origLdComp.FilePath DateTime.Now savedWaveSim SheetInfo
-            let newState =
-                canvasState
-                |> (fun (comps, conns) -> 
-                        comps
-                        |> List.map (fun comp -> 
-                            match List.tryFind (fun (c:Component) -> c.Id=comp.Id) ramCheck with
-                            | Some newRam -> 
-                                // TODO: create consistent helpers for messages
-                                dispatch <| Sheet (SheetT.Wire (BusWireT.Symbol (SymbolT.WriteMemoryType (ComponentId comp.Id, newRam.Type))))
-                                newRam
-                            | _ -> comp), conns)
+            let (SheetInfo:SheetInfo) = {Form=origLdComp.Form;Description=origLdComp.Description}
+            let newLdc = makeLoadedComponentFromCanvasData canvasState origLdComp.FilePath DateTime.Now SheetInfo
+            let newState = canvasState
+                
             writeComponentToBackupFile 4 1. newLdc dispatch
             Some (newLdc,newState)
         
@@ -308,79 +288,6 @@ let saveOpenFileActionWithModelUpdate (model: Model) (dispatch: Msg -> Unit) =
     dispatch FinishUICmd
     opt
 
-//////////////////
-
-/// Save the Verilog file currently open, return the new sheet's Loadedcomponent if this has changed.
-/// Do not change model.
-let updateVerilogFileAction newCS name model (dispatch: Msg -> Unit)=
-    match model.CurrentProj with
-    | None -> failwithf "No project"
-    | Some project ->
-        // "DEBUG: Saving Sheet"
-        // printfn "DEBUG: %A" project.ProjectPath
-        // printfn "DEBUG: %A" project.OpenFileName
-        let sheetInfo = {Form=Some (Verilog name);Description=None} //only user defined sheets are editable and thus saveable
-        let savedState = newCS, getSavedWave model,(Some sheetInfo)
-        saveStateToFile project.ProjectPath name savedState
-        |> displayAlertOnError dispatch
-        removeFileWithExtn ".dgmauto" project.ProjectPath name
-        let origLdComp =
-            project.LoadedComponents
-            |> List.find (fun lc -> lc.Name = name)
-        let savedWaveSim =
-            Map.tryFind name model.WaveSim
-            |> Option.map getSavedWaveInfo
-        let (SheetInfo:SheetInfo option) = match origLdComp.Form with |None -> None |Some form -> Some {Form=Some form;Description=origLdComp.Description}
-        let (newLdc, ramCheck) = makeLoadedComponentFromCanvasData newCS origLdComp.FilePath DateTime.Now savedWaveSim SheetInfo
-        let newState =
-            newCS
-            |> (fun (comps, conns) -> 
-                    comps
-                    |> List.map (fun comp -> 
-                        match List.tryFind (fun (c:Component) -> c.Id=comp.Id) ramCheck with
-                        | Some newRam -> 
-                            // TODO: create consistent helpers for messages
-                            dispatch <| Sheet (SheetT.Wire (BusWireT.Symbol (SymbolT.WriteMemoryType (ComponentId comp.Id, newRam.Type))))
-                            newRam
-                        | _ -> comp), conns)
-        writeComponentToBackupFile 4 1. newLdc dispatch
-        Some (newLdc,newState)
-        
-/// save current open Verilog file, updating model etc, and returning the loaded component and the saved (unreduced) canvas state
-let updateVerilogFileActionWithModelUpdate (newCS:CanvasState) name (model: Model) (dispatch: Msg -> Unit) =
-    let p' =
-        match model.CurrentProj with
-        | None -> failwithf "What? Should never be able to save sheet when project=None"
-        | Some p -> {p with WorkingFileName = Some name}
-    let model' = {model with CurrentProj = Some p'}
-
-    let opt = updateVerilogFileAction newCS name model' dispatch
-    let ldcOpt = Option.map fst opt
-    let state = Option.map snd opt |> Option.defaultValue ([],[])
-    match model'.CurrentProj with
-    | None -> failwithf "What? Should never be able to save sheet when project=None"
-    | Some p -> 
-        // update loaded components for saved file
-        updateLdCompsWithCompOpt ldcOpt p.LoadedComponents
-        |> (fun lc -> {p with LoadedComponents=lc})
-        |> SetProject
-        |> dispatch
-
-    let p'' =
-        match model'.CurrentProj with
-        | None -> failwithf "What? Should never be able to save sheet when project=None"
-        | Some p -> 
-            // update loaded components for saved file
-            updateLdCompsWithCompOpt ldcOpt p.LoadedComponents
-            |> (fun lc -> {p with LoadedComponents=lc})
-
-    SetHasUnsavedChanges false
-    |> JSDiagramMsg
-    |> dispatch
-    dispatch FinishUICmd     
-    p''
-
-//////////////////
 
 
 
@@ -401,11 +308,9 @@ let private createEmptyDiagramFile projectPath name =
     {   
         Name = name
         TimeStamp = System.DateTime.Now
-        WaveInfo = None
         FilePath = pathJoin [| projectPath; name + ".dgm" |]
         CanvasState = [],[]
-        InputLabels = []
-        OutputLabels = []
+        IOLabels = []
         Form = Some User
         Description = None
     }
@@ -415,12 +320,10 @@ let createEmptyComponentAndFile (pPath:string)  (sheetName: string): LoadedCompo
     createEmptyDgmFile pPath sheetName |> ignore
     {
         Name=sheetName
-        WaveInfo = None
         TimeStamp = DateTime.Now
         FilePath= pathJoin [|pPath; sprintf "%s.dgm" sheetName|]
         CanvasState=([],[])
-        InputLabels = []
-        OutputLabels = []
+        IOLabels = []
         Form = Some User
         Description = None
     }
@@ -441,25 +344,10 @@ let setupProjectFromComponents (finishUI:bool) (sheetName: string) (ldComps: Loa
     match model.CurrentProj with
     | None -> ()
     | Some p ->
-        dispatch EndSimulation // Message ends any running simulation.
-        dispatch CloseTruthTable // Message closes any open Truth Table.
-        //dispatch EndWaveSim
-        // TODO: make each sheet wavesim remember the list of waveforms.
-
-    let savedWaveSim =
-        compToSetup.WaveInfo
-        |> Option.map loadWSModelFromSavedWaveInfo 
-        |> Option.defaultValue initWSModel
-
-    let waveSim =
-        model.WaveSimSheet
-        |> Option.map (fun sheet -> (Map.tryFind sheet  model.WaveSim))
-        |> Option.defaultValue None
-        |> Option.defaultValue savedWaveSim
-        
+        ()
 
 
-    loadStateIntoModel finishUI compToSetup waveSim ldComps model dispatch
+    loadStateIntoModel finishUI compToSetup ldComps model dispatch
     {
         ProjectPath = dirName compToSetup.FilePath
         OpenFileName =  compToSetup.Name
@@ -509,7 +397,7 @@ let maybeWarning dialogText project =
         redText "The sheet name cannot start or end with a space."
     elif String.exists ((=) '.') dialogText then
         redText "The sheet name cannot contain a file suffix."
-    elif not <| String.forall (fun c -> Char.IsLetterOrDigitOrUnderscore c || c = ' ') dialogText then
+    elif not <| String.forall (fun c -> Char.IsLetterOrDigit c || c = ' ' || c = '_') dialogText then
         redText "The sheet name must contain only letters, digits, spaces or underscores"
     elif ((dialogText |> Seq.tryItem 0) |> Option.map Char.IsDigit) = Some true then
         redText "The name must not start with a digit"
@@ -709,11 +597,9 @@ let addFileToProject model dispatch =
                     let newComponent = {
                         Name = name
                         TimeStamp = System.DateTime.Now
-                        WaveInfo = None
                         FilePath = pathJoin [|project.ProjectPath; name + ".dgm"|]
                         CanvasState = [],[]
-                        InputLabels = []
-                        OutputLabels = []
+                        IOLabels = []
                         Form = Some User
                         Description = None
                     }
@@ -740,11 +626,6 @@ let addFileToProject model dispatch =
 let forceCloseProject model dispatch =
     dispatch (StartUICmd CloseProject)
     let sheetDispatch sMsg = dispatch (Sheet sMsg) 
-    dispatch EndSimulation // End any running simulation.
-    dispatch CloseTruthTable // Close any open Truth Table.
-    // End any running simulation.
-    dispatch EndSimulation
-    dispatch EndWaveSim
     model.Sheet.ClearCanvas sheetDispatch
     dispatch FinishUICmd
 
@@ -777,10 +658,6 @@ let private newProject model dispatch  =
             log err
             displayFileErrorNotification err dispatch
         | Ok _ ->
-            dispatch EndSimulation // End any running simulation.
-            dispatch CloseTruthTable // Close any open Truth Table.
-            dispatch EndWaveSim
-            // Create empty placeholder projectFile.
             let projectFile = baseName path + ".dprj"
             writeFile (pathJoin [| path; projectFile |]) ""
             |> displayAlertOnError dispatch
@@ -916,9 +793,6 @@ let viewNoProjectMenu model dispatch =
         unclosablePopup None initialMenu None [] dispatch
 
 
-//These two functions deal with the fact that there is a type error otherwise..
-let goBackToProject model dispatch _ =
-    dispatch (SetExitDialog false)
 
 let closeApp model dispatch _ =
     dispatch CloseApp
@@ -1002,7 +876,7 @@ let getLockButton (name:string) (isSubSheet:bool) (project:Project) (model:Model
                         let p' = {project with LoadedComponents = updatedLdcs}
                         let cs = ldc'.CanvasState
                         let sheetInfo = {Form = ldc'.Form; Description = ldc'.Description} 
-                        let savedState = cs, getSavedWave model,(Some sheetInfo)
+                        let savedState = cs,sheetInfo
                         saveStateToFile project.ProjectPath name savedState
                         |> displayAlertOnError dispatch
                         dispatch <| SetProject p'
@@ -1103,6 +977,9 @@ let viewTopMenu model dispatch =
                                     [ str "delete" ] ] 
                           (getLockButton name isSubSheet project model dispatch)] ] ]
 
+    let toString = Array.fold (fun x (pos:XYPos) -> x + (sprintf $" {pos.X},{pos.Y}")) "" 
+
+
     let fileTab model =
         match model.CurrentProj with
         | None -> Navbar.Item.div [] []
@@ -1139,6 +1016,9 @@ let viewTopMenu model dispatch =
                 |> List.sortBy (fun (line,tree) -> isSubSheet tree.Node, tree.Node, -tree.Size, tree.Node.ToLower())
                 |> List.map fst
                 |> addVerticalScrollBars
+
+            
+
             Navbar.Item.div
                 [ Navbar.Item.HasDropdown
                   Navbar.Item.Props
@@ -1228,15 +1108,99 @@ let viewTopMenu model dispatch =
                                         saveOpenFileActionWithModelUpdate model dispatch |> ignore
                                         dispatch <| Sheet(SheetT.DoNothing) //To update the savedsheetisoutofdate send a sheet message
                                         ) ]) [ str "Save" ] ] ]
-                      Navbar.End.div []
+                      Navbar.Item.div []
                           [ Navbar.Item.div []
                                 [ Button.button 
                                     [ Button.OnClick(fun _ -> PopupView.viewInfoPopup dispatch) 
                                       Button.Color IsInfo
                                     ] 
                                     [ str "Info" ] 
-                                  // add space padding on RH of navbar to improve top bar formatting
-                                  // this is a bit of a hack - but much easier than matching styles
+                                  
+                                ] 
+                          ]
+                      Navbar.Item.div [] [
+                            Navbar.Item.div []
+                                [ Button.button 
+                                    [ Button.OnClick(fun _ -> Sheet (SheetT.InitialiseCreateComponent (tryGetLoadedComponents model, Resistor 1., "R1")) |> dispatch) 
+                                      Button.Color IsGrey
+                                    ] 
+                                    [ str "R" ] 
+                                ]   
+                            Navbar.Item.div []
+                                [ Button.button 
+                                    [ Button.OnClick(fun _ -> Sheet (SheetT.InitialiseCreateComponent (tryGetLoadedComponents model, Capacitor 1., "C1")) |> dispatch) 
+                                      Button.Color IsGrey
+                                    ] 
+                                    [ str "C" ] 
+                                  
+                                ]
+                                
+                            Navbar.Item.div []
+                                [ Button.button 
+                                    [ Button.OnClick(fun _ -> Sheet (SheetT.InitialiseCreateComponent (tryGetLoadedComponents model, Inductor 1., "L1")) |> dispatch) 
+                                      Button.Color IsGrey
+                                    ] 
+                                    [ str "L" ] 
+                                  
+                                ]
+
+                            Navbar.Item.div []
+                                [ Button.button 
+                                    [ Button.OnClick(fun _ -> Sheet (SheetT.InitialiseCreateComponent (tryGetLoadedComponents model, Diode, "D1")) |> dispatch) 
+                                      Button.Color IsGrey
+                                    ] 
+                                    [ str "D" ] 
+                                  
+                                ]
+
+                            Navbar.Item.div []
+                                [ Button.button 
+                                    [ Button.OnClick(fun _ -> Sheet (SheetT.InitialiseCreateComponent (tryGetLoadedComponents model, VoltageSource (DC 1.), "VS1")) |> dispatch) 
+                                      Button.Color IsGrey
+                                    ] 
+                                    [ str "VS" ] 
+                                  
+                                ]
+
+                            Navbar.Item.div []
+                                [ Button.button 
+                                    [ Button.OnClick(fun _ -> Sheet (SheetT.InitialiseCreateComponent (tryGetLoadedComponents model, CurrentSource 1., "CS1")) |> dispatch) 
+                                      Button.Color IsGrey
+                                    ] 
+                                    [ str "CS" ] 
+                                  
+                                ]
+
+                            Navbar.Item.div []
+                                [ Button.button 
+                                    [ Button.OnClick(fun _ -> Sheet (SheetT.InitialiseCreateComponent (tryGetLoadedComponents model, Ground, "G1")) |> dispatch) 
+                                      Button.Color IsGrey
+                                    ] 
+                                    [ str "G" ] 
+                                // add space padding on RH of navbar to improve top bar formatting
+                                // this is a bit of a hack - but much easier than matching styles
                                   Text.div 
                                     [Props [Style [PaddingRight "7000px"]]] [str ""]
-                                ] ] ] ] ]
+                                
+                                ]
+                                
+                                
+                      ]
+                      
+                      //Navbar.Item.div []
+                      //    [ Navbar.Item.div []
+                      //          [ Button.button 
+                      //              [ Button.OnClick(fun _ -> PopupView.viewInfoPopup dispatch) 
+                      //                //Button.CustomClass "test-button"
+                                    
+                      //              ] 
+                      //              [ 
+                      //                  svg [Class "test-svg-icon"; ViewBox "0 0 10 10"; Role "img"; AriaHidden true; SVGAttr.Height 10; SVGAttr.Width 10; SVGAttr.Stroke "black"; SVGAttr.D "m1 7h8v2h-8zm0-3h8v2h-8zm0-3h8v2h-8z"] []
+                      //                  //img [Src ( (Option.get model.CurrentProj).ProjectPath  +"/static/icon-1.png")]//(Node.Api.path.join(staticDir(), "icon2.png"))]    
+                      //              ] 
+                      //            // add space padding on RH of navbar to improve top bar formatting
+                      //            // this is a bit of a hack - but much easier than matching styles
+                                  
+                      //          ] ]
+                                
+                    ] ] ]

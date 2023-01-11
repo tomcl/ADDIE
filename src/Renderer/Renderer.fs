@@ -131,9 +131,8 @@ let fileMenu (dispatch) =
         makeItem "New Sheet" (Some "CmdOrCtrl+N") (fun ev -> dispatch (MenuAction(MenuNewFile,dispatch)))
         makeItem "Save Sheet" (Some "CmdOrCtrl+S") (fun ev -> dispatch (MenuAction(MenuSaveFile,dispatch)))
         //makeItem "Print Sheet" (Some "CmdOrCtrl+P") (fun ev -> dispatch (MenuAction(MenuPrint,dispatch)))
-        makeItem "Write design as Verilog" None (fun ev -> dispatch (MenuAction(MenuVerilogOutput,dispatch)))
-        makeItem "Exit Issie" None (fun ev -> dispatch (MenuAction(MenuExit,dispatch)))
-        makeItem ("About Issie " + Version.VersionString) None (fun ev -> PopupView.viewInfoPopup dispatch)
+        makeItem "Exit ACES" None (fun ev -> dispatch (MenuAction(MenuExit,dispatch)))
+        makeItem ("About ACES" + Version.VersionString) None (fun ev -> PopupView.viewInfoPopup dispatch)
         makeCondRoleItem (JSHelpers.debugLevel <> 0 && not isMac) "Hard Restart app" None MenuItemRole.ForceReload
         makeCondItem (JSHelpers.debugLevel <> 0 && not isMac) "Trace all" None (fun _ ->
             JSHelpers.debugTraceUI <- Set.ofList ["update";"view"])
@@ -186,14 +185,11 @@ let viewMenu dispatch =
                 symbolDispatch (SymbolT.Msg.SetTheme SymbolT.ThemeType.Colourful)
             )
         ]
-        makeItem "Toggle Wire Arrows" None (fun ev -> busWireDispatch (BusWireT.Msg.ToggleArrowDisplay))
         makeMenu false "Wire Type" [
             makeItem "Jump wires" None (fun ev -> wireTypeDispatch SheetT.WireTypeMsg.Jump)
             makeItem "Radiussed wires" None (fun ev -> wireTypeDispatch SheetT.WireTypeMsg.Radiussed)
             makeItem "Modern wires" None (fun ev -> wireTypeDispatch SheetT.WireTypeMsg.Modern)
         ]
-        menuSeparator
-        makeItem "Show/Hide Build Tab" None (fun ev -> maindispatch (ChangeBuildTabVisibility))
         menuSeparator
         makeCondItem (JSHelpers.debugLevel <> 0) "Toggle Dev Tools" (Some devToolsKey) (fun _ ->
             renderer.ipcRenderer.send("toggle-dev-tools", [||]) |> ignore)

@@ -25,12 +25,10 @@ let getHeaderHeight =
     
 let rightSectionWidth (model:Model) =
     match model.RightPaneTabVisible with
-    | RightTab.Properties | RightTab.Catalogue | RightTab.Transition -> rightSectionWidthS
-    | RightTab.Build -> rightSectionWidthL
+    | RightTab.Properties | RightTab.Catalogue  -> rightSectionWidthS
     | RightTab.Simulation -> 
         match model.SimSubTabVisible with
-        | SimSubTab.StepSim -> rightSectionWidthL
-        | SimSubTab.WaveSim | SimSubTab.TruthTable -> sprintf "%dpx" model.WaveSimViewerWidth
+        | SimSubTab.DCsim | SimSubTab.ACsim | SimSubTab.TimeSim -> rightSectionWidthL
 
 let leftSectionWidth model = Style [
     Width (sprintf "calc(100%s - %s - 10px)" "%" (rightSectionWidth model))
@@ -64,17 +62,17 @@ let rightSectionStyle model =
     Style [
         Position PositionOptions.Fixed
         Right "0px"
-        Top "0px"
+        Top ((string (getHeaderHeight+3.)) + "px" )
         Height  "100%" //(sprintf "calc(100%s - %s)" "%" headerHeight) // WindowSize - headerHeight
         Width widthRightSec
         OverflowX OverflowOptions.Visible
         //OverflowY OverflowOptions.Auto
-        BorderTop "2px solid lightgray"
+        BorderTop "1px solid lightgray"
         UserSelect UserSelectOptions.None
         ZIndex 31
         BackgroundColor "white"
         //UserSelect UserSelectOptions.None
-]
+    ]
 
 let belowHeaderStyle headerSize =
     Style [

@@ -27,8 +27,6 @@ open DrawModelType.BusWireT
 module Constants =
     /// default style of routing
     let initialWireType = Radial
-    /// default arrow display
-    let initialArrowDisplay = true
     let jumpRadius: float = 5.
     /// The minimum length of the initial segments (nubs) leaving the ports
     let nubLength: float = 8.
@@ -301,23 +299,23 @@ let inline inMiddleOrEndOf a x b =
     a - e < x && x < b + e
    
 let inline getSourcePort (model:Model) (wire:Wire) =
-    let portId = Symbol.outputPortStr wire.OutputPort
+    let portId = Symbol.ioPortStr wire.Port1
     let port = model.Symbol.Ports[portId]
     port
 
 let inline getTargetPort (model:Model) (wire:Wire) =
-    let portId = Symbol.inputPortStr wire.InputPort
+    let portId = Symbol.ioPortStr wire.Port2
     let port = model.Symbol.Ports[portId]
     port
 
 let inline getSourceSymbol (model:Model) (wire:Wire) =
-    let portId = Symbol.outputPortStr wire.OutputPort
+    let portId = Symbol.ioPortStr wire.Port1
     let port = model.Symbol.Ports[portId]
     let symbol = model.Symbol.Symbols[ComponentId port.HostId]
     symbol
 
 let inline getTargetSymbol (model:Model) (wire:Wire) =
-    let portId = Symbol.inputPortStr wire.InputPort
+    let portId = Symbol.ioPortStr wire.Port2
     let port = model.Symbol.Ports[portId]
     let symbol = model.Symbol.Symbols[ComponentId port.HostId]
     symbol
@@ -573,11 +571,11 @@ let segmentsToIssieVertices (segList:Segment list) (wire:Wire) =
 /// between our implementation and Issie.
 let extractConnection (wModel : Model) (cId : ConnectionId) : Connection =
     let conn = wModel.Wires[cId]
-    let ConnectionId strId, InputPortId strInputPort, OutputPortId strOutputPort = conn.WId, conn.InputPort, conn.OutputPort
+    let ConnectionId strId, PortId strPort1, PortId strPort2 = conn.WId, conn.Port1, conn.Port2
     {
         Id = strId
-        Source = { Symbol.getPort wModel.Symbol strOutputPort with PortNumber = None } // None for connections 
-        Target = { Symbol.getPort wModel.Symbol strInputPort with PortNumber = None } // None for connections 
+        Source = { Symbol.getPort wModel.Symbol strPort1 with PortNumber = None } // None for connections 
+        Target = { Symbol.getPort wModel.Symbol strPort2 with PortNumber = None } // None for connections 
         Vertices = segmentsToIssieVertices conn.Segments conn
     }
 
@@ -608,7 +606,6 @@ type WireRenderProps =
         OutputPortEdge : Edge
         OutputPortLocation: XYPos
         DisplayType : WireType
-        ArrowDisplay: bool
         TriangleEdge : Edge
         InputPortLocation: XYPos
     }
@@ -819,10 +816,10 @@ let view (model : Model) (dispatch : Dispatch<Msg>) =
     TimeHelpers.instrumentTime "WirePropsSort" start
     let rStart = TimeHelpers.getTimeMs()
     let wireProps wire =
-        let outPortId = Symbol.getOutputPortIdStr wire.OutputPort
+        let outPortId = Symbol.getIOPortIdStr wire.Port1
         let outputPortLocation = Symbol.getPortLocation None model.Symbol outPortId
-        let outputPortEdge = Symbol.getOutputPortOrientation model.Symbol wire.OutputPort 
-        let stringInId = Symbol.getInputPortIdStr wire.InputPort
+        let outputPortEdge = Symbol.getIOPortOrientation model.Symbol wire.Port1
+        let stringInId = Symbol.getIOPortIdStr wire.Port2
         let inputPortLocation = Symbol.getPortLocation None model.Symbol stringInId 
         let strokeWidthP =
             match wire.Width with
@@ -837,8 +834,7 @@ let view (model : Model) (dispatch : Dispatch<Msg>) =
             OutputPortEdge = outputPortEdge
             OutputPortLocation = outputPortLocation
             DisplayType = model.Type
-            ArrowDisplay = model.ArrowDisplay
-            TriangleEdge = Symbol.getInputPortOrientation model.Symbol wire.InputPort
+            TriangleEdge = Symbol.getIOPortOrientation model.Symbol wire.Port2
             InputPortLocation = inputPortLocation
         }
         
@@ -862,11 +858,7 @@ let view (model : Model) (dispatch : Dispatch<Msg>) =
                     | CommonTypes.Bottom -> $"{x},{y},{x+ws},{y+2.*ws},{x-ws},{y+2.*ws}"
                     | CommonTypes.Right -> $"{x},{y},{x+2.*ws},{y+ws},{x+2.*ws},{y-ws}"
                     | CommonTypes.Left -> $"{x},{y},{x-2.*ws},{y+ws},{x-2.*ws},{y-ws}"
-                let arrows: ReactElement list =
-                    match props.ArrowDisplay with
-                    | true -> [makePolygon str polygon]
-                    | false -> []
-                g [] (arrows @ [wireReact ])          
+                g [] ( [wireReact ])          
             , "Wire"
             , equalsButFunctions
         )
