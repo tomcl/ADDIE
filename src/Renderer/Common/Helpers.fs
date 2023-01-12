@@ -214,3 +214,5 @@ let testMatch (diffX:float) (diffY:float)  normRot=
         // Edge case that should never happen
         | _ -> [s; 0; 0; 0; 0; 0; s]
     lengthList()
+
+

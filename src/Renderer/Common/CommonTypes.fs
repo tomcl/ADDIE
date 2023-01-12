@@ -186,13 +186,14 @@ module CommonTypes
     type ComponentType =
         | IOLabel
         | IO
-        | Resistor of Resistance:float
-        | Capacitor of Capacitance:float
-        | Inductor of Inductance:float
+        | Resistor of Resistance:float * TextBoxValue:string
+        | Capacitor of Capacitance:float * TextBoxValue:string
+        | Inductor of Inductance:float * TextBoxValue:string
         | VoltageSource of VoltageSourceType
         | CurrentSource of Current:float
         | Diode
         | Ground
+        | Opamp
         | Custom of CustomComponentType // schematic sheet used as component
 
 
@@ -344,7 +345,7 @@ module CommonTypes
             | Thistle -> "thistle"
             | c -> sprintf "%A" c
             
-            
+    let omegaString = "\u03a9"
 
     // The next types are not strictly necessary, but help in understanding what is what.
     // Used consistently they provide type protection that greatly reduces coding errors

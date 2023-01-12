@@ -790,6 +790,17 @@ let update (msg : Msg) (model : Model): Model*Cmd<'a>  =
         let newsymbol = changeConstantf model compId newVal newText
         (replaceSymbol model newsymbol compId), Cmd.none
     
+    | ChangeRLCValue (compId, newVal, newStr) ->
+        let symbol = Map.find compId model.Symbols
+        let newcompotype =
+            match symbol.Component.Type with
+            |Resistor _ -> Resistor (newVal,newStr)
+            |Capacitor _ -> Capacitor (newVal,newStr)
+            |Inductor _ -> Inductor (newVal,newStr)
+            |_ -> failwithf "Called ChangeRLCValue with non-RLC component"
+
+        let newsymbol = set (component_ >-> type_) newcompotype symbol
+        (replaceSymbol model newsymbol compId), Cmd.none
     | ResetModel -> 
         { model with Symbols = Map.empty; Ports = Map.empty; }, Cmd.none
     

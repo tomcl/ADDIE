@@ -53,6 +53,7 @@
     <Compile Include="UI/Style.fs" />
     <Compile Include="UI\Notifications.fs" />
     <Compile Include="UI\PopupView.fs" />
+	<Compile Include="UI/ComponentCreation.fs"/>  
     <Compile Include="UI/FileMenuView.fs" />
     <Compile Include="UI\CustomCompPorts.fs" />
     <Compile Include="UI/CatalogueView.fs" />

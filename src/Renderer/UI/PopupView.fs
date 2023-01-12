@@ -53,7 +53,7 @@ open Browser.Types
 open ElectronAPI
 
 open JSHelpers
-open Helpers
+open NumberHelpers
 open ModelType
 open CommonTypes
 open EEExtensions
@@ -241,10 +241,10 @@ let dialogPopupBodyOnlyText before placeholder dispatch =
 let dialogPopupBodyNumericalText before placeholder dispatch =
     fun (dialogData : PopupDialogData) ->
         let goodLabel =
-                getText dialogData
-                |> Seq.toList
-                |> List.tryHead
-                |> function | Some ch when  System.Char.IsNumber ch -> true | Some ch -> false | None -> true
+            match textToFloatValue (getText dialogData) with
+            |Some _ -> true
+            |None -> false
+                
         div [] [
             before dialogData
             Input.text [
@@ -252,7 +252,7 @@ let dialogPopupBodyNumericalText before placeholder dispatch =
                 Input.Placeholder placeholder
                 Input.OnChange (getTextEventValue >> Some >> SetPopupDialogText >> dispatch)
             ]
-            span [Style [FontStyle "Italic"; Color "Red"]; Hidden goodLabel] [str "Value must start with a number"]            
+            span [Style [FontStyle "Italic"; Color "Red"]; Hidden goodLabel] [str "Invalid number format"]            
 
         ]
 

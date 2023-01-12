@@ -1,0 +1,55 @@
+﻿module ComponentCreation
+
+open Fulma
+open Fulma.Extensions.Wikiki
+open Fable.React
+open Fable.React.Props
+open DiagramStyle
+open ModelType
+open ModelHelpers
+open CommonTypes
+open NumberHelpers
+open PopupView
+open Sheet.SheetInterface
+open DrawModelType
+
+
+let createComponent compType label model dispatch =
+    Sheet (SheetT.InitialiseCreateComponent (tryGetLoadedComponents model, compType, label)) |> dispatch
+
+// Anything requiring a standard label should be checked and updated with the correct number suffix in Symbol/Sheet, 
+// so give the label ""
+let createCompStdLabel comp model dispatch =
+    createComponent comp "" model dispatch
+
+
+let createRCLPopup (model:Model) (compType:ComponentType) dispatch =
+    let compname,before, placeholder = 
+        match compType with 
+        |Resistor _ -> "resistor", "Resistance Value ("+omegaString+")", "0.0 "+ omegaString
+        |Capacitor _ -> "capacitor", "Capacitance Value (F)", "0.0 F"
+        |Inductor _ -> "inductor", "Inductance value (H)" , "0.0 H"
+        |_ -> failwithf ""
+    let title = sprintf "Add a "+compname
+    let beforeText =
+        fun _ -> before |> str
+    let body = dialogPopupBodyNumericalText beforeText placeholder dispatch
+    let buttonText = "Add"
+    let buttonAction =
+        fun (dialogData : PopupDialogData) ->
+            let inputValue = getText dialogData
+            let value = Option.get (textToFloatValue inputValue)
+            let newComp =
+                match compType with
+                |Resistor _ -> Resistor (value,inputValue)
+                |Capacitor _ -> Capacitor (value,inputValue)
+                |Inductor _ -> Inductor (value,inputValue)
+                |_ -> failwithf ""
+            createCompStdLabel newComp model dispatch
+            dispatch ClosePopup
+    let isDisabled =
+        fun (dialogData : PopupDialogData) -> 
+            match textToFloatValue (getText dialogData) with
+            |Some f -> false
+            |None -> true
+    dialogPopup title body buttonText buttonAction isDisabled [] dispatch

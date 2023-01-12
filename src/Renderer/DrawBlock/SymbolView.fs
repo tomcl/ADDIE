@@ -23,14 +23,14 @@ let addText (pos: XYPos) name alignment weight size =
 let addLegendText (pos: XYPos) (name:string) alignment weight size =
     let text =
             {defaultText with TextAnchor = alignment; FontWeight = weight; FontSize = size}
-    match name.Split([|'.'|]) with
+    match name.Split([|','|]) with
     | [|oneLine|] -> 
         [makeText pos.X pos.Y name text]
     | [|topLine;bottomLine|] ->
         [makeText pos.X pos.Y topLine text;
          makeText pos.X (pos.Y+Constants.legendLineSpacingInPixels) bottomLine text]
     | _ ->
-        failwithf "addLegendText does not work with more than two lines demarcated by ."
+        failwithf "addLegendText does not work with more than two lines demarcated by ,"
 
 
 let addStyledText (style:Text) (pos: XYPos) (name: string) = 
@@ -191,6 +191,9 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
                 [|{X=0;Y=0.3*H};{X=0.5*W;Y=H};{X=W;Y=0.3*H};{X=0.5*W;Y=0.3*H};{X=0.5*W;Y=0};{X=0.5*W;Y=0.3*H}|]
             | Diode ->
                 [|{X=0;Y=0};{X=0;Y=H};{X=W;Y=0.5*H};{X=W;Y=H};{X=W;Y=0};{X=W;Y=0.5*H}|]
+            | Opamp ->
+                [|{X=0;Y=0};{X=0;Y=H};{X=W/2.;Y=H*3./4.};{X=W/2.;Y=H};{X=W/2.;Y=H*3./4.};{X=W;Y=H/2.};{X=W/2.;Y=H/4.};{X=W/2.;Y=0};{X=W/2.;Y=H/4.}; |]
+                
             | _ -> 
                 [|{X=0;Y=0};{X=0;Y=H};{X=W;Y=H};{X=W;Y=0}|]
         rotatePoints originalPoints {X=W/2.;Y=H/2.} transform
@@ -234,7 +237,18 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
                 |> (fun attr -> [makeAnyPath startingPoint attr {defaultPath with StrokeWidth = "2.5px"}])
             renderedSegmentList
             |> List.append [makeLine 0 15 15 15 capacitorLine; makeLine 75 15 90 15 capacitorLine]
+        | Opamp ->
+            let plusMinus = 
+                match transform.Rotation with
+                | Degree0 -> [makeLine (0.1*W) (2.*H/3.) (0.2*W) (2.*H/3.) defaultLine ; makeLine (0.1*W) (H/3.) (0.2*W) (H/3.) defaultLine ; makeLine (0.15*W) (0.85*H/3.) (0.15*W) (1.15*H/3.) defaultLine ;  ] 
+                | Degree90 -> [makeLine (2.*W/3.) (0.8*H)  (2.*W/3.) (0.9*H) defaultLine ; makeLine (W/3.) (0.8*H) (W/3.) (0.9*H) defaultLine ; makeLine  (0.85*W/3.) (0.85*H) (1.15*W/3.) (0.85*H) defaultLine ;  ] 
+                | Degree180 -> [makeLine (0.8*W) (H/3.) (0.9*W) (H/3.) defaultLine ; makeLine (0.8*W) (2.*H/3.) (0.9*W) (2.*H/3.) defaultLine ; makeLine (0.85*W) (1.85*H/3.) (0.85*W) (2.15*H/3.) defaultLine ;  ] 
+                | Degree270 -> [makeLine (W/3.) (0.1*H)  (W/3.) (0.2*H) defaultLine ; makeLine (2.*W/3.) (0.1*H) (2.*W/3.) (0.2*H) defaultLine ; makeLine  (1.85*W/3.) (0.15*H) (2.15*W/3.) (0.15*H) defaultLine ;  ] 
+            
+            plusMinus
+            |> List.append (createBiColorPolygon points colour outlineColour opacity strokeWidth comp)
 
+            
         | _ -> createBiColorPolygon points colour outlineColour opacity strokeWidth comp
 
 
@@ -291,9 +305,9 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
 
     let componentValue =
         match comp.Type with
-        |Capacitor v -> ((string v) + "F")
-        |Inductor v -> ((string v) + "H")
-        |Resistor v -> ((string v) + " Ohms")
+        |Capacitor (v,s) -> if s<>"" then (s + "F") else string v + "F"
+        |Inductor (v,s) -> if s<>"" then (s + "H") else string v + "H"
+        |Resistor (v,s) -> if s<>"" then (s + omegaString) else string v + omegaString
         |_ -> ""
 
 
@@ -302,7 +316,7 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
     |> List.append (drawPortsText comp.IOPorts (portNames comp.Type) symbol)
     |> List.append (addLegendText 
                         (legendOffset w (2.*h) symbol) 
-                        ("." + componentValue) 
+                        ("," + componentValue) 
                         "middle" 
                         "bold" 
                         (legendFontSize comp.Type))

@@ -14,6 +14,7 @@ open DiagramStyle
 open ModelType
 open ModelHelpers
 open CommonTypes
+open NumberHelpers
 open PopupView
 open Sheet.SheetInterface
 open DrawModelType
@@ -22,20 +23,20 @@ open Fable.SimpleJson
 open Fable.Core.JsInterop
 open System
 open FileMenuView
-
+open ComponentCreation
 
 let private menuItem styles label onClick =
     Menu.Item.li
         [ Menu.Item.IsActive false; Menu.Item.Props [ OnClick onClick; Style styles ] ]
         [ str label ]
 
-let private createComponent compType label model dispatch =
-    Sheet (SheetT.InitialiseCreateComponent (tryGetLoadedComponents model, compType, label)) |> dispatch
+//let private createComponent compType label model dispatch =
+//    Sheet (SheetT.InitialiseCreateComponent (tryGetLoadedComponents model, compType, label)) |> dispatch
 
-// Anything requiring a standard label should be checked and updated with the correct number suffix in Symbol/Sheet, 
-// so give the label ""
-let createCompStdLabel comp model dispatch =
-    createComponent comp "" model dispatch
+//// Anything requiring a standard label should be checked and updated with the correct number suffix in Symbol/Sheet, 
+//// so give the label ""
+//let createCompStdLabel comp model dispatch =
+//    createComponent comp "" model dispatch
 
 
 
@@ -100,21 +101,25 @@ let private createIOPopup hasInt typeStr (compType:ComponentType) (model:Model) 
     dialogPopup title body buttonText buttonAction isDisabled [] dispatch
 
 
-let private createRCLPopup (model:Model) dispatch =
-    let title = sprintf "Add a resistor"
-    let beforeInt =
-        fun _ -> str "Resistance Value (Ohms):"
-    let body = dialogPopupBodyNumericalText beforeInt "0 Ohms" dispatch
-    let buttonText = "Add"
-    let buttonAction =
-        fun (dialogData : PopupDialogData) ->
-            let inputInt = getText dialogData
-            //printfn "creating adder %d" inputInt
-            createCompStdLabel (Resistor (float inputInt)) model dispatch
-            dispatch ClosePopup
-    let isDisabled =
-        fun (dialogData : PopupDialogData) -> getInt dialogData < 1
-    dialogPopup title body buttonText buttonAction isDisabled [] dispatch
+//let private createRCLPopup (model:Model) dispatch =
+//    let title = sprintf "Add a resistor"
+//    let beforeInt =
+//        fun _ -> str "Resistance Value (Ohms):"
+//    let body = dialogPopupBodyNumericalText beforeInt "0 Ohms" dispatch
+//    let buttonText = "Add"
+//    let buttonAction =
+//        fun (dialogData : PopupDialogData) ->
+//            let inputValue = getText dialogData
+//            let value = Option.get (textToFloatValue inputValue)
+//            //printfn "creating adder %d" inputInt
+//            createCompStdLabel (Resistor value) model dispatch
+//            dispatch ClosePopup
+//    let isDisabled =
+//        fun (dialogData : PopupDialogData) -> 
+//            match textToFloatValue (getText dialogData) with
+//            |Some f -> false
+//            |None -> true
+//    dialogPopup title body buttonText buttonAction isDisabled [] dispatch
 
 
 
@@ -315,15 +320,16 @@ let viewCatalogue model dispatch =
                     makeMenuGroup
                         "Linear Items"
                         [ 
-                          catTip1 "Resistor"  (fun _ -> createRCLPopup model dispatch) "Resistor: PENDING"
-                          catTip1 "Capacitor"  (fun _ -> createCompStdLabel (Capacitor 1.) model dispatch) "Capacitor: PENDING"
-                          catTip1 "Inductor"  (fun _ -> createCompStdLabel (Inductor 1.) model dispatch) "Inductor: PENDING"
+                          catTip1 "Resistor"  (fun _ -> createRCLPopup model (Resistor (0,"0")) dispatch) "Resistor: PENDING"
+                          catTip1 "Capacitor"  (fun _ -> createCompStdLabel (Capacitor (0,"0")) model dispatch) "Capacitor: PENDING"
+                          catTip1 "Inductor"  (fun _ -> createCompStdLabel (Inductor (0,"0")) model dispatch) "Inductor: PENDING"
+                          catTip1 "Operational Amplifier"  (fun _ -> createCompStdLabel Opamp model dispatch) "Opamp: PENDING"
                           catTip1 "Current Source"  (fun _ -> createCompStdLabel (CurrentSource 1.) model dispatch) "Current Source: PENDING"
                           catTip1 "Voltage Source"  (fun _ -> createCompStdLabel (VoltageSource (DC 1.)) model dispatch) "Voltage Source: PENDING"
                           catTip1 "Diode"  (fun _ -> createCompStdLabel Diode model dispatch) "Diode: PENDING"]
                     makeMenuGroup
                         "Non-Linear Items"
-                        [ catTip1 "Resistor"  (fun _ -> createRCLPopup model dispatch) "Resistor: PENDING"]
+                        [ catTip1 "Resistor"  (fun _ -> createRCLPopup model (Resistor (0,"0")) dispatch) "Resistor: PENDING"]
 
                     makeMenuGroupWithTip styles
                         "This project"

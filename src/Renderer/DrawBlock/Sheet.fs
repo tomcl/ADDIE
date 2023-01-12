@@ -81,6 +81,9 @@ module SheetInterface =
         member this.ChangeLabel (dispatch: Dispatch<Msg>) (compId: ComponentId) (lbl: string) =
             dispatch <| (Wire (BusWireT.Symbol (SymbolT.ChangeLabel (compId, lbl) ) ) )
 
+        member this.ChangeRLCValue (dispatch: Dispatch<Msg>) (compId: ComponentId) (newValue: float) (newStr:string) =
+            dispatch <| (Wire (BusWireT.Symbol (SymbolT.ChangeRLCValue (compId, newValue, newStr) ) ) )
+
 
         /// Given a compId and a width, update the width of the Component specified by compId
         member this.ChangeScale (dispatch: Dispatch<Msg>) (compId: ComponentId) (newScale: float) (whichScale:ScaleAdjustment) =

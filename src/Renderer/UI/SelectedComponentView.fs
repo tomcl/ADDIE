@@ -20,6 +20,7 @@ open DrawModelType
 open FilesIO
 open CatalogueView
 open FileMenuView
+open NumberHelpers
 
 module Constants =
     let labelUniqueMess = "Components must have a unique label within one sheet"
@@ -32,6 +33,26 @@ let private readOnlyFormField name body =
     ]
 
 
+
+let private textValueFormField isRequired name defaultValue isBad onChange =        
+    Field.div [] [
+        Label.label [] [ str name ]
+        Input.text [
+            Input.Props [ 
+                Id "labelInputElement"; 
+                OnPaste preventDefault; 
+                SpellCheck false; 
+                Name name; 
+                AutoFocus true; 
+                Style [ Width "200px"]; ]
+            Input.DefaultValue defaultValue
+            Input.CustomClass "www"
+            Input.Placeholder (if isRequired then "Name (required)" else "Name (optional)")
+            Input.OnChange (getTextEventValue >> onChange)
+        ]
+        br []
+        span [Style [FontStyle "Italic"; Color "Red"]; Hidden (isBad = None)] [str <| Option.defaultValue "" isBad]
+    ]
 
 
 let private textFormField isRequired name defaultValue isBad onChange onDeleteAtEnd =
@@ -222,6 +243,31 @@ let constantDialogWithDefault (w,cText) dialog =
 //            ]              
 
 
+let private makeValueField model (comp:Component) text dispatch =
+    let sheetDispatch sMsg = dispatch (Sheet sMsg)
+    
+    let title, width =
+        match comp.Type with
+        | Resistor (v,s) -> "Resistance value", s
+        | Capacitor (v,s) -> "Capacitance value", s
+        | Inductor (v,s) -> "Inductance value", s
+        | _ -> failwithf "makeNumberOfBitsField called with invalid component"
+    textValueFormField true title (string width) None (
+        fun newValue ->
+            if textToFloatValue newValue = None
+            then
+                let props = errorPropsNotification "Invalid number value"
+                dispatch <| SetPropertiesNotification props
+            else
+                model.Sheet.ChangeRLCValue sheetDispatch (ComponentId comp.Id) (Option.get (textToFloatValue newValue)) newValue
+                //SetComponentLabelFromText model comp text' // change the JS component label
+                let lastUsedWidth = model.LastUsedDialogWidth 
+                dispatch (ReloadSelectedComponent (lastUsedWidth)) // reload the new component
+                dispatch <| SetPopupDialogText (Some newValue)
+                dispatch ClosePropertiesNotification
+    )
+
+
 let private makeDescription (comp:Component) model dispatch =
     match comp.Type with
     | IO -> str "IO"
@@ -234,7 +280,7 @@ let private makeDescription (comp:Component) model dispatch =
         str "To join inputs and outputs without wires."; br []
         str "To prevent an unused output from giving an error."
         ]
-    |Resistor _ |Capacitor _ |Inductor _ |CurrentSource _ |VoltageSource _|Diode |Ground ->
+    |Resistor _ |Capacitor _ |Inductor _ |CurrentSource _ |VoltageSource _|Diode |Ground |Opamp ->
         div [] [ str "PENDING"]
     | Custom custom ->
         let styledSpan styles txt = span [Style styles] [str <| txt]
@@ -282,11 +328,12 @@ let private makeDescription (comp:Component) model dispatch =
 
 let private makeExtraInfo model (comp:Component) text dispatch : ReactElement =
     match comp.Type with
-    | IO ->
+    | Resistor _ 
+    | Capacitor _ 
+    | Inductor _ ->
         div []
             [
-                //makeNumberOfBitsField model comp text dispatch
-                //makeDefaultValueField model comp dispatch
+                makeValueField model comp text dispatch
             ]
     | _ -> div [] []
 

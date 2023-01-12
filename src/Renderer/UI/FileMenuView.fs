@@ -26,6 +26,7 @@ open PopupView
 open DrawModelType
 open Sheet.SheetInterface
 open System
+open ComponentCreation
 
 [<Emit("__static")>]
 let staticDir() :string = jsNative
@@ -1121,14 +1122,14 @@ let viewTopMenu model dispatch =
                       Navbar.Item.div [] [
                             Navbar.Item.div []
                                 [ Button.button 
-                                    [ Button.OnClick(fun _ -> Sheet (SheetT.InitialiseCreateComponent (tryGetLoadedComponents model, Resistor 1., "R1")) |> dispatch) 
+                                    [ Button.OnClick(fun _ -> createRCLPopup model (Resistor (0,"0")) dispatch) 
                                       Button.Color IsGrey
                                     ] 
                                     [ str "R" ] 
                                 ]   
                             Navbar.Item.div []
                                 [ Button.button 
-                                    [ Button.OnClick(fun _ -> Sheet (SheetT.InitialiseCreateComponent (tryGetLoadedComponents model, Capacitor 1., "C1")) |> dispatch) 
+                                    [ Button.OnClick(fun _ -> createRCLPopup model (Capacitor (0,"0")) dispatch)
                                       Button.Color IsGrey
                                     ] 
                                     [ str "C" ] 
@@ -1137,7 +1138,7 @@ let viewTopMenu model dispatch =
                                 
                             Navbar.Item.div []
                                 [ Button.button 
-                                    [ Button.OnClick(fun _ -> Sheet (SheetT.InitialiseCreateComponent (tryGetLoadedComponents model, Inductor 1., "L1")) |> dispatch) 
+                                    [ Button.OnClick(fun _ -> createRCLPopup model (Inductor (0,"0")) dispatch)
                                       Button.Color IsGrey
                                     ] 
                                     [ str "L" ] 
@@ -1146,10 +1147,19 @@ let viewTopMenu model dispatch =
 
                             Navbar.Item.div []
                                 [ Button.button 
-                                    [ Button.OnClick(fun _ -> Sheet (SheetT.InitialiseCreateComponent (tryGetLoadedComponents model, Diode, "D1")) |> dispatch) 
+                                    [ Button.OnClick(fun _ -> createCompStdLabel Diode model dispatch)
                                       Button.Color IsGrey
                                     ] 
                                     [ str "D" ] 
+                                  
+                                ]
+
+                            Navbar.Item.div []
+                                [ Button.button 
+                                    [ Button.OnClick(fun _ -> createCompStdLabel Opamp model dispatch)
+                                      Button.Color IsGrey
+                                    ] 
+                                    [ str "OP" ] 
                                   
                                 ]
 
@@ -1173,7 +1183,7 @@ let viewTopMenu model dispatch =
 
                             Navbar.Item.div []
                                 [ Button.button 
-                                    [ Button.OnClick(fun _ -> Sheet (SheetT.InitialiseCreateComponent (tryGetLoadedComponents model, Ground, "G1")) |> dispatch) 
+                                    [ Button.OnClick(fun _ -> createCompStdLabel Ground model dispatch)
                                       Button.Color IsGrey
                                     ] 
                                     [ str "G" ] 

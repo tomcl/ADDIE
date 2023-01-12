@@ -154,3 +154,29 @@ let strToIntCheckWidth (width : int) (str : string)  : Result<int64, string> =
             | None -> Ok num
             | Some err -> Error err
         )
+
+
+let textToFloatValue (text:string) =
+    let checkNoChars (s:string) =
+        s |> Seq.forall System.Char.IsDigit
+    
+    let charsToTrim = [| 'k'; 'K'; 'M';'m';'u';'n';'U';'N' |]
+    match String.length text with
+    |0 -> Some 0.
+    |length ->
+        match text |> Seq.last with
+        | ch when  System.Char.IsNumber ch -> if checkNoChars text then (float text) |> Some else None
+        | last ->
+            let beginning = text.Remove (length-1)
+            printfn "beginning %s" beginning
+            match checkNoChars beginning with
+            |true ->
+                match last with
+                | 'K' | 'k' -> 1000.* (float (text.TrimEnd charsToTrim)) |> Some
+                | 'M' -> 1000000.* (float (text.TrimEnd charsToTrim))|> Some
+                | 'm' -> 0.001* (float (text.TrimEnd charsToTrim))|> Some
+                | 'u' | 'U' -> 0.000001* (float (text.TrimEnd charsToTrim))|> Some
+                | 'n' | 'N' -> 0.000000001* (float (text.TrimEnd charsToTrim))|> Some
+                | _ -> None
+            |false -> None 
+
