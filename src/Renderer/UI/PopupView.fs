@@ -384,6 +384,54 @@ let dialogPopupBodyTextAndInt beforeText placeholder beforeInt intDefault dispat
             ]
         ]
 
+
+/// Create the body of a dialog Popup with both text and int.
+let dialogPopupVS beforeText placeholder dispatch =
+    
+    //intDefault |> Some |> SetPopupDialogInt |> dispatch
+    let setPopupTwoInts (whichInt:IntMode, optText) =
+        fun (n:int64) -> (Some n, whichInt, optText) |> SetPopupDialogTwoInts |> dispatch
+
+    setPopupTwoInts (FirstInt,None) (int64 0)
+    setPopupTwoInts (SecondInt, None) 0
+    
+    fun (dialogData : PopupDialogData) ->
+        let goodLabel =
+                getText dialogData
+                |> Seq.toList
+                |> List.tryHead
+                |> function | Some ch when  System.Char.IsLetter ch -> true | Some ch -> false | None -> true
+        div [] [
+            Label.label [] [ str "Voltage Source Type" ]
+            Label.label [ ]
+                [Select.select []
+                [ select [(OnChange(fun option -> 
+                    printfn "Value is: %s" option.Value))]
+                    //Sheet (SheetT.Msg.SetDebugDevice option.Value) |> dispatch  ))]
+                                
+                    ([option [Value "DC";Selected true] [str ("DC")]] @ [option [Value "Sine"] [str "Sine"] ] @ [option [Value "Pulse"] [str "Pulse"] ])
+                    ]
+                ]
+            br []
+
+            beforeText dialogData
+            Input.text [
+                Input.Props [OnPaste preventDefault; AutoFocus true; SpellCheck false]
+                Input.Placeholder placeholder
+                Input.OnChange (getTextEventValue >> Some >> SetPopupDialogText >> dispatch)
+            ]
+            span [Style [FontStyle "Italic"; Color "Red"]; Hidden goodLabel] [str "Name must start with a letter"]            
+            br []
+            //br []
+            //beforeInt dialogData
+            //br []
+            //Input.number [
+            //    Input.Props [OnPaste preventDefault; Style [Width "60px"]]
+            //    Input.DefaultValue <| sprintf "%d" intDefault
+            //    Input.OnChange (getIntEventValue >> Some >> SetPopupDialogInt >> dispatch)
+            //]
+        ]
+
 /// Create the body of a dialog Popup with both text and int.
 let dialogPopupBodyIntAndText beforeText placeholder beforeInt intDefault dispatch =
     intDefault |> Some |> SetPopupDialogInt |> dispatch

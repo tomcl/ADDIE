@@ -308,6 +308,7 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
         |Capacitor (v,s) -> if s<>"" then (s + "F") else string v + "F"
         |Inductor (v,s) -> if s<>"" then (s + "H") else string v + "H"
         |Resistor (v,s) -> if s<>"" then (s + omegaString) else string v + omegaString
+        |CurrentSource (v,s) -> if s<>"" then (s + "A") else string v + "A"
         |_ -> ""
 
 

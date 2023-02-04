@@ -78,6 +78,7 @@ let init() = {
         Text = None
         Int = None
         Int2 = None
+        VoltageSource = None
         BadLabel = false
     }
     Notifications = {

@@ -155,12 +155,15 @@ let strToIntCheckWidth (width : int) (str : string)  : Result<int64, string> =
             | Some err -> Error err
         )
 
-
+/// Converts the text input of an RLCI Popup to its float value (Option)
+/// Returns None in case the input has invalid format
 let textToFloatValue (text:string) =
+    let isDigitOrDot (c:char) =
+        (c = '.' || System.Char.IsDigit c)
+
     let checkNoChars (s:string) =
-        s |> Seq.forall System.Char.IsDigit
+        s |> Seq.forall isDigitOrDot
     
-    let charsToTrim = [| 'k'; 'K'; 'M';'m';'u';'n';'U';'N' |]
     match String.length text with
     |0 -> Some 0.
     |length ->
@@ -168,15 +171,21 @@ let textToFloatValue (text:string) =
         | ch when  System.Char.IsNumber ch -> if checkNoChars text then (float text) |> Some else None
         | last ->
             let beginning = text.Remove (length-1)
-            printfn "beginning %s" beginning
+            let bLength = String.length beginning 
             match checkNoChars beginning with
             |true ->
-                match last with
-                | 'K' | 'k' -> 1000.* (float (text.TrimEnd charsToTrim)) |> Some
-                | 'M' -> 1000000.* (float (text.TrimEnd charsToTrim))|> Some
-                | 'm' -> 0.001* (float (text.TrimEnd charsToTrim))|> Some
-                | 'u' | 'U' -> 0.000001* (float (text.TrimEnd charsToTrim))|> Some
-                | 'n' | 'N' -> 0.000000001* (float (text.TrimEnd charsToTrim))|> Some
-                | _ -> None
+                if String.length (beginning.TrimEnd [|'.'|]) = bLength 
+                    || String.length (beginning.TrimEnd [|'.'|]) = (bLength-1)
+                then
+                    match last with
+                    | 'K' | 'k' -> 1000.* (float beginning) |> Some
+                    | 'M' -> 1000000.* (float beginning)|> Some
+                    | 'm' -> 0.001* (float beginning)|> Some
+                    | 'u' -> 0.000001* (float beginning)|> Some
+                    | 'n' -> 0.000000001* (float beginning)|> Some
+                    | _ -> None
+                else None
             |false -> None 
+
+
 

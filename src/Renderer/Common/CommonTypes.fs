@@ -190,7 +190,7 @@ module CommonTypes
         | Capacitor of Capacitance:float * TextBoxValue:string
         | Inductor of Inductance:float * TextBoxValue:string
         | VoltageSource of VoltageSourceType
-        | CurrentSource of Current:float
+        | CurrentSource of Current:float * TextBoxValue:string
         | Diode
         | Ground
         | Opamp

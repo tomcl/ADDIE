@@ -176,7 +176,7 @@ module SymbolT =
         | ErrorSymbols of errorIds: ComponentId list * selectIds: ComponentId list * isDragAndDrop: bool
         | ChangeScale of compId:ComponentId * newScale:float * whichScale:ScaleAdjustment
         | ChangeConstant of compId: ComponentId * NewBits:int64 * NewText:string
-        | ChangeRLCValue of compId: ComponentId * NewValue:float * NewStr:string
+        | ChangeRLCIValue of compId: ComponentId * NewValue:float * NewStr:string
         | ResetModel // For Issie Integration
         | LoadComponents of  LoadedComponent list * Component list // For Issie Integration
         | RotateLeft of compList : ComponentId list * RotationType

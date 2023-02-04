@@ -49,7 +49,7 @@ let isWin = Api.``process``.platform = Base.Win32
 
 
 
-mainProcess.app.name <- "Issie"
+mainProcess.app.name <- "Addie"
 
 
 
@@ -91,7 +91,7 @@ let createMainWindow () =
 
         //elif Api.``process``.platform = Base.Darwin then
             //options.icon <- (U2.Case2 (path.join(staticDir(), "icon.icns")))   (the icns icon does not work)
-        options.title <- Some "issie"
+        options.title <- Some "addie"
         options.webPreferences <- Some (
             jsOptions<WebPreferences> <| fun o ->
                 o.nodeIntegration <- Some true
@@ -177,7 +177,6 @@ let rec addListeners (window: BrowserWindow) =
     // quit programmatically from renderer
     mainProcess.ipcMain.on ("exit-the-app", fun _ -> 
         closeAfterSave <- true
-        //printfn "Closing Issie..."
         mainWindow
         |> Option.iter (fun win -> win.close()))
         |> ignore

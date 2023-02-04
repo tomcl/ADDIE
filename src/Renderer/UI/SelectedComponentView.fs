@@ -246,20 +246,21 @@ let constantDialogWithDefault (w,cText) dialog =
 let private makeValueField model (comp:Component) text dispatch =
     let sheetDispatch sMsg = dispatch (Sheet sMsg)
     
-    let title, width =
+    let title, value =
         match comp.Type with
         | Resistor (v,s) -> "Resistance value", s
         | Capacitor (v,s) -> "Capacitance value", s
         | Inductor (v,s) -> "Inductance value", s
+        | CurrentSource (v,s) -> "Current value", s
         | _ -> failwithf "makeNumberOfBitsField called with invalid component"
-    textValueFormField true title (string width) None (
+    textValueFormField true title value None (
         fun newValue ->
             if textToFloatValue newValue = None
             then
                 let props = errorPropsNotification "Invalid number value"
                 dispatch <| SetPropertiesNotification props
             else
-                model.Sheet.ChangeRLCValue sheetDispatch (ComponentId comp.Id) (Option.get (textToFloatValue newValue)) newValue
+                model.Sheet.ChangeRLCIValue sheetDispatch (ComponentId comp.Id) (Option.get (textToFloatValue newValue)) newValue
                 //SetComponentLabelFromText model comp text' // change the JS component label
                 let lastUsedWidth = model.LastUsedDialogWidth 
                 dispatch (ReloadSelectedComponent (lastUsedWidth)) // reload the new component
@@ -330,7 +331,8 @@ let private makeExtraInfo model (comp:Component) text dispatch : ReactElement =
     match comp.Type with
     | Resistor _ 
     | Capacitor _ 
-    | Inductor _ ->
+    | Inductor _ 
+    | CurrentSource _ ->
         div []
             [
                 makeValueField model comp text dispatch

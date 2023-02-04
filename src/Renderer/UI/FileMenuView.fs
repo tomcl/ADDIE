@@ -1122,14 +1122,14 @@ let viewTopMenu model dispatch =
                       Navbar.Item.div [] [
                             Navbar.Item.div []
                                 [ Button.button 
-                                    [ Button.OnClick(fun _ -> createRCLPopup model (Resistor (0,"0")) dispatch) 
+                                    [ Button.OnClick(fun _ -> createRCLIPopup model (Resistor (0,"0")) dispatch) 
                                       Button.Color IsGrey
                                     ] 
                                     [ str "R" ] 
                                 ]   
                             Navbar.Item.div []
                                 [ Button.button 
-                                    [ Button.OnClick(fun _ -> createRCLPopup model (Capacitor (0,"0")) dispatch)
+                                    [ Button.OnClick(fun _ -> createRCLIPopup model (Capacitor (0,"0")) dispatch)
                                       Button.Color IsGrey
                                     ] 
                                     [ str "C" ] 
@@ -1138,7 +1138,7 @@ let viewTopMenu model dispatch =
                                 
                             Navbar.Item.div []
                                 [ Button.button 
-                                    [ Button.OnClick(fun _ -> createRCLPopup model (Inductor (0,"0")) dispatch)
+                                    [ Button.OnClick(fun _ -> createRCLIPopup model (Inductor (0,"0")) dispatch)
                                       Button.Color IsGrey
                                     ] 
                                     [ str "L" ] 
@@ -1174,7 +1174,7 @@ let viewTopMenu model dispatch =
 
                             Navbar.Item.div []
                                 [ Button.button 
-                                    [ Button.OnClick(fun _ -> Sheet (SheetT.InitialiseCreateComponent (tryGetLoadedComponents model, CurrentSource 1., "CS1")) |> dispatch) 
+                                    [ Button.OnClick(fun _ -> createRCLIPopup model (CurrentSource (0,"0")) dispatch) 
                                       Button.Color IsGrey
                                     ] 
                                     [ str "CS" ] 

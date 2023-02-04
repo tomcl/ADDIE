@@ -58,6 +58,7 @@ type PopupDialogData = {
     Text : string option;
     Int : int option;
     Int2: int64 option
+    VoltageSource: VoltageSourceType option
     ProjectPath: string
     BadLabel: bool
 }
