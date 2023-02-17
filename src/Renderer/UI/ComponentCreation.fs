@@ -60,21 +60,25 @@ let createRCLIPopup (model:Model) (compType:ComponentType) dispatch =
 let createVSPopup (model:Model) (compType:ComponentType) dispatch =
     
     let title = sprintf "Add a voltage source"
-    let beforeText =
-        fun _ -> "Voltage value (V)" |> str
-    let body = dialogPopupVS beforeText "0.0V" dispatch
+    let body = dialogPopupVS dispatch
     let buttonText = "Add"
     let buttonAction =
         fun (dialogData : PopupDialogData) ->
-            let inputValue = getText dialogData
-            let value = Option.get (textToFloatValue inputValue)
+
+            
+            let inputValue1 = getText dialogData
+            let value1 = Option.get (textToFloatValue inputValue1)
+            let inputValue2 = getText dialogData
+            let value2 = Option.get (textToFloatValue inputValue2)
+            let inputValue3 = getText dialogData
+            let value3 = Option.get (textToFloatValue inputValue3)
+            
             let newComp =
-                match compType with
-                |Resistor _ -> Resistor (value,inputValue)
-                |Capacitor _ -> Capacitor (value,inputValue)
-                |Inductor _ -> Inductor (value,inputValue)
-                |CurrentSource _ -> CurrentSource (value,inputValue)
-                |_ -> failwithf ""
+                match dialogData.VSType with
+                |Some "Sine" -> VoltageSource (Sine (value1,value2,value3))
+                |Some "Pulse" -> VoltageSource (Pulse (value1,value2,value3))
+                |_-> VoltageSource (DC value1)
+                
             createCompStdLabel newComp model dispatch
             dispatch ClosePopup
     let isDisabled =

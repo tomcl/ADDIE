@@ -1165,7 +1165,7 @@ let viewTopMenu model dispatch =
 
                             Navbar.Item.div []
                                 [ Button.button 
-                                    [ Button.OnClick(fun _ -> Sheet (SheetT.InitialiseCreateComponent (tryGetLoadedComponents model, VoltageSource (DC 1.), "VS1")) |> dispatch) 
+                                    [ Button.OnClick(fun _ -> createVSPopup model (VoltageSource (DC 0.)) dispatch)
                                       Button.Color IsGrey
                                     ] 
                                     [ str "VS" ] 

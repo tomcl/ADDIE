@@ -56,18 +56,24 @@ type SimSubTab =
 /// Possible fields that may (or may not) be used in a dialog popup.
 type PopupDialogData = {
     Text : string option;
+    Text2 : string option;
+    Text3 : string option
     Int : int option;
     Int2: int64 option
     VoltageSource: VoltageSourceType option
     ProjectPath: string
     BadLabel: bool
+    VSType: string option
 }
 
 let text_ = Lens.create (fun a -> a.Text) (fun s a -> {a with Text = s})
+let text2_ = Lens.create (fun a -> a.Text2) (fun s a -> {a with Text2 = s})
+let text3_ = Lens.create (fun a -> a.Text3) (fun s a -> {a with Text3 = s})
 let int_ = Lens.create (fun a -> a.Int) (fun s a -> {a with Int = s})
 let int2_ = Lens.create (fun a -> a.Int2) (fun s a -> {a with Int2 = s})
 let projectPath_ = Lens.create (fun a -> a.ProjectPath) (fun s a -> {a with ProjectPath = s})
 let badLabel_ = Lens.create (fun a -> a.BadLabel) (fun s a -> {a with BadLabel= s})
+let vsType_ = Lens.create (fun a -> a.VSType) (fun s a -> {a with VSType= s})
 
 type TopMenu = | Closed | Project | Files
 
@@ -97,6 +103,8 @@ type DiagEl = | Comp of Component | Conn of Connection
 type DragMode = DragModeOn of int | DragModeOff
 
 type IntMode = FirstInt | SecondInt
+
+type TextMode = FirstText | SecondText | ThirdText
 
 type MenuCommand =
     | MenuPrint
@@ -132,9 +140,11 @@ type Msg =
     | ShowStaticInfoPopup of (string * ReactElement * (Msg -> Unit))
     | ClosePopup
     | SetPopupDialogText of string option
+    | SetPopupDialogText2 of string option
+    | SetPopupDialogText3 of string option
+    | SetPopupDialogVSType of string option
     | SetPopupDialogInt of int option
     | SetPopupDialogInt2 of int64 option
-    | SetPopupDialogTwoInts of (int64 option * IntMode * string option)
     | CloseDiagramNotification
     | SetFilesNotification of ((Msg -> unit) -> ReactElement)
     | CloseFilesNotification

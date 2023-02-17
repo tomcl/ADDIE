@@ -218,7 +218,11 @@ module CommonTypes
         H: float
     }
         with member this.Centre() = this.TopLeft + {X=this.W/2.; Y=this.H/2.}
-    
+   
+   
+    type LabelType =
+        | NameLabel
+        | NumberLabel
     
     type ScaleAdjustment =
         | Horizontal

@@ -59,9 +59,10 @@ let shortDisplayMsg (msg:Msg) =
     | ClosePopup 
     | SetPopupDialogBadLabel _ 
     | SetPopupDialogText _ 
+    | SetPopupDialogText2 _ 
+    | SetPopupDialogText3 _ 
     | SetPopupDialogInt _ 
     | SetPopupDialogInt2 _ 
-    | SetPopupDialogTwoInts _ 
     | SetPopupDialogBadLabel _ 
     | CloseDiagramNotification
     | SetFilesNotification _ 

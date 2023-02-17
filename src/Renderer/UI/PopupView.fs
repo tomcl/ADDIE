@@ -112,6 +112,10 @@ let preventDefault (e: Browser.Types.ClipboardEvent) = e.preventDefault()
 
 let getText (dialogData : PopupDialogData) =
     Option.defaultValue "" dialogData.Text
+let getText2 (dialogData : PopupDialogData) =
+    Option.defaultValue "" dialogData.Text2
+let getText3 (dialogData : PopupDialogData) =
+    Option.defaultValue "" dialogData.Text3
 
 let getInt (dialogData : PopupDialogData) =
     Option.defaultValue 1 dialogData.Int
@@ -285,75 +289,75 @@ let dialogPopupBodyOnlyInt beforeInt intDefault dispatch =
                 Input.OnChange (getIntEventValue >> Some >> SetPopupDialogInt >> dispatch)
             ]
         ]
-/// Create the body of a dialog Popup with two ints.
-let dialogPopupBodyTwoInts (beforeInt1,beforeInt2) (intDefault1,intDefault2) (width2:string) dispatch =
+///// Create the body of a dialog Popup with two ints.
+//let dialogPopupBodyTwoInts (beforeInt1,beforeInt2) (intDefault1,intDefault2) (width2:string) dispatch =
 
-    let setPopupTwoInts (whichInt:IntMode, optText) =
-        fun (n:int64) -> (Some n, whichInt, optText) |> SetPopupDialogTwoInts |> dispatch
+//    let setPopupTwoInts (whichInt:IntMode, optText) =
+//        fun (n:int64) -> (Some n, whichInt, optText) |> SetPopupDialogTwoInts |> dispatch
 
-    setPopupTwoInts (FirstInt,None) (int64 intDefault1)
-    setPopupTwoInts (SecondInt, None) intDefault2 
+//    setPopupTwoInts (FirstInt,None) (int64 intDefault1)
+//    setPopupTwoInts (SecondInt, None) intDefault2 
 
-    fun (dialogData : PopupDialogData) ->
-        div [] [
-            beforeInt1 dialogData
-            br []
-            Input.number [
-                Input.Props [OnPaste preventDefault; Style [Width "60px"]; AutoFocus true]
-                Input.DefaultValue <| sprintf "%d" intDefault1
-                Input.OnChange (getIntEventValue >> int64 >> setPopupTwoInts (FirstInt,None))
-            ]
-            br []
-            beforeInt2 dialogData
-            br []
-            Input.text [
-                Input.Props [OnPaste preventDefault; Style [Width width2]; AutoFocus true]
-                Input.DefaultValue <| sprintf "%d" intDefault2
-                Input.OnChange (fun ev ->
-                    let text = getTextEventValue ev
-                    let n = getInt64EventValue ev
-                    setPopupTwoInts(SecondInt, Some text) n)
-            ]
-        ]
+//    fun (dialogData : PopupDialogData) ->
+//        div [] [
+//            beforeInt1 dialogData
+//            br []
+//            Input.number [
+//                Input.Props [OnPaste preventDefault; Style [Width "60px"]; AutoFocus true]
+//                Input.DefaultValue <| sprintf "%d" intDefault1
+//                Input.OnChange (getIntEventValue >> int64 >> setPopupTwoInts (FirstInt,None))
+//            ]
+//            br []
+//            beforeInt2 dialogData
+//            br []
+//            Input.text [
+//                Input.Props [OnPaste preventDefault; Style [Width width2]; AutoFocus true]
+//                Input.DefaultValue <| sprintf "%d" intDefault2
+//                Input.OnChange (fun ev ->
+//                    let text = getTextEventValue ev
+//                    let n = getInt64EventValue ev
+//                    setPopupTwoInts(SecondInt, Some text) n)
+//            ]
+//        ]
 
-/// Create the body of a dialog Popup with text and two ints.
-let dialogPopupBodyTextAndTwoInts (beforeText, textPlaceholder) (beforeInt1,beforeInt2) (intDefault1,intDefault2) dispatch =
+///// Create the body of a dialog Popup with text and two ints.
+//let dialogPopupBodyTextAndTwoInts (beforeText, textPlaceholder) (beforeInt1,beforeInt2) (intDefault1,intDefault2) dispatch =
 
-    let setPopupTwoInts (whichInt:IntMode, optText) =
-        fun (n:int64) -> (Some n, whichInt, optText) |> SetPopupDialogTwoInts |> dispatch
+//    let setPopupTwoInts (whichInt:IntMode, optText) =
+//        fun (n:int64) -> (Some n, whichInt, optText) |> SetPopupDialogTwoInts |> dispatch
 
-    setPopupTwoInts (FirstInt,None) (int64 intDefault1)
-    setPopupTwoInts (SecondInt, None) intDefault2 
+//    setPopupTwoInts (FirstInt,None) (int64 intDefault1)
+//    setPopupTwoInts (SecondInt, None) intDefault2 
 
-    fun (dialogData : PopupDialogData) ->
-        div [] [
-            beforeText dialogData
-            br []
-            Input.text [
-                Input.Props [OnPaste preventDefault; AutoFocus true; SpellCheck false]
-                Input.Placeholder textPlaceholder
-                Input.OnChange (getTextEventValue >> Some >> SetPopupDialogText >> dispatch)
-            ]
+//    fun (dialogData : PopupDialogData) ->
+//        div [] [
+//            beforeText dialogData
+//            br []
+//            Input.text [
+//                Input.Props [OnPaste preventDefault; AutoFocus true; SpellCheck false]
+//                Input.Placeholder textPlaceholder
+//                Input.OnChange (getTextEventValue >> Some >> SetPopupDialogText >> dispatch)
+//            ]
 
-            beforeInt1 dialogData
-            br []
-            Input.number [
-                Input.Props [OnPaste preventDefault; Style [Width "60px"]; AutoFocus true]
-                Input.DefaultValue <| sprintf "%d" intDefault1
-                Input.OnChange (getIntEventValue >> int64 >> setPopupTwoInts (FirstInt,None))
-            ]
-            br []
-            beforeInt2 dialogData
-            br []
-            Input.text [
-                Input.Props [OnPaste preventDefault; Style [Width "60px"]; AutoFocus true]
-                Input.DefaultValue <| sprintf "%d" intDefault2
-                Input.OnChange (fun ev ->
-                    let text = getTextEventValue ev
-                    let n = getInt64EventValue ev
-                    setPopupTwoInts(SecondInt, Some text) n)
-            ]
-        ]
+//            beforeInt1 dialogData
+//            br []
+//            Input.number [
+//                Input.Props [OnPaste preventDefault; Style [Width "60px"]; AutoFocus true]
+//                Input.DefaultValue <| sprintf "%d" intDefault1
+//                Input.OnChange (getIntEventValue >> int64 >> setPopupTwoInts (FirstInt,None))
+//            ]
+//            br []
+//            beforeInt2 dialogData
+//            br []
+//            Input.text [
+//                Input.Props [OnPaste preventDefault; Style [Width "60px"]; AutoFocus true]
+//                Input.DefaultValue <| sprintf "%d" intDefault2
+//                Input.OnChange (fun ev ->
+//                    let text = getTextEventValue ev
+//                    let n = getInt64EventValue ev
+//                    setPopupTwoInts(SecondInt, Some text) n)
+//            ]
+//        ]
 
 /// Create the body of a dialog Popup with both text and int.
 let dialogPopupBodyTextAndInt beforeText placeholder beforeInt intDefault dispatch =
@@ -385,52 +389,83 @@ let dialogPopupBodyTextAndInt beforeText placeholder beforeInt intDefault dispat
         ]
 
 
-/// Create the body of a dialog Popup with both text and int.
-let dialogPopupVS beforeText placeholder dispatch =
-    
-    //intDefault |> Some |> SetPopupDialogInt |> dispatch
-    let setPopupTwoInts (whichInt:IntMode, optText) =
-        fun (n:int64) -> (Some n, whichInt, optText) |> SetPopupDialogTwoInts |> dispatch
-
-    setPopupTwoInts (FirstInt,None) (int64 0)
-    setPopupTwoInts (SecondInt, None) 0
-    
+let dialogPopupVS dispatch =
     fun (dialogData : PopupDialogData) ->
         let goodLabel =
-                getText dialogData
-                |> Seq.toList
-                |> List.tryHead
-                |> function | Some ch when  System.Char.IsLetter ch -> true | Some ch -> false | None -> true
+            match textToFloatValue (getText dialogData) with
+            |Some _ -> true
+            |None -> false
+        
+        let placeholderV = "0.0V"
+        let placeholderF = "0Hz"
+        
+        let before1 = 
+            match dialogData.VSType with
+            |Some "Sine" -> "Amplitude (V)" |> str
+            |Some "Pulse" -> "V1 (V)" |> str
+            | _ -> "DC Voltage value (V)" |> str
+        let before2 = 
+            match dialogData.VSType with
+            |Some "Sine" -> "DC Offset (V)" |> str
+            |Some "Pulse" -> "V2 (V)" |> str
+            | _ -> "DC Voltage value (V)" |> str
+        let before3 = 
+            match dialogData.VSType with
+            |Some "Sine" 
+            |Some "Pulse" -> "Frequency (F)" |> str
+            | _ -> "DC Voltage value (V)" |> str
+
+
+        
+        let secondInput = 
+            match dialogData.VSType with
+            |Some "Sine" |Some "Pulse" ->
+                [
+                    br []
+                    before2
+                    Input.text [
+                        Input.Props [OnPaste preventDefault; AutoFocus true; SpellCheck false]
+                        Input.Placeholder placeholderV
+                        Input.OnChange (getTextEventValue >> Some >> SetPopupDialogText2 >> dispatch)
+                    ]
+                    br []]
+            |_ -> []
+
+        let thirdInput = 
+            match dialogData.VSType with
+            |Some "Sine" | Some "Pulse" ->
+                [
+                br []
+                before3
+                Input.text [
+                Input.Props [OnPaste preventDefault; AutoFocus true; SpellCheck false]
+                Input.Placeholder placeholderF
+                Input.OnChange (getTextEventValue >> Some >> SetPopupDialogText3 >> dispatch)
+                ]]
+            |_ -> []
+        
         div [] [
             Label.label [] [ str "Voltage Source Type" ]
             Label.label [ ]
                 [Select.select []
                 [ select [(OnChange(fun option -> 
-                    printfn "Value is: %s" option.Value))]
-                    //Sheet (SheetT.Msg.SetDebugDevice option.Value) |> dispatch  ))]
-                                
+                    printfn "Value is: %s" option.Value
+                    SetPopupDialogVSType (Some option.Value) |> dispatch))]
                     ([option [Value "DC";Selected true] [str ("DC")]] @ [option [Value "Sine"] [str "Sine"] ] @ [option [Value "Pulse"] [str "Pulse"] ])
                     ]
                 ]
-            br []
-
-            beforeText dialogData
+            before1
             Input.text [
-                Input.Props [OnPaste preventDefault; AutoFocus true; SpellCheck false]
-                Input.Placeholder placeholder
+                Input.Props [AutoFocus true; SpellCheck false]
+                Input.Placeholder placeholderV
                 Input.OnChange (getTextEventValue >> Some >> SetPopupDialogText >> dispatch)
             ]
-            span [Style [FontStyle "Italic"; Color "Red"]; Hidden goodLabel] [str "Name must start with a letter"]            
-            br []
-            //br []
-            //beforeInt dialogData
-            //br []
-            //Input.number [
-            //    Input.Props [OnPaste preventDefault; Style [Width "60px"]]
-            //    Input.DefaultValue <| sprintf "%d" intDefault
-            //    Input.OnChange (getIntEventValue >> Some >> SetPopupDialogInt >> dispatch)
-            //]
+            span [Style [FontStyle "Italic"; Color "Red"]; Hidden goodLabel] [str "Invalid number format"]            
+            div [] secondInput
+            div [] thirdInput
         ]
+
+        
 
 /// Create the body of a dialog Popup with both text and int.
 let dialogPopupBodyIntAndText beforeText placeholder beforeInt intDefault dispatch =

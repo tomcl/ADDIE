@@ -293,18 +293,18 @@ let update (msg : Msg) oldModel =
                     }}, Cmd.none
     | SetPopupDialogText text ->
         set (popupDialogData_ >-> text_) text model, Cmd.none
+    | SetPopupDialogText2 text ->
+        set (popupDialogData_ >-> text2_) text model, Cmd.none
+    | SetPopupDialogText3 text ->
+        set (popupDialogData_ >-> text3_) text model, Cmd.none
+    | SetPopupDialogVSType tp ->
+        set (popupDialogData_ >-> vsType_) tp model, Cmd.none
     | SetPopupDialogBadLabel isBad ->
         set (popupDialogData_ >-> badLabel_) isBad model, Cmd.none
     | SetPopupDialogInt int ->
         set (popupDialogData_ >-> int_) int model, Cmd.none
     | SetPopupDialogInt2 int ->
         set (popupDialogData_ >-> int2_) int model, Cmd.none
-    | SetPopupDialogTwoInts data ->
-        { model with PopupDialogData =
-                        match data with
-                        | n, FirstInt,_ ->  {model.PopupDialogData with Int  = Option.map int32 n}
-                        | n, SecondInt, optText -> {model.PopupDialogData with Int2 = n}
-        }, Cmd.none
     | CloseDiagramNotification ->
         { model with Notifications = {model.Notifications with FromDiagram = None} }, Cmd.none
     | SetFilesNotification n ->

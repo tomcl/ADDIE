@@ -76,10 +76,13 @@ let init() = {
     PopupDialogData = {
         ProjectPath = ""
         Text = None
+        Text2 = None
+        Text3 = None
         Int = None
         Int2 = None
         VoltageSource = None
         BadLabel = false
+        VSType= None
     }
     Notifications = {
         FromDiagram = None

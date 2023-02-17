@@ -254,14 +254,11 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
 
 
     /// to deal with the label
-    let addComponentLabel (comp: Component) transform colour = 
+    let addComponentLabel (compLabel: string) transform labelType colour = 
         let weight = Constants.componentLabelStyle.FontWeight // bold or normal
         let style = {Constants.componentLabelStyle with FontWeight = weight}
         let box = symbol.LabelBoundingBox
-        let margin = 
-            match comp.Type with
-            | IOLabel -> Constants.thinComponentLabelOffsetDistance
-            | _ -> Constants.componentLabelOffsetDistance
+        let margin = Constants.componentLabelOffsetDistance
 
         // uncomment this to display label bounding box corners for testing new fonts etc.
         (*let dimW = {X=box.W;Y=0.}
@@ -271,8 +268,17 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
             |> List.map (fun c -> 
                 let c' = c - symbol.Pos
                 makeCircle (c'.X) (c'.Y) {defaultCircle with R=3.})*)
-        let pos = box.TopLeft - symbol.Pos + {X=margin;Y=margin} + Constants.labelCorrection
-        let text = addStyledText {style with DominantBaseline="hanging"} pos comp.Label
+        let p = box.TopLeft - symbol.Pos + {X=margin;Y=margin} + Constants.labelCorrection
+        let pos =
+            match labelType with
+            |NameLabel -> p
+            |NumberLabel ->
+                match transform.Rotation with
+                |Degree0 -> p + {X=0.;Y=(2.*box.H)}
+                |Degree90 -> p + {X=(2.*box.W);Y=0.}
+                |Degree180 -> p + {X=0.;Y=(-2.*box.H)}
+                |Degree270 -> p + {X=(-2.*box.W);Y=0.}
+        let text = addStyledText {style with DominantBaseline="hanging"} pos compLabel
         match colour with
         | "lightgreen" ->
             let x,y = pos.X - margin*0.8, pos.Y - margin*0.8
@@ -309,7 +315,14 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
         |Inductor (v,s) -> if s<>"" then (s + "H") else string v + "H"
         |Resistor (v,s) -> if s<>"" then (s + omegaString) else string v + omegaString
         |CurrentSource (v,s) -> if s<>"" then (s + "A") else string v + "A"
+        |VoltageSource (DC v) -> string v + "V"
+        |VoltageSource (Sine (v,_,_)) |VoltageSource(Pulse (v,_,_)) -> string v + "V"
         |_ -> ""
+   
+    let doubleRotate (transform:STransform) = 
+        match transform.Rotation with
+        |Degree0 -> {transform with Rotation=Degree180}
+        |_ -> transform
 
 
     // Put everything together 
@@ -321,7 +334,8 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
                         "middle" 
                         "bold" 
                         (legendFontSize comp.Type))
-    |> List.append (addComponentLabel comp transform labelcolour)
+    |> List.append (addComponentLabel comp.Label transform NameLabel labelcolour)
+    //|> List.append (addComponentLabel componentValue transform NumberLabel labelcolour)
     |> List.append (drawMovingPortTarget symbol.MovingPortTarget symbol points)
     |> List.append (createdSymbol)
 
