@@ -20,6 +20,7 @@ group Electron
 	nuget Fulma
 	nuget Fulma.Extensions.Wikiki.Tooltip
 	nuget Fulma.Extensions.Wikiki.Slider
+	nuget Feliz.Plotly
 
 group Testing
 	source https://api.nuget.org/v3/index.json

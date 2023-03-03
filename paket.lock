@@ -3,6 +3,7 @@ RESTRICTION: == netcoreapp3.1
 GROUP Electron
 NUGET
   remote: https://api.nuget.org/v3/index.json
+    Fable.AST (4.2.1) - restriction: >= netstandard2.0
     Fable.Browser.Blob (1.2) - restriction: >= netstandard2.0
       Fable.Core (>= 3.0) - restriction: >= netstandard2.0
       FSharp.Core (>= 4.7.2) - restriction: >= netstandard2.0
@@ -32,7 +33,7 @@ NUGET
       Fable.Browser.Event (>= 1.5) - restriction: >= netstandard2.0
       Fable.Core (>= 3.0) - restriction: >= netstandard2.0
       FSharp.Core (>= 4.7.2) - restriction: >= netstandard2.0
-    Fable.Core (3.7.1) - restriction: >= netstandard2.0
+    Fable.Core (3.7.1)
     Fable.Electron (6.0)
       Fable.Browser.Dom (>= 1.0) - restriction: >= netstandard2.0
       Fable.Core (>= 3.0) - restriction: >= netstandard2.0
@@ -80,6 +81,19 @@ NUGET
       Fable.Core (>= 3.1.5) - restriction: >= netstandard2.0
       Fable.Parsimmon (>= 4.0) - restriction: >= netstandard2.0
       FSharp.Core (>= 4.7) - restriction: >= netstandard2.0
+    Feliz (1.68)
+      Fable.Core (>= 3.1.5) - restriction: >= netstandard2.0
+      Fable.React (>= 7.4) - restriction: >= netstandard2.0
+      Feliz.CompilerPlugins (>= 1.10) - restriction: >= netstandard2.0
+      FSharp.Core (>= 4.7.2) - restriction: >= netstandard2.0
+    Feliz.CompilerPlugins (2.0) - restriction: >= netstandard2.0
+      Fable.AST (>= 4.2.1) - restriction: >= netstandard2.0
+      FSharp.Core (>= 4.7.2) - restriction: >= netstandard2.0
+    Feliz.Plotly (2.1)
+      Fable.Browser.Dom (>= 2.4.4 < 3.0)
+      Fable.Core (>= 3.2.7 < 4.0)
+      Feliz (>= 1.46 < 2.0)
+      FSharp.Core (>= 4.7.2)
     FSharp.Core (6.0.5) - redirects: force
     Fulma (2.16)
       Fable.Core (>= 3.2.6) - restriction: >= netstandard2.0

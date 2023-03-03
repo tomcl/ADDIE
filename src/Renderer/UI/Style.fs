@@ -75,7 +75,7 @@ let rightSectionStyle model =
     ]
 
 let bottomSectionStyle model = 
-    let height = "30%"
+    let height = "40%"
     Style [
         Position PositionOptions.Fixed
         Bottom "0px"

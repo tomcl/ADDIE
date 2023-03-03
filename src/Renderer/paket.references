@@ -14,3 +14,4 @@ group Electron
 	Fulma.Extensions.Wikiki.Tooltip
 	Fulma.Extensions.Wikiki.Slider
 	Fable.SimpleJson
+	Feliz.Plotly

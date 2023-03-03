@@ -15,6 +15,8 @@ open Fable.Core
 open Fable.Core.JsInterop
 open Browser.Dom
 
+open Feliz
+open Feliz.Plotly
 
 
 //------------------Buttons overlaid on Draw2D Diagram----------------------------------//
@@ -352,7 +354,29 @@ let displayView model dispatch =
          
         div [HTMLAttr.Id "BottomSection"; bottomSectionStyle model; Hidden false]
             [ 
-                span [] [str "Temp"]            
-            
+                span [] [str "Temp"] 
+                div [] [
+                Plotly.plot [
+                    plot.traces [
+                        traces.scatter [
+                            scatter.x [ 1; 2; 3; 4 ]
+                            scatter.y [ 10; 15; 13; 17 ]
+                        ]
+                        traces.scatter [
+                            scatter.x [ 1; 2; 3; 4 ]
+                            scatter.y [ 16; 5; 11; 9 ]
+                        ]
+                        traces.scatter [
+                            scatter.x [ 1; 2; 3; 4 ]
+                            scatter.y [ 12; 9; 15; 12 ]
+                            scatter.mode [
+                                scatter.mode.lines
+                                scatter.mode.markers
+                            ]
+                        ]
+                    ]
+                    plot.layout [layout.height 300]
+                ]
+                ]
             ]]
 
