@@ -48,7 +48,7 @@ let private textValueFormField isRequired name defaultValue isBad onChange =
                 Style [ Width "200px"]; ]
             Input.DefaultValue defaultValue
             Input.CustomClass "www"
-            Input.Placeholder (if isRequired then "Value (required)" else "Value (optional)")
+            Input.Placeholder (if isRequired then "Value (required)" else "Value    (optional)")
             Input.OnChange (getTextEventValue >> onChange)
         ]
         br []
@@ -303,7 +303,6 @@ let private makeSliderField model (comp:Component) text dispatch =
             ]
     
     ]
-
 
 
 let private makeValueField model (comp:Component) text dispatch =

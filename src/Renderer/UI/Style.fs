@@ -74,6 +74,23 @@ let rightSectionStyle model =
         //UserSelect UserSelectOptions.None
     ]
 
+let bottomSectionStyle model = 
+    let height = "30%"
+    Style [
+        Position PositionOptions.Fixed
+        Bottom "0px"
+        //Top ((string (getHeaderHeight+3.)) + "px" )
+        Height  height //(sprintf "calc(100%s - %s)" "%" headerHeight) // WindowSize - headerHeight
+        Width "100%"
+        OverflowY OverflowOptions.Visible
+        //OverflowY OverflowOptions.Auto
+        BorderTop "1px solid lightgray"
+        UserSelect UserSelectOptions.None
+        ZIndex 31
+        BackgroundColor "white"
+        //UserSelect UserSelectOptions.None
+    ]
+
 let belowHeaderStyle headerSize =
     Style [
         OverflowY OverflowOptions.Auto

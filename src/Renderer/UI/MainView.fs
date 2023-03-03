@@ -348,4 +348,11 @@ let displayView model dispatch =
             [ 
                 dividerbar model dispatch
                 // tabs for different functions
-                viewRightTabs canvasState model dispatch ] ]
+                viewRightTabs canvasState model dispatch ] 
+         
+        div [HTMLAttr.Id "BottomSection"; bottomSectionStyle model; Hidden false]
+            [ 
+                span [] [str "Temp"]            
+            
+            ]]
+
