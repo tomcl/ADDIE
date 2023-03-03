@@ -19,6 +19,7 @@ group Electron
 	nuget FSharp.Core  redirects:force
 	nuget Fulma
 	nuget Fulma.Extensions.Wikiki.Tooltip
+	nuget Fulma.Extensions.Wikiki.Slider
 
 group Testing
 	source https://api.nuget.org/v3/index.json

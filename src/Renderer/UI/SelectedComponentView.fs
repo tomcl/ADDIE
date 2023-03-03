@@ -9,6 +9,7 @@ module SelectedComponentView
 open Fulma
 open Fable.React
 open Fable.React.Props
+open Fulma.Extensions.Wikiki
 
 open JSHelpers
 open ModelType
@@ -47,7 +48,7 @@ let private textValueFormField isRequired name defaultValue isBad onChange =
                 Style [ Width "200px"]; ]
             Input.DefaultValue defaultValue
             Input.CustomClass "www"
-            Input.Placeholder (if isRequired then "Name (required)" else "Name (optional)")
+            Input.Placeholder (if isRequired then "Value (required)" else "Value (optional)")
             Input.OnChange (getTextEventValue >> onChange)
         ]
         br []
@@ -150,6 +151,14 @@ let private int64FormFieldNoMin name (defaultValue:int64) (currentText:string op
     ]
 
 
+let private sliderField min max v onChange =
+    Field.div [] [
+        Slider.slider [ Slider.OnChange (getTextEventValue >> onChange)]
+        div [ ]
+            [ str (string v) ]
+        ]
+        
+
 let private makeScaleAdjustmentField model (comp:Component) dispatch =
     let sheetDispatch sMsg = dispatch (Sheet sMsg)
     
@@ -241,6 +250,60 @@ let constantDialogWithDefault (w,cText) dialog =
 //                        dispatch <| SetPopupDialogText (Some txt))
                 
 //            ]              
+
+let private makeSliderField model (comp:Component) text dispatch =
+    let sheetDispatch sMsg = dispatch (Sheet sMsg)
+    
+    let onchange = (
+        fun newValue ->
+            if textToFloatValue newValue = None
+            then
+                let props = errorPropsNotification "Invalid number value"
+                dispatch <| SetPropertiesNotification props
+            else
+                model.Sheet.ChangeRLCIValue sheetDispatch (ComponentId comp.Id) (Option.get (textToFloatValue newValue)) newValue
+                //SetComponentLabelFromText model comp text' // change the JS component label
+                let lastUsedWidth = model.LastUsedDialogWidth 
+                dispatch (ReloadSelectedComponent (lastUsedWidth)) // reload the new component
+                dispatch <| SetPopupDialogText (Some newValue)
+                dispatch ClosePropertiesNotification
+    )
+
+    let extractedValue =
+        match comp.Type with
+        | Resistor (v,_) | Capacitor (v,_) | Inductor (v,_) | CurrentSource (v,_) -> v
+        | _ -> failwithf "makeNumberOfBitsField called with invalid component"
+
+    let min,max,step =
+        match extractedValue with
+        |v when (v>=0.000000001 && v<0.00000001) -> 0.000000001,0.0000000099,0.0000000001
+        |v when (v>=0.00000001 && v<0.0000001) -> 0.00000001,0.000000099,0.000000001
+        |v when (v>=0.0000001 && v<0.000001) -> 0.0000001,0.00000099,0.00000001
+        |v when (v>=0.000001 && v<0.00001) -> 0.000001,0.0000099,0.0000001
+        |v when (v>=0.00001 && v<0.0001) -> 0.00001,0.000099,0.000001
+        |v when (v>=0.0001 && v<0.001) -> 0.0001,0.00099,0.00001
+        |v when (v>=0.001 && v<0.01) -> 0.001,0.0099,0.0001
+        |v when (v>=0.01 && v<0.1) -> 0.01,0.099,0.001
+        |v when (v>=0.1 && v<1) -> 0.1,0.099,0.01
+        |v when (v>=1 && v<10) -> 1,9.9,0.1
+        |v when (v>=10 && v<100) -> 10,99,1
+        |v when (v>=100 && v<1000) -> 100,999,10
+        |v when (v>=1000 && v<10000) -> 1000,9999,100
+        |v when (v>=10000 && v<100000) -> 10000,99999,1000
+        |v when (v>=100000 && v<1000000) -> 100000,999999,10000
+        |_ -> 1,10,0.01
+    
+    div [] [
+        Slider.slider [ 
+            Slider.OnChange (getTextEventValue >> onchange)
+            Slider.DefaultValue extractedValue
+            Slider.Min min
+            Slider.Max max
+            Slider.Step step
+            ]
+    
+    ]
+
 
 
 let private makeValueField model (comp:Component) text dispatch =
@@ -336,6 +399,7 @@ let private makeExtraInfo model (comp:Component) text dispatch : ReactElement =
         div []
             [
                 makeValueField model comp text dispatch
+                makeSliderField model comp text dispatch
             ]
     | _ -> div [] []
 
@@ -483,4 +547,5 @@ let viewSelectedComponent (model: ModelType.Model) dispatch =
                         [str "Edit Description"]
                     ]
         |None -> null
+
 
