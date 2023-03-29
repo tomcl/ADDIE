@@ -78,6 +78,7 @@
     "core-js": "^3",
     "cross-zip": "^3",
     "font-awesome": "^4",
+    "mathjs": "^11.7.0",
     "plotly.js": "^2.18.2",
     "react-plotly.js": "^2.6.0",
     "react-tooltip": "^4",

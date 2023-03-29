@@ -12,7 +12,9 @@
   <ItemGroup>
     <!-- Common definitions -->
 	  
-    <!--<Compile Include="Common\MathJS.fs" />-->
+    <!-- <Compile Include="Common\DecimalJS.fs" /> -->
+    <!-- <Compile Include="Common\MathJS.fs" /> -->
+	  
     <Compile Include="Common\EEExtensions.fs" />
     <Compile Include="Common\Optics.fs" />
     <Compile Include="Common\ElectronAPI.fs" />

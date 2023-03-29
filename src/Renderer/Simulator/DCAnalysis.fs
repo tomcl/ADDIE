@@ -1,6 +1,22 @@
 ﻿module DCAnalysis
 
 open CommonTypes
+open Fable.Core
+
+type MathsJS =
+    abstract complex : float * float -> obj
+    abstract reshape : ResizeArray<float> * ResizeArray<int> -> obj
+    abstract inv : obj -> obj 
+    abstract multiply : obj*obj -> ResizeArray<float>
+    abstract re: obj -> float
+    abstract im: obj -> float
+
+[<ImportAll("mathjs")>]
+let Maths: MathsJS = jsNative
+
+[<Emit("$0 * $1")>]
+let matMul (x: obj) (y: obj): ResizeArray<float> = jsNative
+
 
 /// Helper function to find the components between two nodes
 /// using the NodeToCompsList
@@ -185,6 +201,31 @@ let modifiedNodalAnalysis (comps,conns) =
         Array.create n 0.0
         |> Array.mapi (fun i v -> (calcVectorBElement (i+1) nodeLst))
     
+
+    ////////  TESTS ///////
+    let arr1 = [|1.|]
+    let arr2 = [|0.4; -0.4; 0.; -0.4; 1.; -0.2; 0.; -0.2; 0.4|]
+    let t = ResizeArray(arr2)
+    let arrr = [|arr1; arr1; arr1|]
+
+    let reshaped = Maths.reshape (t, ResizeArray([|3; 3|]))
+    let res = Maths.inv reshaped 
+
+    let currVec = ResizeArray([|5.; 0.; 0.|])
+    
+    let res2 = Maths.multiply (res, currVec)
+
+    printfn "inv worked: %A" res2
+    
+    let testCompl = Maths.complex (3.5, 1.)
+
+    printfn "testComplex %A" testCompl
+
+    let realCompl = Maths.re testCompl
+
+    printfn "Extracted float from complex: %f" realCompl
+    /////////////////////////////
+
     vecB
 
 
