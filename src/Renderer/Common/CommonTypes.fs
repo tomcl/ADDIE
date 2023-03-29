@@ -220,9 +220,6 @@ module CommonTypes
         with member this.Centre() = this.TopLeft + {X=this.W/2.; Y=this.H/2.}
    
    
-    type LabelType =
-        | NameLabel
-        | NumberLabel
     
     type ScaleAdjustment =
         | Horizontal
@@ -392,87 +389,11 @@ module CommonTypes
     [<Erase>]
     type OutputPortNumber = | OutputPortNumber of int
 
-    (*---------------------------Types for wave Simulation----------------------------------------*)
-
-    // The "NetList" types contain all the circuit from Diagram in an abstracted form that
-    // removed layout info and connections as separate entities. However, connection Ids are
-    // available as fileds in components for interface to the Diagram conmponents
-
-    /// The driven (output) side of a connection.
-    /// This is stored with a NLComponent output port number.
-    /// Note that one output port can drive multiple NLTargets.
-    type NLTarget = {
-        TargetCompId: ComponentId
-        InputPort: InputPortNumber
-        TargetConnId: ConnectionId
-        }
-
-    /// The driving (input) side of a connection.
-    /// This is stored with a NLComponent input port number
-    type NLSource = {
-        SourceCompId: ComponentId
-        OutputPort: OutputPortNumber
-        SourceConnId: ConnectionId
-        }
-
-    /// Components with inputs and outputs directly referencing other components.
-    /// Output ports can connect to multiple components, or none.
-    /// Input ports connect to a single driver, or nothing.
-    type NetListComponent = {
-        Id : ComponentId
-        Type : ComponentType
-        Label : string
-        // List of input port numbers, and single mapped driving output port and component.
-        Inputs : Map<InputPortNumber, NLSource option>
-        // Mapping from each output port number to all of the input ports and
-        // Components connected to that port.
-        Outputs : Map<OutputPortNumber, NLTarget list>
-     }
-
-    /// Circuit topology with connections abstracted away.
-    /// Good for Wavesim calculations.
-    type NetList = Map<ComponentId,NetListComponent>
-
+    
     (*-----------------------------------------------------------------------------*)
     // Types used within waveform Simulation code, and for saved wavesim configuartion
 
     
-    /// Uniquely identifies a wave by the component it comes from, and the port on which that
-    /// wave is from. Two waves can be identical but have a different index (e.g. a wave with
-    /// PortType Input must be driven by another wave of PortType Output).
-    type WaveIndexT = {
-        SimArrayIndex: int
-        Id: FComponentId
-        PortType: PortType
-        PortNumber: int
-    }
-
-
-    
-
-
-    /// Info saved by Wave Sim.
-    /// This info is not necessarilu uptodate with deletions or additions in the Diagram.
-    /// The wavesim code processing this will not fail if non-existent nets are referenced.
-    type SavedWaveInfo = {
-        /// Waves which are selected to be shown in the waveform viewer
-        SelectedWaves: WaveIndexT list option
-        /// Radix in which values are displayed in the wave simulator
-        Radix: NumberBase option
-        /// Width of the waveform column
-        WaveformColumnWidth: float option
-        /// Number of visible cycles in the waveform column
-        ShownCycles: int option
-        /// RAMs which are selected to be shown in the RAM tables
-        SelectedRams: Map<ComponentId, string> option
-        SelectedFRams: Map<FComponentId, string> option
-
-        /// The below fields are legacy values and no longer used.
-        ClkWidth: float option
-        Cursor: uint32 option
-        LastClk: uint32 option
-        DisplayedPortIds: string array option
-    }
 
     /// Info regarding sheet saved in the .dgm file
     type SheetInfo = {

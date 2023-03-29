@@ -32,6 +32,19 @@ let addLegendText (pos: XYPos) (name:string) alignment weight size =
     | _ ->
         failwithf "addLegendText does not work with more than two lines demarcated by ,"
 
+let addCompValue (symbol: Symbol) (name:string)  weight size =
+    let symbolPos = {X=0.;Y=0.}
+    let h,w = getRotatedHAndW symbol
+    let pos,align = 
+        match symbol.STransform.Rotation with
+        |Degree0 |Degree180 -> symbolPos + {X=(w/2.);Y=h+10.},"middle"
+        |Degree270 |Degree90 -> symbolPos + {X=(w+3.);Y=0.75*h},"left"
+        //|Degree90 -> symbolPos + {X=(-10.);Y=0.75*h},"right"
+    
+    let text =
+            {defaultText with TextAnchor = align; FontWeight = weight; FontSize = size}
+    [makeText pos.X pos.Y name text]
+    
 
 let addStyledText (style:Text) (pos: XYPos) (name: string) = 
     makeText pos.X pos.Y name style
@@ -214,15 +227,15 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
         | CurrentSource _ -> 
             match transform.Rotation with 
             | Degree0 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 30 45 30 15 defaultLine; makeLine 20 25 30 15 defaultLine; makeLine 40 25 30 15 defaultLine]
-            | Degree90 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 15 30 45 30 defaultLine; makeLine 35 20 45 30 defaultLine; makeLine 35 40 45 30 defaultLine]
+            | Degree90 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 45 30 15 30 defaultLine; makeLine 25 40 15 30 defaultLine; makeLine 25 20 15 30 defaultLine]
             | Degree180 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 30 15 30 45 defaultLine; makeLine 20 35 30 45 defaultLine; makeLine 40 35 30 45 defaultLine]
-            | Degree270 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 45 30 15 30 defaultLine; makeLine 25 40 15 30 defaultLine; makeLine 25 20 15 30 defaultLine]
+            | Degree270 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 15 30 45 30 defaultLine; makeLine 35 20 45 30 defaultLine; makeLine 35 40 45 30 defaultLine]
         | VoltageSource _ -> 
             match transform.Rotation with
             | Degree0 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 22.5 50 37.5 50 defaultLine; makeLine 22.5 15 37.5 15 defaultLine; makeLine 30 22.5 30 7.5 defaultLine]
-            | Degree90 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 40 30 55 30 defaultLine; makeLine 47.5 37.5 47.5 22.5 defaultLine; makeLine 12.5 37.5 12.5 22.5 defaultLine]
+            | Degree90 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 45 37.5 45 22.5 defaultLine; makeLine 15 37.5 15 22.5 defaultLine; makeLine 7.5 30 22.5 30 defaultLine]
             | Degree180 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 22.5 45 37.5 45 defaultLine; makeLine 30 37.5 30 52.5 defaultLine; makeLine 22.5 15 37.5 15 defaultLine ]
-            | Degree270 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 45 37.5 45 22.5 defaultLine; makeLine 15 37.5 15 22.5 defaultLine; makeLine 7.5 30 22.5 30 defaultLine]
+            | Degree270 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 40 30 55 30 defaultLine; makeLine 47.5 37.5 47.5 22.5 defaultLine; makeLine 12.5 37.5 12.5 22.5 defaultLine]
         |Capacitor _ ->
             match transform.Rotation with
             | Degree0 | Degree180 -> [makeLine 0 15 25 15 capacitorLine; makeLine 25 0 25 30 capacitorLine;makeLine 35 0 35 30 capacitorLine;makeLine 35 15 60 15 capacitorLine]
@@ -254,7 +267,7 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
 
 
     /// to deal with the label
-    let addComponentLabel (compLabel: string) transform labelType colour = 
+    let addComponentLabel (compLabel: string) transform colour = 
         let weight = Constants.componentLabelStyle.FontWeight // bold or normal
         let style = {Constants.componentLabelStyle with FontWeight = weight}
         let box = symbol.LabelBoundingBox
@@ -270,14 +283,12 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
                 makeCircle (c'.X) (c'.Y) {defaultCircle with R=3.})*)
         let p = box.TopLeft - symbol.Pos + {X=margin;Y=margin} + Constants.labelCorrection
         let pos =
-            match labelType with
-            |NameLabel -> p
-            |NumberLabel ->
-                match transform.Rotation with
-                |Degree0 -> p + {X=0.;Y=(2.*box.H)}
-                |Degree90 -> p + {X=(2.*box.W);Y=0.}
-                |Degree180 -> p + {X=0.;Y=(-2.*box.H)}
-                |Degree270 -> p + {X=(-2.*box.W);Y=0.}
+            match transform.Rotation with
+            |Degree0 -> p
+            |Degree90 -> p + {X=0.; Y=(-box.H)}
+            |Degree180 -> p + {X=0.;Y=(-2.*box.H)}
+            |Degree270 -> p + {X=0.; Y=(-box.H)}
+        
         let text = addStyledText {style with DominantBaseline="hanging"} pos compLabel
         match colour with
         | "lightgreen" ->
@@ -328,13 +339,14 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
     // Put everything together 
     (drawPorts PortType.Output comp.IOPorts showPorts symbol)
     |> List.append (drawPortsText comp.IOPorts (portNames comp.Type) symbol)
-    |> List.append (addLegendText 
-                        (legendOffset w (2.*h) symbol) 
-                        ("," + componentValue) 
-                        "middle" 
-                        "bold" 
-                        (legendFontSize comp.Type))
-    |> List.append (addComponentLabel comp.Label transform NameLabel labelcolour)
+    //|> List.append (addLegendText 
+    //                    (legendOffset w (2.*h) symbol) 
+    //                    ("," + componentValue) 
+    //                    "middle" 
+    //                    "bold" 
+    //                    (legendFontSize comp.Type))
+    |> List.append (addCompValue symbol componentValue "bold" (legendFontSize comp.Type))
+    |> List.append (addComponentLabel comp.Label transform labelcolour)
     //|> List.append (addComponentLabel componentValue transform NumberLabel labelcolour)
     |> List.append (drawMovingPortTarget symbol.MovingPortTarget symbol points)
     |> List.append (createdSymbol)

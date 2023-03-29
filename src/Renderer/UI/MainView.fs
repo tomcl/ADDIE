@@ -10,6 +10,7 @@ open FileMenuView
 open Sheet.SheetInterface
 open DrawModelType
 open CommonTypes
+open DCAnalysis
 
 open Fable.Core
 open Fable.Core.JsInterop
@@ -110,9 +111,21 @@ let makeSelectionChangeMsg (model:Model) (dispatch: Msg -> Unit) (ev: 'a) =
 // -- Create View
 
 let viewSimSubTab canvasState model dispatch =
+    
     match model.SimSubTabVisible with
     | DCsim -> 
-        div [] [str "placeholder"]
+        div [] 
+            [ Button.button 
+                [ 
+                    Button.OnClick(fun _ -> 
+                        let temp = DCAnalysis.modifiedNodalAnalysis canvasState
+                        (printfn "nodes: %A" temp)) 
+                    Button.Color IsInfo
+                ] 
+                [ str "Print Nodes" ] 
+                                  
+            
+            ]
     | ACsim ->
         div [] [str "placeholder"]
     | TimeSim -> 
@@ -352,7 +365,7 @@ let displayView model dispatch =
                 // tabs for different functions
                 viewRightTabs canvasState model dispatch ] 
          
-        div [HTMLAttr.Id "BottomSection"; bottomSectionStyle model; Hidden false]
+        div [HTMLAttr.Id "BottomSection"; bottomSectionStyle model; Hidden true]
             [ 
                 span [] [str "Temp"] 
                 div [] [
