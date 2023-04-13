@@ -1,21 +1,7 @@
 ﻿module DCAnalysis
 
 open CommonTypes
-open Fable.Core
-
-type MathsJS =
-    abstract complex : float * float -> obj
-    abstract reshape : ResizeArray<float> * ResizeArray<int> -> obj
-    abstract inv : obj -> obj 
-    abstract multiply : obj*obj -> ResizeArray<float>
-    abstract re: obj -> float
-    abstract im: obj -> float
-
-[<ImportAll("mathjs")>]
-let Maths: MathsJS = jsNative
-
-[<Emit("$0 * $1")>]
-let matMul (x: obj) (y: obj): ResizeArray<float> = jsNative
+open MathJsHelpers
 
 
 /// Helper function to find the components between two nodes
@@ -26,6 +12,16 @@ let findComponentsBetweenNodes (node1:int) (node2:int) (nodeToCompsList:(Compone
 
     comps1
     |> List.filter (fun (c1,no) -> (List.exists (fun (c2:Component,no) -> c1.Id = c2.Id) comps2))
+
+let findConnectionsOnNode (nodeToCompsList:(Component*int option) list list) (index:int) (conns:Connection list) =
+    
+    let nodeComps = nodeToCompsList[index]
+    let nodeCompIds = nodeComps |> List.map (fun (c,pNo) -> c.Id)
+
+    conns
+    |> List.filter (fun conn ->
+        List.exists (fun id -> id=conn.Source.HostId) nodeCompIds && List.exists (fun id -> id=conn.Target.HostId) nodeCompIds
+    )
 
 
 
@@ -115,12 +111,16 @@ let createNodetoCompsList(comps:Component list,conns: Connection list) =
     searchCurrentCanvasState [] [ground.IOPorts[0]] [[]]
 
 
+/// Calculates the elements of the vector B of MNA
+/// which is of the form:
+/// [I1,I2,...,In,Va,Vb,...,Vm] 
+/// n -> number of nodes, m number of Voltage Sources
 let calcVectorBElement row (nodeToCompsList:(Component*int option) list list) =
     let nodesNo = List.length nodeToCompsList
     
     let findNodeTotalCurrent currentNode = 
         (0.0, currentNode) ||> List.fold (fun s (comp,no) ->
-            printfn "ROW= %i, comp= %A, no= %A" row comp no
+            //printfn "ROW= %i, comp= %A, no= %A" row comp no
             match (comp.Type,no) with
             |CurrentSource (v,_),Some 0 -> s+v
             |CurrentSource (v,_), Some 1 -> s-v
@@ -140,11 +140,12 @@ let calcVectorBElement row (nodeToCompsList:(Component*int option) list list) =
         )
         |> List.distinctBy (fun c->c.Id)
                 
+
     if row < nodesNo then
         let currentNode = nodeToCompsList[row]
         findNodeTotalCurrent currentNode
     else
-        printfn "VoltageSources %A" allDCVoltageSources
+        //printfn "VoltageSources %A" allDCVoltageSources
         allDCVoltageSources[row-nodesNo]
         |> (fun c -> 
             match c.Type with
@@ -153,17 +154,35 @@ let calcVectorBElement row (nodeToCompsList:(Component*int option) list list) =
         )
     
 
-    
-let calcMatrixElementValue row col (nodeToCompsList:(Component*int option) list list) = 
+/// Calculates the value of the MNA matrix at the specified
+/// row and column (Count starts from 1)
+let calcMatrixElementValue row col (nodeToCompsList:(Component*int option) list list) vecB = 
     let findMatrixCompValue (comp,no) =
         match comp.Type with
         |Resistor (v,_) -> (1./v)
+        |Inductor _ |Capacitor _ -> 0.0
         |CurrentSource _ |VoltageSource _ -> 0.0
         |_ -> failwithf "Not Implemented yet"
     
+
+    let findMatrixVoltageValue (comp,no) (dcSources:Component list) col nodesNo =
+        match comp.Type with
+        |VoltageSource (DC v) ->
+            match comp.Id = dcSources[col-nodesNo].Id with
+            |true ->
+                match (comp.Type,no) with
+                |VoltageSource (DC (v)),Some 1 -> -1.0
+                |VoltageSource (DC (v)), Some 0 -> 1.0
+                |_ -> failwithf "Unable to identify port of Voltage Source"
+            |false -> 0.0
+        |_ -> 0.0
+                
+    
+
     let nodesNo = List.length nodeToCompsList
     
-    if (row < nodesNo) then
+    if (row < nodesNo && col < nodesNo) then
+    // conductance matrix
         if row=col then
             (0.0, nodeToCompsList[row]) 
             ||> List.fold(fun s c ->
@@ -176,15 +195,370 @@ let calcMatrixElementValue row col (nodeToCompsList:(Component*int option) list 
                 s - (findMatrixCompValue c)
             )
     else 
-        if row=col then
+    // extra elements for modified nodal analysis
+        if (row >= nodesNo && col >= nodesNo) then
             0.0
         else
-            0.0 //CONTINUE
+            let allDCVoltageSources = 
+                nodeToCompsList
+                |> List.removeAt 0
+                |> List.collect (fun nodeComps ->
+                    nodeComps
+                    |> List.collect (fun (comp,_) ->
+                        match comp.Type with
+                        |VoltageSource (DC (_)) -> [comp]
+                        |_ -> []
+                    )
+                )
+                |> List.distinctBy (fun c->c.Id)
+
+            if row < nodesNo then
+                (0.0, nodeToCompsList[row])
+                ||> List.fold(fun s c ->
+                    s + (findMatrixVoltageValue c allDCVoltageSources col nodesNo)
+                )            
+            else
+                (0.0, nodeToCompsList[col])
+                ||> List.fold(fun s c ->
+                    s + (findMatrixVoltageValue c allDCVoltageSources row nodesNo)
+                )       
 
 
-let modifiedNodalAnalysis (comps,conns) =
+
+/// DELETE??
+let transformNodeToCompsListForDC (nodeToCompsList: Component list list) =
+    let removeInductor (comp:Component,node1, node2) (lst:Component list list) =
+        let node1Comps = lst[node1]
+        let node2Comps = lst[node2]
+
+        let combined = List.append (List.except [comp] node1Comps) (List.except [comp] node2Comps)
+        
+        lst
+        |> List.updateAt node1 combined
+        |> List.removeAt node2
+
+    let allInductorCompsPerNode =
+        nodeToCompsList
+        |> List.mapi (fun i node ->
+            node |> List.collect (fun comp ->
+                match comp.Type with
+                |Inductor _ -> [(comp,i)]
+                |_ -> []
+            )
+        )
+        |> List.collect id
+
+
+    let grouped = 
+        allInductorCompsPerNode
+        |> List.groupBy (fun (c,n)-> c.Id)
+        |> List.collect (fun (i,l)->
+            match List.length l with
+            |2 ->
+                [(fst l[0], snd l[0], snd l[1])]
+            |_ -> failwithf "Couldn't extract inductor"
+        )
+
+    (nodeToCompsList,grouped)
+    ||> List.fold (fun s v -> 
+        removeInductor v s
+    )
+
+
+let combineGrounds (comps,conns) =
+    let allGrounds = comps |> List.filter (fun c->c.Type = Ground)
+    match List.isEmpty allGrounds with
+    |true -> failwithf "There is no ground in the circuit"
+    |false -> 
+        let mainGround,mainPort = allGrounds[0], allGrounds[0].IOPorts[0]
+        let otherGrounds = List.removeAt 0 allGrounds
+        let otherPortsIds = otherGrounds |> List.map (fun c -> c.IOPorts[0].Id)
+
+        let conns' =
+            conns
+            |> List.map (fun conn->
+                if List.exists (fun i -> i=conn.Source.Id) otherPortsIds then
+                    {conn with Source = mainPort}
+                elif List.exists (fun i -> i=conn.Target.Id) otherPortsIds then
+                    {conn with Target = mainPort}
+                else
+                    conn        
+            )
+
+        (comps,conns')
+
+/// Transforms locally the canvas state to replace all
+/// Inductors by 0-Volts DC Sources (short circuit) for
+/// the MNA to work 
+let shortInductorsForDC (comps,conns) =
+    let comps' =
+        comps
+        |> List.map (fun c->
+            match c.Type with
+            |Inductor _ -> {c with Type = VoltageSource (DC 0.)}
+            |_ -> c
+        )
+    (comps',conns)
+
+//let modifiedNodalAnalysis (comps,conns) =
+    
+//    // transform canvas state for DC Analysis  
+//    let comps',conns' = 
+//        (comps,conns)
+//        |> combineGrounds
+//        |> shortInductorsForDC 
+        
+
+
+//    let nodeLst = createNodetoCompsList (comps',conns')
+    
+//    printfn "node list %A" nodeLst
+
+//    let vs = 
+//        comps'
+//        |> List.filter (fun c-> match c.Type with |VoltageSource _ -> true |_ -> false)
+//        |> List.length
+
+//    let n = List.length nodeLst - 1 + vs
+
+//    let arr = Array.create n 0.0
+//    let matrix = Array.create n arr
+        
+    
+    
+//    let vecB =
+//        Array.create n 0.0
+//        |> Array.mapi (fun i v -> (calcVectorBElement (i+1) nodeLst))
+    
+//    let flattenedMatrix =
+//        matrix
+//        |> Array.mapi (fun i top ->
+//            top
+//            |> Array.mapi (fun j v ->
+//                calcMatrixElementValue (i+1) (j+1) nodeLst vecB
+//            )
+    
+//        )
+//        |> Array.collect (id)
+     
+//    printfn "matrix: %A" flattenedMatrix
+
+//    printfn "vecB: %A" vecB
+
+//    let mul =
+//        safeSolveMatrixVec flattenedMatrix vecB
+
+//    printfn "Solution: %A" mul
+
+//    mul.ToArray(), nodeLst 
+
+
+
+
+
+
+    
+////////  TESTS ///////
+//let arr1 = [|1.;2.;3.;1.;2.;3.;1.;2.;3.|]
+//let arr2 = [|0.4; -0.4; 0.; -0.4; 1.; -0.2; 0.; -0.2; 0.4|]
+//let t = ResizeArray(arr1)
+//let arrr = [|arr1; arr1; arr1|]
+
+//let reshaped = Maths.reshape (t, ResizeArray([|3; 3|]))
+//let res = Maths.inv reshaped 
+
+//let currVec = ResizeArray([|5.; 0.|])
+    
+//let res2 = Maths.multiply (res, currVec)
+
+
+//let d = Maths.det(reshaped)
+
+//printfn "det= %A" d
+
+//printfn "inv worked: %A" res2
+    
+//let testCompl = Maths.complex (3.5, 1.)
+
+//printfn "testComplex %A" testCompl
+
+//let realCompl = Maths.re testCompl
+
+//printfn "Extracted float from complex: %f" realCompl
+/////////////////////////////
+
+
+
+let calcVectorBElement2 row (nodeToCompsList:(Component*int option) list list) =
+    let nodesNo = List.length nodeToCompsList
+    
+    let findNodeTotalCurrent currentNode = 
+        ({Re=0.;Im=0.}, currentNode) ||> List.fold (fun s (comp,no) ->
+            //printfn "ROW= %i, comp= %A, no= %A" row comp no
+            match (comp.Type,no) with
+            |CurrentSource (v,_),Some 0 -> s+{Re=v;Im=0.}
+            |CurrentSource (v,_), Some 1 -> s-{Re=v;Im=0.}
+            |_ -> s
+        )
+
+    let allDCVoltageSources = 
+        nodeToCompsList
+        |> List.removeAt 0
+        |> List.collect (fun nodeComps ->
+            nodeComps
+            |> List.collect (fun (comp,_) ->
+                match comp.Type with
+                |VoltageSource (DC (_)) -> [comp]
+                |_ -> []
+            )
+        )
+        |> List.distinctBy (fun c->c.Id)
+                
+
+    if row < nodesNo then
+        let currentNode = nodeToCompsList[row]
+        findNodeTotalCurrent currentNode
+    else
+        //printfn "VoltageSources %A" allDCVoltageSources
+        allDCVoltageSources[row-nodesNo]
+        |> (fun c -> 
+            match c.Type with
+            |VoltageSource (DC v) -> {Re=v;Im=0.}
+            |_ -> failwithf "Impossible"
+        )
+    
+
+/// Calculates the value of the MNA matrix at the specified
+/// row and column (Count starts from 1)
+let calcMatrixElementValue2 row col (nodeToCompsList:(Component*int option) list list) omega vecB = 
+    let findMatrixCompValue (comp,no) omega =
+        match comp.Type with
+        |Resistor (v,_) -> {Re= (1./v); Im=0.}
+        |Inductor (v,_) -> {Re = 0.; Im= -(1./(v*omega))}
+        |Capacitor (v,_) -> {Re = 0.; Im= (v*omega)}
+        |CurrentSource _ |VoltageSource _ -> {Re = 0.0; Im=0.0}
+        |_ -> failwithf "Not Implemented yet"
+    
+
+    let findMatrixVoltageValue (comp,no) (dcSources:Component list) col nodesNo =
+        match comp.Type with
+        |VoltageSource (DC v) ->
+            match comp.Id = dcSources[col-nodesNo].Id with
+            |true ->
+                match (comp.Type,no) with
+                |VoltageSource (DC (v)),Some 1 -> {Re = -1.0; Im=0.0}
+                |VoltageSource (DC (v)), Some 0 -> {Re = 1.0; Im=0.0}
+                |_ -> failwithf "Unable to identify port of Voltage Source"
+            |false -> {Re = 0.0; Im=0.0}
+        |_ -> {Re = 0.0; Im=0.0}
+                
+    
+
+    let nodesNo = List.length nodeToCompsList
+    
+    if (row < nodesNo && col < nodesNo) then
+    // conductance matrix
+        if row=col then
+            ({Re=0.;Im=0.}, nodeToCompsList[row]) 
+            ||> List.fold(fun s c ->
+                s + (findMatrixCompValue c omega)
+            )
+
+        else
+            ({Re=0.;Im=0.}, findComponentsBetweenNodes row col nodeToCompsList)
+            ||> List.fold(fun s c ->
+                s - (findMatrixCompValue c omega)
+            )
+    else 
+    // extra elements for modified nodal analysis
+        if (row >= nodesNo && col >= nodesNo) then
+            {Re=0.;Im=0.}
+        else
+            let allDCVoltageSources = 
+                nodeToCompsList
+                |> List.removeAt 0
+                |> List.collect (fun nodeComps ->
+                    nodeComps
+                    |> List.collect (fun (comp,_) ->
+                        match comp.Type with
+                        |VoltageSource (DC (_)) -> [comp]
+                        |_ -> []
+                    )
+                )
+                |> List.distinctBy (fun c->c.Id)
+
+            if row < nodesNo then
+                ({Re=0.;Im=0.}, nodeToCompsList[row])
+                ||> List.fold(fun s c ->
+                    s + (findMatrixVoltageValue c allDCVoltageSources col nodesNo)
+                )            
+            else
+                ({Re=0.;Im=0.}, nodeToCompsList[col])
+                ||> List.fold(fun s c ->
+                    s + (findMatrixVoltageValue c allDCVoltageSources row nodesNo)
+                )       
+
+
+let modifiedNodalAnalysisDC (comps,conns) =
+    
+    // transform canvas state for DC Analysis  
+    let comps',conns' = 
+        (comps,conns)
+        |> combineGrounds
+        |> shortInductorsForDC 
+        
+
+
+    let nodeLst = createNodetoCompsList (comps',conns')
+    
+    printfn "node list %A" nodeLst
+
+    let vs = 
+        comps'
+        |> List.filter (fun c-> match c.Type with |VoltageSource _ -> true |_ -> false)
+        |> List.length
+
+    let n = List.length nodeLst - 1 + vs
+
+    let arr = Array.create n 0.0
+    let matrix = Array.create n arr
+        
+    
+    
+    let vecB =
+        Array.create n {Re=0.0;Im=0.0}
+        |> Array.mapi (fun i v -> (calcVectorBElement2 (i+1) nodeLst))
+        |> Array.map (fun c -> c.Re)
+    
+    let flattenedMatrix =
+        matrix
+        |> Array.mapi (fun i top ->
+            top
+            |> Array.mapi (fun j v ->
+                calcMatrixElementValue2 (i+1) (j+1) nodeLst 0. vecB
+            )
+        )
+        |> Array.collect (id)
+        
+    printfn "matrix: %A" flattenedMatrix
+
+    printfn "vecB: %A" vecB
+
+    let mul =
+        safeSolveMatrixVec flattenedMatrix vecB
+
+    printfn "Solution: %A" mul
+
+    mul.ToArray(), nodeLst 
+
+
+let ACAnalysis (comps,conns) =
     let nodeLst = createNodetoCompsList (comps,conns)
     
+    let frequencies = [0.0..0.05..7.0] |> List.map (fun x -> 10.**x)
+
+    //printfn "node list %A" nodeLst
+
     let vs = 
         comps
         |> List.filter (fun c-> match c.Type with |VoltageSource _ -> true |_ -> false)
@@ -192,41 +566,29 @@ let modifiedNodalAnalysis (comps,conns) =
 
     let n = List.length nodeLst - 1 + vs
 
-    //let matrix = 
-    //    Array2D.create n n 0.0
-    //    |> Array2D.mapi (fun i j v -> (calcMatrixElementValue (i+1) (j+1) nodeLst))
-    printfn "n= %i" n
-
+    let arr = Array.create n 0.0
+    let matrix = Array.create n arr
+        
+    
+    
     let vecB =
-        Array.create n 0.0
-        |> Array.mapi (fun i v -> (calcVectorBElement (i+1) nodeLst))
+        Array.create n {Re=0.0;Im=0.0}
+        |> Array.mapi (fun i v -> (calcVectorBElement2 (i+1) nodeLst))
     
-
-    ////////  TESTS ///////
-    let arr1 = [|1.|]
-    let arr2 = [|0.4; -0.4; 0.; -0.4; 1.; -0.2; 0.; -0.2; 0.4|]
-    let t = ResizeArray(arr2)
-    let arrr = [|arr1; arr1; arr1|]
-
-    let reshaped = Maths.reshape (t, ResizeArray([|3; 3|]))
-    let res = Maths.inv reshaped 
-
-    let currVec = ResizeArray([|5.; 0.; 0.|])
+    frequencies
+    |> List.map (fun f->
+        let flattenedMatrix =
+            matrix
+            |> Array.mapi (fun i top ->
+                top
+                |> Array.mapi (fun j v ->
+                    calcMatrixElementValue2 (i+1) (j+1) nodeLst f vecB
+                )
+            )
+            |> Array.collect (id)
+        let inv = safeInvComplexMatrix flattenedMatrix 
+        inv[5]
+    )
+    |> List.map complexCToP
     
-    let res2 = Maths.multiply (res, currVec)
-
-    printfn "inv worked: %A" res2
-    
-    let testCompl = Maths.complex (3.5, 1.)
-
-    printfn "testComplex %A" testCompl
-
-    let realCompl = Maths.re testCompl
-
-    printfn "Extracted float from complex: %f" realCompl
-    /////////////////////////////
-
-    vecB
-
-
 

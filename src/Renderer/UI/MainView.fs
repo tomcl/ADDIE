@@ -11,10 +11,12 @@ open Sheet.SheetInterface
 open DrawModelType
 open CommonTypes
 open DCAnalysis
+open SimulationHelpers
 
 open Fable.Core
 open Fable.Core.JsInterop
 open Browser.Dom
+open System
 
 open Feliz
 open Feliz.Plotly
@@ -99,8 +101,7 @@ let init() = {
     DividerDragMode = DragModeOff
     Pending = []
     UIState = None
-    WaveSimViewerWidth = rightSectionWidthViewerDefault
-    ConnsOfSelectedWavesAreHighlighted = false
+    showGraphArea = false
 }
 
 
@@ -114,18 +115,35 @@ let viewSimSubTab canvasState model dispatch =
     
     match model.SimSubTabVisible with
     | DCsim -> 
+        let res,nodeLst = DCAnalysis.modifiedNodalAnalysisDC canvasState
+        let resAC = DCAnalysis.ACAnalysis canvasState
+        printfn "resAC = %A" resAC
         div [] 
             [ Button.button 
                 [ 
                     Button.OnClick(fun _ -> 
-                        let temp = DCAnalysis.modifiedNodalAnalysis canvasState
-                        (printfn "nodes: %A" temp)) 
+                        (printfn "nodes: %A" res)) 
                     Button.Color IsInfo
                 ] 
                 [ str "Print Nodes" ] 
                                   
             
+              Table.table [] [
+                    tr [] [
+                        td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str "test1"]
+                        td [Style [Color "Black"; WhiteSpace WhiteSpaceOptions.PreWrap]] [str "test2"]
+                    ]
+            
+              ]
+
+              br []
+
+              getDCTable res nodeLst
+
+            
             ]
+
+
     | ACsim ->
         div [] [str "placeholder"]
     | TimeSim -> 
@@ -315,7 +333,10 @@ let displayView model dispatch =
 
     let conns = BusWire.extractConnections model.Sheet.Wire
     let comps = SymbolUpdate.extractComponents model.Sheet.Wire.Symbol
-    let canvasState = comps,conns   
+    let canvasState = comps,conns  
+    //let ACMag = (DCAnalysis.ACAnalysis canvasState) |> List.map (fun x -> (log10 x.Mag)*20.)
+    //let ACPhase = (DCAnalysis.ACAnalysis canvasState) |> List.map (fun x -> x.Phase*180./Math.PI)
+    //let freqs = [0.0..0.05..7.0] |> List.map (fun x -> 10.**x)
     match model.Spinner with
     | Some fn -> 
         dispatch <| UpdateModel fn
@@ -367,18 +388,21 @@ let displayView model dispatch =
          
         div [HTMLAttr.Id "BottomSection"; bottomSectionStyle model; Hidden true]
             [ 
-                span [] [str "Temp"] 
                 div [] [
                 Plotly.plot [
                     plot.traces [
-                        traces.scatter [
-                            scatter.x [ 1; 2; 3; 4 ]
-                            scatter.y [ 10; 15; 13; 17 ]
-                        ]
-                        traces.scatter [
-                            scatter.x [ 1; 2; 3; 4 ]
-                            scatter.y [ 16; 5; 11; 9 ]
-                        ]
+                        //traces.scatter [
+                        //    scatter.x freqs
+                        //    scatter.y ACMag
+                        //    scatter.name "Magnitude"
+                        //]
+                        //traces.scatter [
+                        //    scatter.x freqs
+                        //    scatter.y ACPhase
+                        //    scatter.name "Phase"
+                        //    scatter.yaxis 2
+                        //]
+
                         traces.scatter [
                             scatter.x [ 1; 2; 3; 4 ]
                             scatter.y [ 12; 9; 15; 12 ]
@@ -388,7 +412,38 @@ let displayView model dispatch =
                             ]
                         ]
                     ]
-                    plot.layout [layout.height 300]
+                    plot.layout [
+                        layout.height 300
+                        layout.xaxis [
+                            xaxis.type'.log
+                            xaxis.autorange.true'
+                        ]
+                        layout.title [
+                            title.text "Magnitude and Phase"
+                        ]
+                        layout.yaxis [
+                            yaxis.title [
+                                title.text "Magnitude (dB)"
+                            ]
+                            yaxis.autorange.true'
+                            yaxis.zeroline false
+                        ]
+                        layout.yaxis (2, [
+                            yaxis.title [
+                                title.text "Phase"
+                                title.font [
+                                    font.color (color.rgb(148, 103, 189))
+                                ]
+                            ]
+                            yaxis.autorange.true'
+                            yaxis.tickfont [
+                                tickfont.color (color.rgb(148, 103, 189))
+                            ]
+                            yaxis.zeroline false
+                            yaxis.overlaying.y 1
+                            yaxis.side.right
+                        ])
+                ]
                 ]
                 ]
             ]]

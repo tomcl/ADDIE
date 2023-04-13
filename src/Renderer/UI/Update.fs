@@ -238,7 +238,7 @@ let update (msg : Msg) oldModel =
     // special mesages for mouse control of screen vertical dividing bar, active when Wavesim is selected as rightTab
     | SetDragMode mode -> {model with DividerDragMode= mode}, Cmd.none
     | SetViewerWidth w ->
-        {model with WaveSimViewerWidth = w}, Cmd.none
+        model, Cmd.none
     | ReloadSelectedComponent width ->
         {model with LastUsedDialogWidth=width}, Cmd.none
     | UpdateModel( updateFn: Model -> Model) ->
@@ -368,8 +368,7 @@ let update (msg : Msg) oldModel =
             |> userDataToDrawBlockModel
         model, Cmd.none
     | SelectionHasChanged ->
-        { model with ConnsOfSelectedWavesAreHighlighted = true }
-        |> (fun m -> m, Cmd.none)
+        model, Cmd.none
     | ExecutePendingMessages n ->
         if n = (List.length model.Pending)
         then 

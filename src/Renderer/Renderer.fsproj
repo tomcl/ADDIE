@@ -23,15 +23,16 @@
     <Compile Include="Common\DrawHelpers.fs" />
     <Compile Include="Common\Helpers.fs" />
     <Compile Include="Common\TimeHelpers.fs" />
-    <Compile Include="Simulator\DCAnalysis.fs" />
+    
 
 	  <!-- UART -->
 
 	  <!-- simulator -->
-    <Compile Include="Simulator\Extractor.fs" />
+	<Compile Include="Simulator\MathJsHelpers.fs" />
+	<Compile Include="Simulator\Extractor.fs" />
     <Compile Include="Simulator\NumberHelpers.fs" />
 	<Compile Include="Simulator\DCAnalysis.fs" />
-
+	
     <!-- Verilog Component -->   
 
     <!-- JS and File interface -->
@@ -54,6 +55,7 @@
 	<Compile Include="DrawBlock\SheetUpdateHelpers.fs" />
     <Compile Include="DrawBlock\SheetUpdate.fs" />
     <!-- UI -->
+    <Compile Include="UI\SimulationHelpers.fs" />
     <Compile Include="UI/ModelType.fs" />
     <Compile Include="UI\ModelHelpers.fs" />
     <Compile Include="UI/Style.fs" />

@@ -264,8 +264,7 @@ type Model = {
     /// Contains a list of pending messages
     Pending: Msg list
     UIState: UICommandType Option
-    WaveSimViewerWidth: int
-    ConnsOfSelectedWavesAreHighlighted: bool
+    showGraphArea: bool
 } 
 
     
