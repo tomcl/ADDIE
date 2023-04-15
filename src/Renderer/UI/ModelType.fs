@@ -64,6 +64,8 @@ type PopupDialogData = {
     ProjectPath: string
     BadLabel: bool
     VSType: string option
+    ACSource: string option
+    ACOutput: string option
 }
 
 let text_ = Lens.create (fun a -> a.Text) (fun s a -> {a with Text = s})
@@ -74,6 +76,8 @@ let int2_ = Lens.create (fun a -> a.Int2) (fun s a -> {a with Int2 = s})
 let projectPath_ = Lens.create (fun a -> a.ProjectPath) (fun s a -> {a with ProjectPath = s})
 let badLabel_ = Lens.create (fun a -> a.BadLabel) (fun s a -> {a with BadLabel= s})
 let vsType_ = Lens.create (fun a -> a.VSType) (fun s a -> {a with VSType= s})
+let acSource_ = Lens.create (fun a -> a.ACSource) (fun s a -> {a with ACSource= s})
+let acOutput_ = Lens.create (fun a -> a.ACOutput) (fun s a -> {a with ACOutput= s})
 
 type TopMenu = | Closed | Project | Files
 
@@ -143,6 +147,8 @@ type Msg =
     | SetPopupDialogText2 of string option
     | SetPopupDialogText3 of string option
     | SetPopupDialogVSType of string option
+    | SetPopupDialogACSource of string option
+    | SetPopupDialogACOut of string option
     | SetPopupDialogInt of int option
     | SetPopupDialogInt2 of int64 option
     | CloseDiagramNotification
@@ -160,6 +166,7 @@ type Msg =
     | DiagramMouseEvent
     | SelectionHasChanged
     | SetIsLoading of bool
+    | SetGraphVisibility of bool
     | CloseApp
     | ExecutePendingMessages of int
     | DoNothing

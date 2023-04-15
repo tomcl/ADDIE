@@ -10,7 +10,7 @@ open FileMenuView
 open Sheet.SheetInterface
 open DrawModelType
 open CommonTypes
-open DCAnalysis
+open Simulation
 open SimulationHelpers
 
 open Fable.Core
@@ -18,8 +18,6 @@ open Fable.Core.JsInterop
 open Browser.Dom
 open System
 
-open Feliz
-open Feliz.Plotly
 
 
 //------------------Buttons overlaid on Draw2D Diagram----------------------------------//
@@ -88,6 +86,8 @@ let init() = {
         VoltageSource = None
         BadLabel = false
         VSType= None
+        ACOutput=None
+        ACSource=None
     }
     Notifications = {
         FromDiagram = None
@@ -115,9 +115,7 @@ let viewSimSubTab canvasState model dispatch =
     
     match model.SimSubTabVisible with
     | DCsim -> 
-        let res,nodeLst = DCAnalysis.modifiedNodalAnalysisDC canvasState
-        let resAC = DCAnalysis.ACAnalysis canvasState
-        printfn "resAC = %A" resAC
+        let res,nodeLst = Simulation.modifiedNodalAnalysisDC canvasState
         div [] 
             [ Button.button 
                 [ 
@@ -145,7 +143,19 @@ let viewSimSubTab canvasState model dispatch =
 
 
     | ACsim ->
-        div [] [str "placeholder"]
+        div [] 
+            [ Button.button
+                [
+                    Button.OnClick(fun _ -> 
+                        SetPopupDialogACOut None |> dispatch
+                        SetPopupDialogACSource None |> dispatch
+                        ComponentCreation.createACPopup model dispatch)
+                ]  
+                [str "Setup"]
+            
+              Button.button [Button.OnClick(fun _ -> SetGraphVisibility false |> dispatch)] [str "X"]
+                
+            ]
     | TimeSim -> 
         div [] [str "placeholder"]
 
@@ -174,17 +184,17 @@ let private  viewRightTab canvasState model dispatch =
                     [                 
                     Tabs.tab // step simulation subtab
                         [ Tabs.Tab.IsActive (model.SimSubTabVisible = DCsim) ]
-                        [ a [  OnClick (fun _ -> dispatch <| ChangeSimSubTab DCsim) ] [str "Step Simulation"] ]  
+                        [ a [  OnClick (fun _ -> dispatch <| ChangeSimSubTab DCsim) ] [str "DC Analysis"] ]  
 
                     (Tabs.tab // truth table tab to display truth table for combinational logic
                     [ Tabs.Tab.IsActive (model.SimSubTabVisible = ACsim) ]
-                    [ a [  OnClick (fun _ -> dispatch <| ChangeSimSubTab ACsim) ] [str "Truth Tables"] ])
+                    [ a [  OnClick (fun _ -> dispatch <| ChangeSimSubTab ACsim) ] [str "Frequency Response"] ])
 
                     (Tabs.tab // wavesim tab
                     [ Tabs.Tab.IsActive (model.SimSubTabVisible = TimeSim) ]
-                    [ a [  OnClick (fun _ -> dispatch <| ChangeSimSubTab TimeSim) ] [str "Wave Simulation"] ])
+                    [ a [  OnClick (fun _ -> dispatch <| ChangeSimSubTab TimeSim) ] [str "Time Analysis"] ])
                     ]
-        div [ HTMLAttr.Id "RightSelection2"; Style [Height "100%"]] 
+        div [ HTMLAttr.Id "RightSelection"; Style [Height "100%"]] 
             [
                 //br [] // Should there be a gap between tabs and subtabs for clarity?
                 subtabs
@@ -242,9 +252,7 @@ let viewRightTabs canvasState model dispatch =
     /// This code temporarily switches the scrollbar off during the transition.
     let scrollType = 
             OverflowOptions.Auto
-    
-    let buildTab =
-            null
+
     
     div [HTMLAttr.Id "RightSelection";Style [ Height "100%"; OverflowY OverflowOptions.Auto]] [
         Tabs.tabs [ 
@@ -268,7 +276,6 @@ let viewRightTabs canvasState model dispatch =
             Tabs.tab // simulation tab to view all simulators
                 [ Tabs.Tab.IsActive (model.RightPaneTabVisible = Simulation) ]
                 [ a [  OnClick (fun _ -> dispatch <| ChangeRightTab Simulation ) ] [str "Simulations"] ]
-            buildTab
         ]
         div [HTMLAttr.Id "TabBody"; belowHeaderStyle "36px"; Style [OverflowY scrollType]] [viewRightTab canvasState model dispatch]
 
@@ -334,9 +341,6 @@ let displayView model dispatch =
     let conns = BusWire.extractConnections model.Sheet.Wire
     let comps = SymbolUpdate.extractComponents model.Sheet.Wire.Symbol
     let canvasState = comps,conns  
-    //let ACMag = (DCAnalysis.ACAnalysis canvasState) |> List.map (fun x -> (log10 x.Mag)*20.)
-    //let ACPhase = (DCAnalysis.ACAnalysis canvasState) |> List.map (fun x -> x.Phase*180./Math.PI)
-    //let freqs = [0.0..0.05..7.0] |> List.map (fun x -> 10.**x)
     match model.Spinner with
     | Some fn -> 
         dispatch <| UpdateModel fn
@@ -382,69 +386,15 @@ let displayView model dispatch =
         div [ HTMLAttr.Id "RightSection"; rightSectionStyle model ]
                 // vertical and draggable divider bar
             [ 
-                dividerbar model dispatch
+                // dividerbar model dispatch
                 // tabs for different functions
                 viewRightTabs canvasState model dispatch ] 
          
-        div [HTMLAttr.Id "BottomSection"; bottomSectionStyle model; Hidden true]
+        div [HTMLAttr.Id "BottomSection"; bottomSectionStyle model; Hidden (not model.showGraphArea)]
             [ 
-                div [] [
-                Plotly.plot [
-                    plot.traces [
-                        //traces.scatter [
-                        //    scatter.x freqs
-                        //    scatter.y ACMag
-                        //    scatter.name "Magnitude"
-                        //]
-                        //traces.scatter [
-                        //    scatter.x freqs
-                        //    scatter.y ACPhase
-                        //    scatter.name "Phase"
-                        //    scatter.yaxis 2
-                        //]
-
-                        traces.scatter [
-                            scatter.x [ 1; 2; 3; 4 ]
-                            scatter.y [ 12; 9; 15; 12 ]
-                            scatter.mode [
-                                scatter.mode.lines
-                                scatter.mode.markers
-                            ]
-                        ]
-                    ]
-                    plot.layout [
-                        layout.height 300
-                        layout.xaxis [
-                            xaxis.type'.log
-                            xaxis.autorange.true'
-                        ]
-                        layout.title [
-                            title.text "Magnitude and Phase"
-                        ]
-                        layout.yaxis [
-                            yaxis.title [
-                                title.text "Magnitude (dB)"
-                            ]
-                            yaxis.autorange.true'
-                            yaxis.zeroline false
-                        ]
-                        layout.yaxis (2, [
-                            yaxis.title [
-                                title.text "Phase"
-                                title.font [
-                                    font.color (color.rgb(148, 103, 189))
-                                ]
-                            ]
-                            yaxis.autorange.true'
-                            yaxis.tickfont [
-                                tickfont.color (color.rgb(148, 103, 189))
-                            ]
-                            yaxis.zeroline false
-                            yaxis.overlaying.y 1
-                            yaxis.side.right
-                        ])
-                ]
-                ]
-                ]
-            ]]
+                //div [Style [Width "10%"]] [Button.button [Button.OnClick(fun _ -> SetGraphVisibility false |> dispatch)] [str "X"]]
+                Graph.viewGraph model   
+                
+            ]
+            ]
 

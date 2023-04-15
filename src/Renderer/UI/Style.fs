@@ -28,7 +28,7 @@ let rightSectionWidth (model:Model) =
     | RightTab.Properties | RightTab.Catalogue  -> rightSectionWidthS
     | RightTab.Simulation -> 
         match model.SimSubTabVisible with
-        | SimSubTab.DCsim | SimSubTab.ACsim | SimSubTab.TimeSim -> rightSectionWidthL
+        | SimSubTab.DCsim | SimSubTab.ACsim | SimSubTab.TimeSim -> rightSectionWidthS
 
 let leftSectionWidth model = Style [
     Width (sprintf "calc(100%s - %s - 10px)" "%" (rightSectionWidth model))

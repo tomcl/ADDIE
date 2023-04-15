@@ -2,7 +2,7 @@
 
 open Fable.React
 open Fable.React.Props
-open DCAnalysis
+open Simulation
 open CommonTypes
 
 

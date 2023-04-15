@@ -299,6 +299,10 @@ let update (msg : Msg) oldModel =
         set (popupDialogData_ >-> text3_) text model, Cmd.none
     | SetPopupDialogVSType tp ->
         set (popupDialogData_ >-> vsType_) tp model, Cmd.none
+    | SetPopupDialogACSource tp ->
+        set (popupDialogData_ >-> acSource_) tp model, Cmd.none
+    | SetPopupDialogACOut tp ->
+        set (popupDialogData_ >-> acOutput_) tp model, Cmd.none
     | SetPopupDialogBadLabel isBad ->
         set (popupDialogData_ >-> badLabel_) isBad model, Cmd.none
     | SetPopupDialogInt int ->
@@ -353,6 +357,8 @@ let update (msg : Msg) oldModel =
     | SetIsLoading b ->
         let cmd = if b then Cmd.none else Cmd.ofMsg (Sheet (SheetT.SetSpinner false)) //Turn off spinner after project/sheet is loaded
         {model with IsLoading = b}, cmd
+    | SetGraphVisibility b ->
+        {model with showGraphArea = b}, Cmd.none
     | ReadUserData userAppDir ->
         printfn $"Got user app dir of {userAppDir}"
         let model,cmd = readUserData userAppDir model        

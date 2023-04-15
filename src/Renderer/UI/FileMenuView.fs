@@ -1125,14 +1125,14 @@ let viewTopMenu model dispatch =
                                     [ Button.OnClick(fun _ -> createRCLIPopup model (Resistor (0,"0")) dispatch) 
                                       Button.Color IsGrey
                                     ] 
-                                    [ str "R" ] 
+                                    [ str resistorSymbol ] 
                                 ]   
                             Navbar.Item.div []
                                 [ Button.button 
                                     [ Button.OnClick(fun _ -> createRCLIPopup model (Capacitor (0,"0")) dispatch)
                                       Button.Color IsGrey
                                     ] 
-                                    [ str "C" ] 
+                                    [ str capacitorSymbol ] 
                                   
                                 ]
                                 
@@ -1141,7 +1141,7 @@ let viewTopMenu model dispatch =
                                     [ Button.OnClick(fun _ -> createRCLIPopup model (Inductor (0,"0")) dispatch)
                                       Button.Color IsGrey
                                     ] 
-                                    [ str "L" ] 
+                                    [ str inductorSymbol ] 
                                   
                                 ]
 
@@ -1150,7 +1150,7 @@ let viewTopMenu model dispatch =
                                     [ Button.OnClick(fun _ -> createCompStdLabel Diode model dispatch)
                                       Button.Color IsGrey
                                     ] 
-                                    [ str "D" ] 
+                                    [ str diodeSymbol ] 
                                   
                                 ]
 
@@ -1186,7 +1186,7 @@ let viewTopMenu model dispatch =
                                     [ Button.OnClick(fun _ -> createCompStdLabel Ground model dispatch)
                                       Button.Color IsGrey
                                     ] 
-                                    [ str "G" ] 
+                                    [ str groundSymbol ] 
                                 // add space padding on RH of navbar to improve top bar formatting
                                 // this is a bit of a hack - but much easier than matching styles
                                   Text.div 

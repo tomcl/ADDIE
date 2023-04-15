@@ -1,6 +1,7 @@
 ﻿module MathJsHelpers
 
 open Fable.Core
+open System
 
 type ComplexC =
     {
@@ -55,7 +56,12 @@ let tupleToComplex (a,b) = {Re=a;Im=b}
 let complexCToP (a:ComplexC) = 
     let mag = sqrt (a.Re*a.Re + a.Im *a.Im)
     let phase = atan (a.Im / a.Re)
-    {Mag=mag;Phase=phase}
+    let phase' =
+        match a.Re,a.Im with
+        |x,y when x<0 && y>0 -> phase + Math.PI 
+        |x,y when x<0 && y<0 -> phase - Math.PI 
+        |_ -> phase
+    {Mag=mag;Phase=phase'}
 
 let complexPToC (a:ComplexP)=
     let x = a.Mag * (cos a.Phase)

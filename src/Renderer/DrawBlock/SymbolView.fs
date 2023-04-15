@@ -241,15 +241,27 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
             | Degree0 | Degree180 -> [makeLine 0 15 25 15 capacitorLine; makeLine 25 0 25 30 capacitorLine;makeLine 35 0 35 30 capacitorLine;makeLine 35 15 60 15 capacitorLine]
             | Degree90 | Degree270 -> [makeLine 15 60 15 35 capacitorLine; makeLine 0 35 30 35 capacitorLine; makeLine 0 25 30 25 capacitorLine; makeLine 15 25 15 0 capacitorLine]
         | Inductor _ -> 
-            let arcs = [makePartArcAttr 10 10 10 10 10;makePartArcAttr 10 10 10 10 10;makePartArcAttr 10 10 10 10 10]
-            let startingPoint = {X=15;Y=15}
+            match transform.Rotation with
+            | Degree0 | Degree180 ->
+                let arcs = [makePartArcAttr 10 10 10 10 10;makePartArcAttr 10 10 10 10 10;makePartArcAttr 10 10 10 10 10]
+                let startingPoint = {X=15;Y=15}
 
-            let renderedSegmentList : ReactElement List = 
-                arcs
-                |> String.concat " "
-                |> (fun attr -> [makeAnyPath startingPoint attr {defaultPath with StrokeWidth = "2.5px"}])
-            renderedSegmentList
-            |> List.append [makeLine 0 15 15 15 capacitorLine; makeLine 75 15 90 15 capacitorLine]
+                let renderedSegmentList : ReactElement List = 
+                    arcs
+                    |> String.concat " "
+                    |> (fun attr -> [makeAnyPath startingPoint attr {defaultPath with StrokeWidth = "2.5px"}])
+                renderedSegmentList
+                |> List.append [makeLine 0 15 15 15 capacitorLine; makeLine 75 15 90 15 capacitorLine]
+            | Degree90 | Degree270 -> 
+                let arcs = [makePartArcAttr 10 10 10 -10 -10; makePartArcAttr 10 10 10 -10 -10;makePartArcAttr 10 10 10 -10 -10]
+                let startingPoint = {X=15;Y=15}
+
+                let renderedSegmentList : ReactElement List = 
+                    arcs
+                    |> String.concat " "
+                    |> (fun attr -> [makeAnyPath startingPoint attr {defaultPath with StrokeWidth = "2.5px"}])
+                renderedSegmentList
+                |> List.append [makeLine 15 0 15 15 capacitorLine; makeLine 15 75 15 90 capacitorLine]
         | Opamp ->
             let plusMinus = 
                 match transform.Rotation with

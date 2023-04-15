@@ -347,6 +347,11 @@ module CommonTypes
             | c -> sprintf "%A" c
             
     let omegaString = "\u03a9"
+    let groundSymbol = "\u23DA"
+    let resistorSymbol = "\u2307"
+    let capacitorSymbol = "\u2351"
+    let diodeSymbol = "\u23C4"
+    let inductorSymbol = "\u23d6"
 
     // The next types are not strictly necessary, but help in understanding what is what.
     // Used consistently they provide type protection that greatly reduces coding errors

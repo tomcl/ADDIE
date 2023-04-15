@@ -465,6 +465,50 @@ let dialogPopupVS dispatch =
             div [] thirdInput
         ]
 
+let dialogPopupAC model dispatch =
+    fun (dialogData : PopupDialogData) ->
+        let conns = BusWire.extractConnections model.Sheet.Wire
+        let comps = SymbolUpdate.extractComponents model.Sheet.Wire.Symbol
+        
+        let nodeLst = Simulation.createNodetoCompsList (comps,conns)
+
+        let sourceOptions =
+            comps
+            |> List.collect (fun c->
+                match c.Type with
+                |VoltageSource _ -> [option [Value (c.Id)] [str (c.Label)]]
+                |_ -> []
+            )
+
+        let outputOptions =
+            [1..((List.length nodeLst)-1)]
+            |> List.collect (fun i ->
+                [option [Value (string i)] [str ("Node "+(string i))]]    
+            )
+        
+        div [] [
+            Label.label [] [ str "Input" ]
+            Label.label [ ]
+                [Select.select []
+                [ select [(OnChange(fun option -> 
+                    printfn "Value is: %s" option.Value
+                    SetPopupDialogACSource (Some option.Value) |> dispatch))]
+                    ([option [Value ("sel")] [str ("Select")]] @ sourceOptions)
+                    ]
+                ]
+            
+            Label.label [] [ str "Output" ]
+            Label.label [ ]
+                [Select.select []
+                [ select [(OnChange(fun option -> 
+                    printfn "Value is: %s" option.Value
+                    SetPopupDialogACOut (Some option.Value) |> dispatch))]
+                    ([option [Value ("sel")] [str ("Select")]] @ outputOptions)
+                    ]
+                ]
+
+        ]
+
         
 
 /// Create the body of a dialog Popup with both text and int.
