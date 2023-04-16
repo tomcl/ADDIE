@@ -500,9 +500,13 @@ let dialogPopupAC model dispatch =
             Label.label [] [ str "Output" ]
             Label.label [ ]
                 [Select.select []
-                [ select [(OnChange(fun option -> 
-                    printfn "Value is: %s" option.Value
-                    SetPopupDialogACOut (Some option.Value) |> dispatch))]
+                [ select 
+                    [
+                        (OnChange(fun option -> 
+                            printfn "Value is: %s" option.Value
+                            SetPopupDialogACOut (Some option.Value) |> dispatch))
+                        
+                    ]
                     ([option [Value ("sel")] [str ("Select")]] @ outputOptions)
                     ]
                 ]

@@ -22,7 +22,7 @@ let viewGraph (model:Model) =
         let ACPhase = (Simulation.frequencyResponse canvasState outputNode) |> List.map (fun x -> x.Phase*180./Math.PI)
         let freqs = [0.0..0.05..7.0] |> List.map (fun x -> 10.**x)
     
-        div [Style [Width "90%";]] [
+        div [Style [Width "90%"; Float FloatOptions.Left]] [
                     Plotly.plot [
                         plot.traces [
                             traces.scatter [
@@ -42,14 +42,14 @@ let viewGraph (model:Model) =
                                 ]
                             ]
                             
-                            traces.scatter [
-                                scatter.x [ 1; 2; 3; 4 ]
-                                scatter.y [ 12; 9; 15; 12 ]
-                                scatter.mode [
-                                    scatter.mode.lines
-                                    scatter.mode.markers
-                                ]
-                            ]
+                            //traces.scatter [
+                            //    scatter.x [ 1; 2; 3; 4 ]
+                            //    scatter.y [ 12; 9; 15; 12 ]
+                            //    scatter.mode [
+                            //        scatter.mode.lines
+                            //        scatter.mode.markers
+                            //    ]
+                            //]
                         ]
                         plot.layout [
                             layout.height 350

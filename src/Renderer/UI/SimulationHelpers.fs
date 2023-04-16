@@ -12,7 +12,10 @@ let getDCTable (results: float array) (nodeLst:(Component*int option) list list)
 
     let getDCTableLine index  line : ReactElement =
         let index' = index+1
-        let nodeNo = "Node " + string index'
+        let nodeNo = 
+            if index' < List.length nodeLst then 
+                "Node " + string index' + " (V)"
+            else " I (A)"
         let nodeComps = 
             if index' < List.length nodeLst then 
                 ("",nodeLst[index']) ||> List.fold (fun s (v,i) -> s+"-"+v.Label )
@@ -29,14 +32,14 @@ let getDCTable (results: float array) (nodeLst:(Component*int option) list list)
     let tableFormat =
         [
         colgroup [] [
-            col [Style [Width "15%";]]
-            col [Style [Width "50%"; WhiteSpace WhiteSpaceOptions.PreLine]]
+            col [Style [Width "25%";]]
+            col [Style [Width "40%"; WhiteSpace WhiteSpaceOptions.PreLine]]
             col [Style [Width "35%"; WhiteSpace WhiteSpaceOptions.PreLine]]
             ]
         thead [] [
             tr [] [
-                th [Style [WhiteSpace WhiteSpaceOptions.Pre]] [str "  Line"]
-                th [] [str "Message"]
+                th [Style [WhiteSpace WhiteSpaceOptions.Pre]] [str "  Node"]
+                th [] [str "Value"]
                 th [] [str "Comps"]
             ]
         ]

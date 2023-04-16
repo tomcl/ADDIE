@@ -392,8 +392,8 @@ let displayView model dispatch =
          
         div [HTMLAttr.Id "BottomSection"; bottomSectionStyle model; Hidden (not model.showGraphArea)]
             [ 
-                //div [Style [Width "10%"]] [Button.button [Button.OnClick(fun _ -> SetGraphVisibility false |> dispatch)] [str "X"]]
                 Graph.viewGraph model   
+                div [Style [Width "10%"; Float FloatOptions.Left; Padding "20px"]] [Delete.delete [ Delete.Size IsMedium; Delete.OnClick(fun _ -> SetGraphVisibility false |> dispatch) ] [ ]]//[Button.button [Button.OnClick(fun _ -> SetGraphVisibility false |> dispatch)] [str "X"]]
                 
             ]
             ]
