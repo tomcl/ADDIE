@@ -350,8 +350,8 @@ let initPortOrientation (comp: Component) =
         let orientation = Map [ (comp.IOPorts[0].Id,Top); (comp.IOPorts[1].Id,Bottom) ]
         {Order = order; Orientation = orientation}
     | Opamp ->
-        let order = Map [ (Left,[comp.IOPorts[0].Id;comp.IOPorts[1].Id]); (Top, [comp.IOPorts[2].Id]); (Bottom, [comp.IOPorts[3].Id]);(Right,[comp.IOPorts[4].Id]); ]
-        let orientation = Map [ (comp.IOPorts[0].Id,Left); (comp.IOPorts[1].Id,Left);(comp.IOPorts[2].Id,Top); (comp.IOPorts[3].Id,Bottom); (comp.IOPorts[4].Id,Right) ]
+        let order = Map [ (Left,[comp.IOPorts[0].Id;comp.IOPorts[1].Id]); (Top, []); (Bottom, []);(Right,[comp.IOPorts[2].Id]); ]
+        let orientation = Map [ (comp.IOPorts[0].Id,Left); (comp.IOPorts[1].Id,Left);(comp.IOPorts[2].Id,Right); ]
         {Order = order; Orientation = orientation}
     |_ -> //TODO: Analyse this
         let order = Map [ (Left, [comp.IOPorts[0].Id]); (Right, [comp.IOPorts[1].Id]);(Top,[]);(Bottom,[]); ]
@@ -454,7 +454,7 @@ let getComponentProperties (compType:ComponentType) (label: string)=
     | Resistor _ | Inductor _ -> ( 2 , gS ,  3.0*gS)
     | VoltageSource _| CurrentSource _ -> (2, 2.*gS,2.*gS )
     | Ground -> (1, gS, gS)
-    | Opamp -> (5, 2.*gS, 2.*gS)
+    | Opamp -> (3, 2.*gS, 2.*gS)
     | IOLabel  ->(  2 , gS/2. ,  gS)
     | IO -> ( 1 , gS ,  2.*gS)
     | Custom cct -> cct.IOLabels.Length, 0., 0.

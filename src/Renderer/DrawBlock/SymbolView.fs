@@ -205,7 +205,8 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
             | Diode ->
                 [|{X=0;Y=0};{X=0;Y=H};{X=W;Y=0.5*H};{X=W;Y=H};{X=W;Y=0};{X=W;Y=0.5*H}|]
             | Opamp ->
-                [|{X=0;Y=0};{X=0;Y=H};{X=W/2.;Y=H*3./4.};{X=W/2.;Y=H};{X=W/2.;Y=H*3./4.};{X=W;Y=H/2.};{X=W/2.;Y=H/4.};{X=W/2.;Y=0};{X=W/2.;Y=H/4.}; |]
+                [|{X=0;Y=0};{X=0;Y=H};{X=W;Y=H/2.} |]
+                //[|{X=0;Y=0};{X=0;Y=H};{X=W/2.;Y=H*3./4.};{X=W/2.;Y=H};{X=W/2.;Y=H*3./4.};{X=W;Y=H/2.};{X=W/2.;Y=H/4.};{X=W/2.;Y=0};{X=W/2.;Y=H/4.}; |]
                 
             | _ -> 
                 [|{X=0;Y=0};{X=0;Y=H};{X=W;Y=H};{X=W;Y=0}|]
