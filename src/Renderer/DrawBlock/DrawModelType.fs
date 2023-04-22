@@ -495,6 +495,7 @@ module SheetT =
         CtrlKeyDown : bool
         ScrollUpdateIsOutstanding: bool
         PrevWireSelection : ConnectionId list
+        NodeLocations : XYPos list
         }
     
     open Operators

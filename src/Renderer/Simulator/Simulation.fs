@@ -24,6 +24,59 @@ let findConnectionsOnNode (nodeToCompsList:(Component*int option) list list) (in
     )
 
 
+let findNodeLocation (connsOnNode: Connection list) =
+    let extractX (vertix: (float*float*bool)) =
+        vertix |> (fun (x,_,_) -> x)
+    
+    let extractY (vertix: (float*float*bool)) =
+        vertix |> (fun (_,y,_) -> y)
+
+    let extractXL (vertices: (float*float*bool) list) =
+        vertices |> List.map (fun (x,_,_) -> x)
+    
+    let extractYL (vertices: (float*float*bool) list) =
+        vertices |> List.map (fun (_,y,_) -> y)
+    
+    let removeDuplicates (vertices: (float*float*bool) list) =
+        vertices
+        |> List.indexed
+        |> List.collect (fun (i,(x,y,z)) -> 
+            match i with
+            |0 -> [(x,y,z)]
+            |_ ->
+                if (extractX vertices[i-1] = x && extractY vertices[i-1] = y) then
+                    []
+                else [(x,y,z)]
+        )
+        
+    let removeSticks (vertices: (float*float*bool) list) =
+        vertices
+        |> List.removeAt 0
+        |> List.removeAt (List.length vertices-2)
+
+    let findMid (vertices: (float*float*bool) list) =
+        let mid = List.length vertices / 2
+        {X= extractX vertices[mid]; Y=extractY vertices[mid]}
+
+    match List.length connsOnNode with
+    |0 -> failwithf "Impossible"
+    |1 -> 
+        connsOnNode[0].Vertices |> removeDuplicates |> removeSticks |> findMid
+    |_ ->
+        connsOnNode
+        |> List.map (fun x -> x.Vertices |> removeDuplicates |> removeSticks)
+        |> List.map ( 
+            List.map (fun v -> {X=extractX v; Y= extractY v}))
+        |> List.collect id
+        |> List.countBy id
+        |> List.sortBy (fun (pos,count) -> count)
+        |> List.head
+        |> fst
+
+
+
+
+
 
 /// Given a port on a component, return the other port on this component 
 /// (If it exists: Option, otherwise None)
@@ -181,7 +234,7 @@ let shortInductorsForDC (comps,conns) =
 /// which is of the form:
 /// [I1,I2,...,In,Va,Vb,...,Vm] 
 /// n -> number of nodes, m number of Voltage Sources
-let calcVectorBElement2 row (nodeToCompsList:(Component*int option) list list) =
+let calcVectorBElement row (nodeToCompsList:(Component*int option) list list) =
     let nodesNo = List.length nodeToCompsList
     
     let findNodeTotalCurrent currentNode = 
@@ -222,7 +275,7 @@ let calcVectorBElement2 row (nodeToCompsList:(Component*int option) list list) =
 
 /// Calculates the value of the MNA matrix at the specified
 /// row and column (Count starts from 1)
-let calcMatrixElementValue2 row col (nodeToCompsList:(Component*int option) list list) omega vecB = 
+let calcMatrixElementValue row col (nodeToCompsList:(Component*int option) list list) omega vecB = 
     let findMatrixCompValue (comp,no) omega =
         match comp.Type with
         |Resistor (v,_) -> {Re= (1./v); Im=0.}
@@ -303,7 +356,7 @@ let modifiedNodalAnalysisDC (comps,conns) =
 
     let nodeLst = createNodetoCompsList (comps',conns')
     
-    printfn "node list %A" nodeLst
+    //printfn "node list %A" nodeLst
 
     let vs = 
         comps'
@@ -319,7 +372,7 @@ let modifiedNodalAnalysisDC (comps,conns) =
     
     let vecB =
         Array.create n {Re=0.0;Im=0.0}
-        |> Array.mapi (fun i v -> (calcVectorBElement2 (i+1) nodeLst))
+        |> Array.mapi (fun i v -> (calcVectorBElement (i+1) nodeLst))
         |> Array.map (fun c -> c.Re)
     
     let flattenedMatrix =
@@ -327,19 +380,14 @@ let modifiedNodalAnalysisDC (comps,conns) =
         |> Array.mapi (fun i top ->
             top
             |> Array.mapi (fun j v ->
-                calcMatrixElementValue2 (i+1) (j+1) nodeLst 0. vecB
+                calcMatrixElementValue (i+1) (j+1) nodeLst 0. vecB
             )
         )
         |> Array.collect (id)
         
-    printfn "matrix: %A" flattenedMatrix
-
-    printfn "vecB: %A" vecB
 
     let mul =
         safeSolveMatrixVec flattenedMatrix vecB
-
-    printfn "Solution: %A" mul
 
     mul.ToArray(), nodeLst 
 
@@ -366,7 +414,7 @@ let frequencyResponse (comps,conns) outputNode  =
     
     let vecB =
         Array.create n {Re=0.0;Im=0.0}
-        |> Array.mapi (fun i v -> (calcVectorBElement2 (i+1) nodeLst))
+        |> Array.mapi (fun i v -> (calcVectorBElement (i+1) nodeLst))
     
     frequencies
     |> List.map (fun f->
@@ -375,7 +423,7 @@ let frequencyResponse (comps,conns) outputNode  =
             |> Array.mapi (fun i top ->
                 top
                 |> Array.mapi (fun j v ->
-                    calcMatrixElementValue2 (i+1) (j+1) nodeLst f vecB
+                    calcMatrixElementValue (i+1) (j+1) nodeLst f vecB
                 )
             )
             |> Array.collect (id)
@@ -384,4 +432,3 @@ let frequencyResponse (comps,conns) outputNode  =
     )
     |> List.map complexCToP
     
-

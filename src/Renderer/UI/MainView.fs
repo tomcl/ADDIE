@@ -116,11 +116,17 @@ let viewSimSubTab canvasState model dispatch =
     match model.SimSubTabVisible with
     | DCsim -> 
         let res,nodeLst = Simulation.modifiedNodalAnalysisDC canvasState
+        let nodeLoc =
+            [1..List.length nodeLst-1]
+            |> List.map (fun i -> findConnectionsOnNode nodeLst i (snd canvasState))
+            |> List.map (findNodeLocation)
         div [] 
             [ Button.button 
                 [ 
                     Button.OnClick(fun _ -> 
-                        (printfn "nodes: %A" res)) 
+                        (printfn "nodes: %A" res)
+                        UpdateNodes nodeLoc |> dispatch
+                        ) 
                     Button.Color IsInfo
                 ] 
                 [ str "Print Nodes" ] 

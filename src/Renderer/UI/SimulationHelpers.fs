@@ -68,18 +68,3 @@ let getDCTable (results: float array) (nodeLst:(Component*int option) list list)
         table [] []
 
 
-let findNodeLocation (connsOnNode: Connection list) =
-    let extractX (vertices: (float*float*bool) list) =
-        vertices
-        |> List.map (fun (x,_,_) -> x)
-    
-    let extractY (vertices: (float*float*bool) list) =
-        vertices
-        |> List.map (fun (_,y,_) -> y)
-
-
-
-    match List.length connsOnNode with
-    |0 -> failwithf "Impossible"
-    |1 -> ()
-    |_ -> ()

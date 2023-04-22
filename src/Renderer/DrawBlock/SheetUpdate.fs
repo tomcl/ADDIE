@@ -486,6 +486,7 @@ let init () =
         CtrlKeyDown = false
         ScrollUpdateIsOutstanding = false
         PrevWireSelection = []
+        NodeLocations = []
     }, Cmd.none
 
 

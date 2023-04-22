@@ -375,6 +375,8 @@ let update (msg : Msg) oldModel =
         model, Cmd.none
     | SelectionHasChanged ->
         model, Cmd.none
+    | UpdateNodes newLocs -> 
+        {model with Sheet = {model.Sheet with NodeLocations = newLocs}}, Cmd.none
     | ExecutePendingMessages n ->
         if n = (List.length model.Pending)
         then 

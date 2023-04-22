@@ -950,11 +950,21 @@ let view
         [ makeLine x1 y1 x2 y2 connectPortsLine
           makeCircle x2 y2 { portCircle with Fill = "Green" }
         ]
+    
+    let nodes =
+        model.NodeLocations
+        |> List.indexed
+        |> List.collect (fun (i,pos)->
+            [
+                makeCircle pos.X pos.Y { portCircle with Fill = "Red" }
+                makeText pos.X (pos.Y-20.) (string (i+1)) {defaultText with  FontSize = "15px"; Fill = "Red"}
+            ]
+        )
 
     let displayElements =
         if model.ShowGrid
-        then [ grid; wireSvg ]
-        else [ wireSvg ]
+        then [ grid; wireSvg ] @ nodes
+        else [ wireSvg ] @ nodes
 
     // uncomment the display model react for visbility of all snaps
     let snaps = snapIndicatorLineX @ snapIndicatorLineY // snapDisplay model
