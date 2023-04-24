@@ -2,16 +2,26 @@
 
 open CommonTypes
 open MathJsHelpers
-
+open System
 
 /// Helper function to find the components between two nodes
 /// using the NodeToCompsList
 let findComponentsBetweenNodes (node1:int) (node2:int) (nodeToCompsList:(Component*int option) list list) =
     let comps1 = nodeToCompsList[node1] 
     let comps2 = nodeToCompsList[node2]
-
     comps1
     |> List.filter (fun (c1,no) -> (List.exists (fun (c2:Component,no) -> c1.Id = c2.Id) comps2))
+
+let findNodesOfComp (nodeToCompsList:(Component*int option) list list) comp =
+    nodeToCompsList
+    |> List.mapi (fun i localNode -> 
+        localNode |> List.collect (fun (c,_)->
+            match c=comp with
+            |true -> [i]
+            |false -> []
+        )
+    )
+    |> List.collect id
 
 let findConnectionsOnNode (nodeToCompsList:(Component*int option) list list) (index:int) (conns:Connection list) =
     
@@ -31,11 +41,6 @@ let findNodeLocation (connsOnNode: Connection list) =
     let extractY (vertix: (float*float*bool)) =
         vertix |> (fun (_,y,_) -> y)
 
-    let extractXL (vertices: (float*float*bool) list) =
-        vertices |> List.map (fun (x,_,_) -> x)
-    
-    let extractYL (vertices: (float*float*bool) list) =
-        vertices |> List.map (fun (_,y,_) -> y)
     
     let removeDuplicates (vertices: (float*float*bool) list) =
         vertices
@@ -91,14 +96,12 @@ let findOtherEndPort (port:Port) (comps: Component List) : Port option =
 /// Creates a (Component*int option) list list where each element of the top list
 /// represents one node and the inner list contains the components
 /// that "touch" that node along with the portNumber that touches it (for VS/CS direction). 
-/// PENDING: 1 COMMON GROUND
 let createNodetoCompsList(comps:Component list,conns: Connection list) =
     let ground = 
         match (List.tryFind (fun (c:Component) -> c.Type = Ground) (comps:Component list)) with
         |Some c -> c
         |None -> failwithf "No ground present in the circuit"
    
-
     /// Function to find the PortNumber of a port which comes from Source/Target of a connection
     let findPortNo (port:Port) (comps:Component list) =
         let comp = comps |> List.find(fun c-> c.Id = port.HostId)
@@ -390,14 +393,15 @@ let modifiedNodalAnalysisDC (comps,conns) =
         )
         |> Array.collect (id)
         
-    printfn "flattened matrix = %A" flattenedMatrix
+    //printfn "flattened matrix = %A" flattenedMatrix
 
     ////////// solve ///////////
 
-    let mul =
-        safeSolveMatrixVec flattenedMatrix vecB
+    let mul = safeSolveMatrixVec flattenedMatrix vecB
 
-    mul.ToArray(), nodeLst 
+    let result = mul.ToArray() |> Array.map (fun x->System.Math.Round (x,4))
+    
+    result, nodeLst 
 
 
 let frequencyResponse (comps,conns) outputNode  =

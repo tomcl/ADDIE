@@ -168,7 +168,8 @@ let moveSymbols (model: Model) (mMsg: MouseT) =
                     symbolCmd (SymbolT.ErrorSymbols (errorComponents,model.SelectedComponents,isDragAndDrop))
                     Cmd.ofMsg UpdateBoundingBoxes
                     Cmd.ofMsg CheckAutomaticScrolling
-                    wireCmd (BusWireT.UpdateWires (model.SelectedComponents, mMsg.Pos - model.LastMousePos))]
+                    wireCmd (BusWireT.UpdateWires (model.SelectedComponents, mMsg.Pos - model.LastMousePos))
+                    ]
 
 /// Inputs are segment ID being dragged and new mouse position.
 /// Performs the Segment Drag operation implementing snaps.
@@ -498,7 +499,8 @@ let mUpUpdate (model: Model) (mMsg: MouseT) : Model * Cmd<Msg> = // mMsg is curr
         { model with Action = Idle ; UndoList = appendUndoList model.UndoList newModel; RedoList = [] },
         Cmd.batch [ wireCmd (BusWireT.DragSegment (segId, mMsg))
                     wireCmd (BusWireT.CoalesceWire connId)
-                    wireCmd (BusWireT.MakeJumps [ connId ] ) ]
+                    wireCmd (BusWireT.MakeJumps [ connId ] ) 
+                    Cmd.ofMsg UpdateNodes]
     | Selecting ->
         let newComponents = findIntersectingComponents model model.DragToSelectBox
         let newWires = 
@@ -545,7 +547,7 @@ let mUpUpdate (model: Model) (mMsg: MouseT) : Model * Cmd<Msg> = // mMsg is curr
                 UndoList = appendUndoList model.UndoList newModel
                 RedoList = []
                 AutomaticScrolling = false },
-            wireCmd (BusWireT.MakeJumps movingWires)
+            Cmd.batch [wireCmd (BusWireT.MakeJumps movingWires); Cmd.ofMsg UpdateNodes]
         | _ ->
             let movingWires = BusWireUpdateHelpers.getConnectedWireIds model.Wire model.SelectedComponents
             {model with

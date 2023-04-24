@@ -142,7 +142,7 @@ let viewSimSubTab canvasState model dispatch =
 
               br []
 
-              getDCTable res nodeLst
+              getDCTable res canvasState nodeLst
 
             
             ]

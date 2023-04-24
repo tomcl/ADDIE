@@ -450,6 +450,7 @@ module SheetT =
         | IssieInterface of IssieInterfaceMsg
         | MovePort of MouseT //different from mousemsg because ctrl pressed too
         | SaveSymbols
+        | UpdateNodes
         
 
     type Model = {

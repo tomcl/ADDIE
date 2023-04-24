@@ -12,6 +12,7 @@ open SheetUpdateHelpers
 open Sheet
 open Optics
 open FilesIO
+open Simulation
 open FSharp.Core
 open Fable.Core
 open Fable.Core.JsInterop
@@ -438,6 +439,16 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
         Cmd.batch [
             Cmd.ofMsg (ColourSelection([], newWires, HighLightColor.SkyBlue)); 
             wireCmd (BusWireT.SelectWires newWires)]
+    | UpdateNodes -> 
+        let comps = SymbolUpdate.extractComponents model.Wire.Symbol
+        let conns = BusWire.extractConnections model.Wire
+        let nodeLst = createNodetoCompsList (comps,conns)
+        let nodeLoc =
+            [1..List.length nodeLst-1]
+            |> List.map (fun i -> findConnectionsOnNode nodeLst i (conns))
+            |> List.map (findNodeLocation)
+
+        {model with NodeLocations = nodeLoc}, Cmd.none
     | SetSpinner isOn ->
         if isOn then {model with CursorType = Spinner}, Cmd.none
         else {model with CursorType = Default}, Cmd.none

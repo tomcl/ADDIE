@@ -951,6 +951,13 @@ let view
           makeCircle x2 y2 { portCircle with Fill = "Green" }
         ]
     
+    //let canvasState = (SymbolUpdate.extractComponents model.Wire.Symbol, BusWire.extractConnections model.Wire)
+    //let nodeLst = Simulation.createNodetoCompsList canvasState
+    //let nodes =
+    //    [1..List.length nodeLst-1]
+    //    |> List.map (fun i -> Simulation.findConnectionsOnNode nodeLst i (snd canvasState))
+    //    |> List.map (Simulation.findNodeLocation)
+    
     let nodes =
         model.NodeLocations
         |> List.indexed
