@@ -37,7 +37,7 @@ let addCompValue (symbol: Symbol) (name:string)  weight size =
     let h,w = getRotatedHAndW symbol
     let pos,align = 
         match symbol.STransform.Rotation with
-        |Degree0 |Degree180 -> symbolPos + {X=(w/2.);Y=h+10.},"middle"
+        |Degree0 |Degree180 -> symbolPos + {X=(3.*w/4.);Y=(-20.)},"middle"
         |Degree270 |Degree90 -> symbolPos + {X=(w+3.);Y=0.75*h},"left"
         //|Degree90 -> symbolPos + {X=(-10.);Y=0.75*h},"right"
     
@@ -297,7 +297,7 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
         let p = box.TopLeft - symbol.Pos + {X=margin;Y=margin} + Constants.labelCorrection
         let pos =
             match transform.Rotation with
-            |Degree0 -> p
+            |Degree0 -> p + {X=(-box.W); Y=0.}
             |Degree90 -> p + {X=0.; Y=(-box.H)}
             |Degree180 -> p + {X=0.;Y=(-2.*box.H)}
             |Degree270 -> p + {X=0.; Y=(-box.H)}
@@ -358,7 +358,7 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
     //                    "middle" 
     //                    "bold" 
     //                    (legendFontSize comp.Type))
-    |> List.append (addCompValue symbol componentValue "bold" (legendFontSize comp.Type))
+    |> List.append (addCompValue symbol componentValue "bold" "16px")
     |> List.append (addComponentLabel comp.Label transform labelcolour)
     //|> List.append (addComponentLabel componentValue transform NumberLabel labelcolour)
     |> List.append (drawMovingPortTarget symbol.MovingPortTarget symbol points)

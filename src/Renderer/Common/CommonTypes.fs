@@ -478,8 +478,9 @@ module CommonTypes
     type ConnectionsWidth = Map<ConnectionId, int option>
 
     /// Documents user circuit error found during connection width inference
-    type WidthInferError = {
+    type SimulationError = {
         Msg : string
+        ComponentsAffected : ComponentId list // A list of component Ids.
         ConnectionsAffected : ConnectionId list // A list of connection Ids.
     }
 

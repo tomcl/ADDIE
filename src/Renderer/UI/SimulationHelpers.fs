@@ -69,7 +69,6 @@ let getDCTable (results: float array) canvasState (nodeLst:(Component*int option
     let resistorCurrentLines = 
         resistors
         |> List.map (findNodesOfComp nodeLst)
-        |> List.map (fun lst -> (lst[0], lst[1]))
         |> List.mapi (fun i (n1,n2)->
             let v1 = if n1=0 then 0. else results[n1-1]
             let v2 = if n2=0 then 0. else results[n2-1]

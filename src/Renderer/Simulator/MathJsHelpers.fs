@@ -37,6 +37,7 @@ type MathsJS =
     abstract det : obj -> float
     abstract re: obj -> float
     abstract im: obj -> float
+    abstract rationalize: string -> string
     //abstract atan: float -> float
 
 [<ImportAll("mathjs")>]
