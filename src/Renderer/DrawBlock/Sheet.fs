@@ -968,10 +968,27 @@ let view
             ]
         )
 
+    let currents =
+        model.ComponentCurrents
+        |> Map.toList
+        |> List.collect (fun (id,v)->
+            let symbol = model.Wire.Symbol.Symbols[id]
+            match symbol.Component.Type, symbol.STransform.Rotation with
+            |Resistor _,Degree0 |Resistor _, Degree180 ->
+                let pos = symbol.Pos + {X=symbol.Component.W/4.; Y=symbol.Component.H+15.} 
+                [
+                    makeLine pos.X pos.Y (pos.X+symbol.Component.W/2.) pos.Y {defaultLine with Stroke="green"} 
+                    makeLine (pos.X+symbol.Component.W/2.) pos.Y (pos.X+symbol.Component.W/2.-5.) (pos.Y-5.) {defaultLine with Stroke="green"} 
+                    makeLine (pos.X+symbol.Component.W/2.) pos.Y (pos.X+symbol.Component.W/2.-5.) (pos.Y+5.) {defaultLine with Stroke="green"} 
+                    makeText (pos.X+symbol.Component.W/4.) (pos.Y+5.) (string (v)+"A") {defaultText with  FontSize = "15px"; Fill = "green";FontWeight="bold"}
+                ]
+            |_ -> []
+        )
+
     let displayElements =
         if model.ShowGrid
-        then [ grid; wireSvg ] @ nodes
-        else [ wireSvg ] @ nodes
+        then [ grid; wireSvg ] @ nodes @ currents
+        else [ wireSvg ] @ nodes @ currents
 
     // uncomment the display model react for visbility of all snaps
     let snaps = snapIndicatorLineX @ snapIndicatorLineY // snapDisplay model

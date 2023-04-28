@@ -297,10 +297,14 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
         let p = box.TopLeft - symbol.Pos + {X=margin;Y=margin} + Constants.labelCorrection
         let pos =
             match transform.Rotation with
-            |Degree0 -> p + {X=(-box.W); Y=0.}
-            |Degree90 -> p + {X=0.; Y=(-box.H)}
-            |Degree180 -> p + {X=0.;Y=(-2.*box.H)}
+            |Degree0 -> p + {X=(-box.W)+5.; Y=2.6}
+            |Degree90 -> p + {X=2.*box.W; Y=(-box.H)}
+            |Degree180 -> p + {X=(-box.W)+5.;Y=(-2.*box.H)}
             |Degree270 -> p + {X=0.; Y=(-box.H)}
+            //|Degree0 -> p 
+            //|Degree90 -> p + {X=0.; Y=(-box.H)}
+            //|Degree180 -> p + {X=0.;Y=(-2.*box.H)}
+            //|Degree270 -> p + {X=0.; Y=(-box.H)}
         
         let text = addStyledText {style with DominantBaseline="hanging"} pos compLabel
         match colour with

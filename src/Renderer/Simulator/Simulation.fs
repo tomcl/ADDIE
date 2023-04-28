@@ -255,7 +255,6 @@ let checkCanvasStateForErrors (comps,conns) =
                 }]  
             )
     
-    let cs = extractCS comps
     let checkNoSeriesCS = 
         nodeLst
         |> List.indexed
@@ -502,6 +501,72 @@ let calcMatrixElementValue row col (nodeToCompsList:(Component*int option) list 
                     s + (findMatrixCVoltageValue c vsAndOpamps row nodesNo)
                 )       
 
+let findComponentCurrents results nodesNo nodeLst =
+    let allDCVoltageSources = 
+        nodeLst
+        |> List.removeAt 0
+        |> List.collect (fun nodeComps ->
+            nodeComps
+            |> List.collect (fun (comp,_) ->
+                match comp.Type with
+                |VoltageSource (DC (_)) -> [comp]
+                |_ -> []
+            )
+        )
+        |> List.distinctBy (fun c->c.Id)
+    
+    let allOpamps = 
+        nodeLst
+        |> List.removeAt 0
+        |> List.collect (fun nodeComps ->
+            nodeComps
+            |> List.collect (fun (comp,_) ->
+                match comp.Type with
+                |Opamp -> [comp]
+                |_ -> []
+            )
+        )
+        |> List.distinctBy (fun c->c.Id)
+
+    let allResistors = 
+        nodeLst
+        |> List.removeAt 0
+        |> List.collect (fun nodeComps ->
+            nodeComps
+            |> List.collect (fun (comp,_) ->
+                match comp.Type with
+                |Resistor _ -> [comp]
+                |_ -> []
+            )
+        )
+        |> List.distinctBy (fun c->c.Id)
+    
+    let vsAndOpampCurrents =
+        allDCVoltageSources@allOpamps
+        |> List.mapi (fun i comp ->
+            let current = Array.tryItem (i+nodesNo) results
+            match current with
+            |Some curr -> (ComponentId comp.Id, curr)
+            |None -> failwithf "Attempting to find current that doesn't exist in the result vector"
+        )
+
+    let resistorCurrents= 
+        allResistors
+        |> List.map (findNodesOfComp nodeLst)
+        |> List.mapi (fun i (n1,n2)->
+            let v1 = if n1=0 then 0. else results[n1-1]
+            let v2 = if n2=0 then 0. else results[n2-1]
+            let resistance = 
+                match allResistors[i].Type with 
+                |Resistor (v,_) -> v 
+                |_ -> failwithf "Attempting to find Resistance of a non-Resistor comp"
+            (ComponentId allResistors[i].Id,(v2-v1)/resistance)
+        )
+        |> List.map (fun (r,v)->(r, System.Math.Round (v,4)))
+        
+    vsAndOpampCurrents
+    |> List.append resistorCurrents
+    |> Map.ofList
 
 let modifiedNodalAnalysisDC (comps,conns) =
     
@@ -553,7 +618,9 @@ let modifiedNodalAnalysisDC (comps,conns) =
 
     let result = mul.ToArray() |> Array.map (fun x->System.Math.Round (x,4))
     
-    result, nodeLst 
+    let componentCurrents = findComponentCurrents result (List.length nodeLst-1) nodeLst 
+
+    result, componentCurrents, nodeLst 
 
 
 let frequencyResponse (comps,conns) outputNode  =
@@ -596,3 +663,4 @@ let frequencyResponse (comps,conns) outputNode  =
     )
     |> List.map complexCToP
     
+

@@ -377,6 +377,10 @@ let update (msg : Msg) oldModel =
         model, Cmd.none
     | UpdateNodes newLocs -> 
         {model with Sheet = {model.Sheet with NodeLocations = newLocs}}, Cmd.none
+    | UpdateCurrents newCurrents -> 
+        match Map.isEmpty model.Sheet.ComponentCurrents with
+        |true -> {model with Sheet = {model.Sheet with ComponentCurrents = newCurrents}}, Cmd.none
+        |false -> {model with Sheet = {model.Sheet with ComponentCurrents = Map.empty}}, Cmd.none
     | ExecutePendingMessages n ->
         if n = (List.length model.Pending)
         then 

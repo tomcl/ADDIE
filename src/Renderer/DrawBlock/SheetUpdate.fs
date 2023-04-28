@@ -498,6 +498,7 @@ let init () =
         ScrollUpdateIsOutstanding = false
         PrevWireSelection = []
         NodeLocations = []
+        ComponentCurrents = Map.empty
     }, Cmd.none
 
 

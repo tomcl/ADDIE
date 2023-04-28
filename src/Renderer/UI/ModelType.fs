@@ -181,6 +181,7 @@ type Msg =
     | ExecCmdAsynch of Elmish.Cmd<Msg>
     | SendSeqMsgAsynch of seq<Msg>
     | UpdateNodes of XYPos list
+    | UpdateCurrents of Map<ComponentId,float>
 
 
 //================================//

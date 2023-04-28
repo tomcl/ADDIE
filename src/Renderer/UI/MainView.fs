@@ -115,7 +115,7 @@ let viewSimSubTab canvasState model dispatch =
     
     match model.SimSubTabVisible with
     | DCsim -> 
-        let res,nodeLst = Simulation.modifiedNodalAnalysisDC canvasState
+        let res,componentCurrents,nodeLst = Simulation.modifiedNodalAnalysisDC canvasState
         let nodeLoc =
             [1..List.length nodeLst-1]
             |> List.map (fun i -> findConnectionsOnNode nodeLst i (snd canvasState))
@@ -129,7 +129,16 @@ let viewSimSubTab canvasState model dispatch =
                         ) 
                     Button.Color IsInfo
                 ] 
-                [ str "Print Nodes" ] 
+                [ str "Print Nodes" ]
+              Button.button 
+                [ 
+                    Button.OnClick(fun _ ->
+                        (printfn "currents: %A" componentCurrents)
+                        //Sheet (DrawModelType.SheetT.Msg.UpdateComponentCurrents componentCurrents) |> dispatch                        ) 
+                        UpdateCurrents componentCurrents |> dispatch)
+                    Button.Color IsInfo
+                ] 
+                [ str "Print Currents" ]
                                   
             
               Table.table [] [

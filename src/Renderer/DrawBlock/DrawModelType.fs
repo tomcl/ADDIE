@@ -451,6 +451,7 @@ module SheetT =
         | MovePort of MouseT //different from mousemsg because ctrl pressed too
         | SaveSymbols
         | UpdateNodes
+        | UpdateComponentCurrents of Map<ComponentId,float>
         
 
     type Model = {
@@ -497,6 +498,7 @@ module SheetT =
         ScrollUpdateIsOutstanding: bool
         PrevWireSelection : ConnectionId list
         NodeLocations : XYPos list
+        ComponentCurrents: Map<ComponentId,float>
         }
     
     open Operators
