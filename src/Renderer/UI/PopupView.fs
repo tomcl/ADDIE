@@ -492,7 +492,9 @@ let dialogPopupAC model dispatch =
                 [Select.select []
                 [ select [(OnChange(fun option -> 
                     printfn "Value is: %s" option.Value
-                    SetPopupDialogACSource (Some option.Value) |> dispatch))]
+                    if model.SimSubTabVisible = ACsim then SetPopupDialogACSource (Some option.Value) |> dispatch
+                    else SetPopupDialogTimeSource (Some option.Value) |> dispatch                         
+                    ))]
                     ([option [Value ("sel")] [str ("Select")]] @ sourceOptions)
                     ]
                 ]
@@ -504,7 +506,8 @@ let dialogPopupAC model dispatch =
                     [
                         (OnChange(fun option -> 
                             printfn "Value is: %s" option.Value
-                            SetPopupDialogACOut (Some option.Value) |> dispatch))
+                            if model.SimSubTabVisible = ACsim then SetPopupDialogACOut (Some option.Value) |> dispatch
+                            else SetPopupDialogTimeOut (Some option.Value) |> dispatch))
                         
                     ]
                     ([option [Value ("sel")] [str ("Select")]] @ outputOptions)

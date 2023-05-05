@@ -484,7 +484,6 @@ module CommonTypes
         ConnectionsAffected : ConnectionId list // A list of connection Ids.
     }
 
-
     /// Messages sent from draw block
     type JSDiagramMsg =
         | InitCanvas of CanvasState // Has to be dispatched only once.

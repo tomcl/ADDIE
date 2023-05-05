@@ -499,6 +499,7 @@ module SheetT =
         PrevWireSelection : ConnectionId list
         NodeLocations : XYPos list
         ComponentCurrents: Map<ComponentId,float>
+        NodeVoltages: float list
         }
     
     open Operators

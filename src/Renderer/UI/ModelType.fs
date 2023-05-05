@@ -66,6 +66,8 @@ type PopupDialogData = {
     VSType: string option
     ACSource: string option
     ACOutput: string option
+    TimeInput: string option
+    TimeOutput: string option
 }
 
 let text_ = Lens.create (fun a -> a.Text) (fun s a -> {a with Text = s})
@@ -78,6 +80,8 @@ let badLabel_ = Lens.create (fun a -> a.BadLabel) (fun s a -> {a with BadLabel= 
 let vsType_ = Lens.create (fun a -> a.VSType) (fun s a -> {a with VSType= s})
 let acSource_ = Lens.create (fun a -> a.ACSource) (fun s a -> {a with ACSource= s})
 let acOutput_ = Lens.create (fun a -> a.ACOutput) (fun s a -> {a with ACOutput= s})
+let timeSource_ = Lens.create (fun a -> a.TimeInput) (fun s a -> {a with TimeInput = s})
+let timeOutput_ = Lens.create (fun a -> a.TimeOutput) (fun s a -> {a with TimeOutput= s})
 
 type TopMenu = | Closed | Project | Files
 
@@ -149,6 +153,8 @@ type Msg =
     | SetPopupDialogVSType of string option
     | SetPopupDialogACSource of string option
     | SetPopupDialogACOut of string option
+    | SetPopupDialogTimeSource of string option
+    | SetPopupDialogTimeOut of string option
     | SetPopupDialogInt of int option
     | SetPopupDialogInt2 of int64 option
     | CloseDiagramNotification
@@ -182,6 +188,7 @@ type Msg =
     | SendSeqMsgAsynch of seq<Msg>
     | UpdateNodes of XYPos list
     | UpdateCurrents of Map<ComponentId,float>
+    | UpdateVoltages of float list
 
 
 //================================//

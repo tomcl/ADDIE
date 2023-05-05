@@ -959,12 +959,18 @@ let view
     //    |> List.map (Simulation.findNodeLocation)
     
     let nodes =
+        let getText i =
+            if List.isEmpty model.NodeVoltages then
+                (string (i+1))
+            else
+                string model.NodeVoltages[i]+"V"
+        
         model.NodeLocations
         |> List.indexed
         |> List.collect (fun (i,pos)->
             [
                 makeCircle pos.X pos.Y { portCircle with Fill = "Red" }
-                makeText pos.X (pos.Y-20.) (string (i+1)) {defaultText with  FontSize = "15px"; Fill = "Red"}
+                makeText pos.X (pos.Y-20.) (getText i) {defaultText with  FontSize = "15px"; Fill = "Red"}
             ]
         )
 

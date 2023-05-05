@@ -303,6 +303,10 @@ let update (msg : Msg) oldModel =
         set (popupDialogData_ >-> acSource_) tp model, Cmd.none
     | SetPopupDialogACOut tp ->
         set (popupDialogData_ >-> acOutput_) tp model, Cmd.none
+    | SetPopupDialogTimeSource tp ->
+        set (popupDialogData_ >-> timeSource_) tp model, Cmd.none
+    | SetPopupDialogTimeOut tp ->
+        set (popupDialogData_ >-> timeOutput_) tp model, Cmd.none
     | SetPopupDialogBadLabel isBad ->
         set (popupDialogData_ >-> badLabel_) isBad model, Cmd.none
     | SetPopupDialogInt int ->
@@ -376,7 +380,13 @@ let update (msg : Msg) oldModel =
     | SelectionHasChanged ->
         model, Cmd.none
     | UpdateNodes newLocs -> 
-        {model with Sheet = {model.Sheet with NodeLocations = newLocs}}, Cmd.none
+        match List.isEmpty model.Sheet.NodeLocations  with
+        |true -> {model with Sheet = {model.Sheet with NodeLocations = newLocs}}, Cmd.none
+        |false -> {model with Sheet = {model.Sheet with NodeLocations = []}}, Cmd.none
+    | UpdateVoltages newVolts -> 
+        match List.isEmpty model.Sheet.NodeVoltages with
+        |true -> {model with Sheet = {model.Sheet with NodeVoltages = newVolts}}, Cmd.none
+        |false -> {model with Sheet = {model.Sheet with NodeVoltages = []}}, Cmd.none
     | UpdateCurrents newCurrents -> 
         match Map.isEmpty model.Sheet.ComponentCurrents with
         |true -> {model with Sheet = {model.Sheet with ComponentCurrents = newCurrents}}, Cmd.none

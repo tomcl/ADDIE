@@ -499,6 +499,7 @@ let init () =
         PrevWireSelection = []
         NodeLocations = []
         ComponentCurrents = Map.empty
+        NodeVoltages = []
     }, Cmd.none
 
 

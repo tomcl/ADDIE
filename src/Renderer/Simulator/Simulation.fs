@@ -2,7 +2,12 @@
 
 open CommonTypes
 open MathJsHelpers
+open JSHelpers
 open System
+
+
+//////////  CANVAS STATE ANALYSER    ////////
+
 
 /// Helper function to find the components between two nodes
 /// using the NodeToCompsList
@@ -169,7 +174,10 @@ let createNodetoCompsList(comps:Component list,conns: Connection list) =
 
     searchCurrentCanvasState [] [ground.IOPorts[0]] [[]]
 
+//////////////////////////////////////////////////////////
 
+
+///////////// CANVAS STATE ANALYSER - ERROR CHECKER ////////////////////////
 let checkCanvasStateForErrors (comps,conns) =
     let nodeLst = createNodetoCompsList (comps,conns)
     let allCompsOfNodeLst = nodeLst |> List.collect (id) |> List.distinctBy (fun (c,pn) -> c.Id)
@@ -312,10 +320,10 @@ let checkCanvasStateForErrors (comps,conns) =
     |> List.append checkNoLoopConns
     
 
+/////////////////////////////////////////////////////////////
 
 
-
-
+//////////////////  SIMULATION HELPERS   /////////////////
 
 let combineGrounds (comps,conns) =
     let allGrounds = comps |> List.filter (fun c->c.Type = Ground)
@@ -352,7 +360,23 @@ let shortInductorsForDC (comps,conns) =
         )
     (comps',conns)
 
-    
+   
+let findInputAtTime vs t =
+        match vs with
+        |None -> failwithf "No Voltage Source present in the circuit"
+        |Some v ->
+            match v.Type with
+            |VoltageSource (DC x) -> x
+            |VoltageSource (Sine (a,o,f)) ->
+                a*sin(2.*System.Math.PI*f*t+o)
+            |VoltageSource (Pulse (v1,v2,f))->
+                let md = t % f
+                if md < f/2. then v1
+                else v2
+            |_ -> failwithf "Impossible"
+
+
+
 
 /// Calculates the elements of the vector B of MNA
 /// which is of the form:
@@ -370,33 +394,36 @@ let calcVectorBElement row (nodeToCompsList:(Component*int option) list list) =
             |_ -> s
         )
 
-    let allDCVoltageSources = 
+    let allVoltageSources = 
         nodeToCompsList
         |> List.removeAt 0
         |> List.collect (fun nodeComps ->
             nodeComps
             |> List.collect (fun (comp,_) ->
                 match comp.Type with
-                |VoltageSource (DC (_)) -> [comp]
+                |VoltageSource (_) -> [comp]
                 |_ -> []
             )
         )
         |> List.distinctBy (fun c->c.Id)
     
-    let vsNo = List.length allDCVoltageSources
+    let vsNo = List.length allVoltageSources
 
     if row < nodesNo then
         let currentNode = nodeToCompsList[row]
         findNodeTotalCurrent currentNode
     else if row < (nodesNo + vsNo) then
-        allDCVoltageSources[row-nodesNo]
+        allVoltageSources[row-nodesNo]
         |> (fun c -> 
             match c.Type with
             |VoltageSource (DC v) -> {Re=v;Im=0.}
+            |VoltageSource (Sine _) -> {Re=1;Im=0.}
             |_ -> failwithf "Impossible"
         )
     else
         {Re=0.;Im=0.}
+
+
 
 /// Calculates the value of the MNA matrix at the specified
 /// row and column (Count starts from 1)
@@ -412,12 +439,12 @@ let calcMatrixElementValue row col (nodeToCompsList:(Component*int option) list 
 
     let findMatrixBVoltageValue (comp,no) (vsAndOpamps:Component list) col nodesNo =
         match comp.Type with
-        |VoltageSource (DC _) |Opamp ->
+        |VoltageSource (_) |Opamp ->
             match comp.Id = vsAndOpamps[col-nodesNo].Id with
             |true ->
                 match (comp.Type,no) with
-                |VoltageSource (DC (v)),Some 1 -> {Re = -1.0; Im=0.0}
-                |VoltageSource (DC (v)), Some 0 -> {Re = 1.0; Im=0.0}
+                |VoltageSource (_),Some 1 -> {Re = -1.0; Im=0.0}
+                |VoltageSource (_), Some 0 -> {Re = 1.0; Im=0.0}
                 |Opamp, Some 2 -> {Re = 1.0; Im=0.0}
                 |Opamp, _ -> {Re = 0.0; Im=0.0}
                 |_ -> failwithf "Unable to identify port of Voltage Source"
@@ -426,12 +453,12 @@ let calcMatrixElementValue row col (nodeToCompsList:(Component*int option) list 
 
     let findMatrixCVoltageValue (comp,no) (vsAndOpamps:Component list) col nodesNo =
         match comp.Type with
-        |VoltageSource (DC _) |Opamp ->
+        |VoltageSource (_) |Opamp ->
             match comp.Id = vsAndOpamps[col-nodesNo].Id with
             |true ->
                 match (comp.Type,no) with
-                |VoltageSource (DC (v)),Some 1 -> {Re = -1.0; Im=0.0}
-                |VoltageSource (DC (v)), Some 0 -> {Re = 1.0; Im=0.0}
+                |VoltageSource (_),Some 1 -> {Re = -1.0; Im=0.0}
+                |VoltageSource (_), Some 0 -> {Re = 1.0; Im=0.0}
                 |Opamp, Some 0 -> {Re = 1.0; Im=0.0}
                 |Opamp, Some 1 -> {Re = -1.0; Im=0.0}
                 |Opamp, _ -> {Re = 0.0; Im=0.0}
@@ -441,14 +468,14 @@ let calcMatrixElementValue row col (nodeToCompsList:(Component*int option) list 
                 
     let nodesNo = List.length nodeToCompsList
     
-    let allDCVoltageSources = 
+    let allVoltageSources = 
         nodeToCompsList
         |> List.removeAt 0
         |> List.collect (fun nodeComps ->
             nodeComps
             |> List.collect (fun (comp,_) ->
                 match comp.Type with
-                |VoltageSource (DC (_)) -> [comp]
+                |VoltageSource (_) -> [comp]
                 |_ -> []
             )
         )
@@ -467,9 +494,9 @@ let calcMatrixElementValue row col (nodeToCompsList:(Component*int option) list 
         )
         |> List.distinctBy (fun c->c.Id)
 
-    let vsNo = List.length allDCVoltageSources
+    let vsNo = List.length allVoltageSources
 
-    let vsAndOpamps = allDCVoltageSources @ allOpamps
+    let vsAndOpamps = allVoltageSources @ allOpamps
 
 
     if (row < nodesNo && col < nodesNo) then
@@ -610,57 +637,250 @@ let modifiedNodalAnalysisDC (comps,conns) =
         |> Array.collect (id)
         
     //printfn "flattened matrix = %A" flattenedMatrix
-    
+    ////////////////////////////////
 
     ////////// solve ///////////
 
     let mul = safeSolveMatrixVec flattenedMatrix vecB
 
-    let result = mul.ToArray() |> Array.map (fun x->System.Math.Round (x,4))
+    let result = mul |> Array.map (fun x->System.Math.Round (x,4))
     
     let componentCurrents = findComponentCurrents result (List.length nodeLst-1) nodeLst 
 
     result, componentCurrents, nodeLst 
 
 
+let acAnalysis matrix nodeLst vecB wmega outputNode =    
+    let flattenedMatrix =
+        matrix
+        |> Array.mapi (fun i top ->
+            top
+            |> Array.mapi (fun j v ->
+                calcMatrixElementValue (i+1) (j+1) nodeLst wmega vecB
+            )
+        )
+        |> Array.collect (id)
+    let result = safeSolveMatrixVecComplex flattenedMatrix vecB
+    result[outputNode-1]        
+
+     
+
 let frequencyResponse (comps,conns) outputNode  =
 
     let nodeLst = createNodetoCompsList (comps,conns)
-    
-    let frequencies = [0.0..0.05..7.0] |> List.map (fun x -> 10.**x)
-
-    //printfn "node list %A" nodeLst
 
     let vs = 
         comps
         |> List.filter (fun c-> match c.Type with |VoltageSource _ -> true |_ -> false)
         |> List.length
 
-    let n = List.length nodeLst - 1 + vs
+    let opamps = comps |> List.filter (fun c-> c.Type=Opamp) |> List.length
 
+    let n = List.length nodeLst - 1 + vs + opamps
     let arr = Array.create n 0.0
     let matrix = Array.create n arr
-        
-    let outputElem = (outputNode*n)-1    
+          
     
     let vecB =
         Array.create n {Re=0.0;Im=0.0}
         |> Array.mapi (fun i v -> (calcVectorBElement (i+1) nodeLst))
     
+
+    let frequencies = [0.0..0.05..7.0] |> List.map (fun x -> 10.**x)
+    
     frequencies
-    |> List.map (fun f->
-        let flattenedMatrix =
-            matrix
-            |> Array.mapi (fun i top ->
-                top
-                |> Array.mapi (fun j v ->
-                    calcMatrixElementValue (i+1) (j+1) nodeLst f vecB
-                )
-            )
-            |> Array.collect (id)
-        let inv = safeInvComplexMatrix flattenedMatrix 
-        inv[outputElem]
+    |> List.map (fun wmega->
+        acAnalysis matrix nodeLst vecB wmega outputNode
     )
     |> List.map complexCToP
+    
+
+
+
+///////////////
+let findCompType compType =
+    (fun (x:Component) -> match x.Type with |a when a=compType -> true |_ -> false)
+
+/// need to make sure that only 1 capacitor/inductor is present in the circuit
+let replaceCLWithCS csValue (comps,conns) =
+    let comps' =
+        comps
+        |> List.map (fun c->
+            match c.Type with
+            |Capacitor _ |Inductor _ -> {c with Type = CurrentSource (csValue,"0")}
+            |_ -> c    
+        )
+    comps',conns
+    
+
+let replaceCLWithWire (comps,conns) =
+
+    //does this work??? 
+    let keepRL = List.tryFind (fun c-> match c.Type with |Capacitor _->true |_ ->false ) comps    
+    match keepRL with
+    |None -> (comps,conns)
+    |Some RL ->
+        let comps' =
+            comps
+            |> List.collect (fun c->
+                match c.Type with
+                |Capacitor _ |Inductor _-> []
+                |_ -> [c]
+            )
+
+        let connsPort0 =
+            conns |> List.filter (fun conn -> conn.Target.Id = RL.IOPorts[0].Id || conn.Source.Id = RL.IOPorts[0].Id)
+        
+        let connsPort1 =
+            conns |> List.filter (fun conn -> conn.Target.Id = RL.IOPorts[1].Id || conn.Source.Id = RL.IOPorts[1].Id)
+            
+        let connsWithoutRL = conns |> List.filter (fun conn -> conn.Target.HostId <> RL.Id && conn.Source.HostId <> RL.Id)
+        
+        let baseComp0Port = if connsPort0[0].Target.HostId = RL.Id then connsPort0[0].Source else connsPort0[0].Target
+        let baseComp1Port = if connsPort1[0].Target.HostId = RL.Id then connsPort1[0].Source else connsPort1[0].Target
+
+        let connsPort0'=
+            connsPort0
+            |> List.filter (fun conn -> conn.Source.Id <> baseComp0Port.Id || conn.Target.Id <> baseComp0Port.Id)
+            |> List.map (fun conn ->
+                if conn.Source.Id = RL.IOPorts[0].Id then
+                    {conn with Source=baseComp0Port}
+                else
+                    {conn with Target=baseComp0Port}
+            )
+
+        let connsPort1'=
+            connsPort1
+            |> List.filter (fun conn -> conn.Source.Id <> baseComp1Port.Id || conn.Target.Id <> baseComp1Port.Id)
+            |> List.map (fun conn ->
+                if conn.Source.Id = RL.IOPorts[1].Id then
+                    {conn with Source=baseComp1Port;}
+                else
+                    {conn with Target=baseComp1Port}
+            )
+
+        let basesConnection = {Source=baseComp0Port; Target=baseComp1Port;Vertices=[];Id=JSHelpers.uuid ()}
+
+        let conns' = connsWithoutRL @ connsPort0' @ connsPort1' @ [basesConnection]
+
+        comps',conns'
+
+let replaceCLWithTinyR (comps,conns) =
+    //does this work??? 
+    let comps' =
+            comps
+            |> List.map (fun c->
+                match c.Type with
+                |Capacitor _ |Inductor _ -> {c with Type = Resistor (0.00000001,"0")}
+                |_ -> c    
+            )
+    comps',conns
+        
+        
+
+
+
+let transientAnalysis (comps,conns) inputNode outputNode =
+         
+    let findTheveninR node1 node2 =
+        let result1,_,_ =
+            (comps,conns)
+            |> replaceCLWithCS 1.
+            |> modifiedNodalAnalysisDC
+        
+        let result2,_,_ =
+            (comps,conns)
+            |> replaceCLWithCS 2.
+            |> modifiedNodalAnalysisDC
+
+        let v1 =
+            if node1=0 then result1[node2-1]
+            else if node2=0 then result1[node1-1]
+            else result1[node2-1] - result1[node1-1]
+        
+        let v2 =
+            if node1=0 then result2[node2-1]
+            else if node2=0 then result2[node1-1]
+            else result1[node2-1] - result2[node1-1]
+
+        abs(v2-v1)
+
+    let findTau param =
+        let CL = comps |> List.tryFind (fun c-> match c.Type with |Capacitor _ |Inductor _ -> true |_ ->false)
+        match CL with
+        |None -> failwithf "No Capacitor/Inductor present in the circuit"
+        |Some cl ->
+            let (node1,node2) = findNodesOfComp (createNodetoCompsList (comps,conns)) cl
+            let Rth = findTheveninR node1 node2
+            match cl.Type with
+            |Capacitor (c,_) -> Rth*c
+            |Inductor (l,_) -> Rth/l
+            |_ -> failwithf "No Capacitor/Inductor present in the circuit"
+
+    let findDCGain nodeX nodeY =
+        let result,_,_ = modifiedNodalAnalysisDC (comps,conns)
+        result[nodeY-1]/result[nodeX-1]
+    
+    
+    let findHFGain nodeX nodeY =
+        let comps',conns' = (comps,conns) |> replaceCLWithTinyR //replaceCLWithWire
+        let result,_,_ = modifiedNodalAnalysisDC (comps',conns')
+        result[nodeY-1]/result[nodeX-1]
+    
+
+    // find tau from Thevenin Resistance -> DONE
+    // find DC/HF gain -> PENDING for inductor
+    // take input signal, find A and plot results
+    let vs = comps |> List.tryFind (fun c->match c.Type with |VoltageSource _ -> true |_->false)
+
+    let yssAsVS =
+        match vs with
+        |Some comp ->
+            match comp.Type with
+            |VoltageSource (DC v) ->
+                let res,_,_ = modifiedNodalAnalysisDC (comps,conns)
+                {comp with Type = VoltageSource (DC res[outputNode-1])}
+            |VoltageSource (Sine (a,o,f)) -> 
+                let nodeLst = createNodetoCompsList (comps,conns)
+
+                let vs = 
+                    comps
+                    |> List.filter (fun c-> match c.Type with |VoltageSource _ -> true |_ -> false)
+                    |> List.length
+
+                let opamps = comps |> List.filter (fun c-> c.Type=Opamp) |> List.length
+
+                let n = List.length nodeLst - 1 + vs + opamps
+                let arr = Array.create n 0.0
+                let matrix = Array.create n arr
+                let vecB =
+                    Array.create n {Re=0.0;Im=0.0}
+                    |> Array.mapi (fun i v -> (calcVectorBElement (i+1) nodeLst))
+                let res = acAnalysis matrix nodeLst vecB (2.*System.Math.PI*f) outputNode |> complexCToP
+                printfn "res = %A" res
+                {comp with Type = VoltageSource (Sine (a*res.Mag,o+res.Phase,f))}
+
+
+            |_ -> failwithf "Impossible"
+        |None -> failwithf "No Voltage Source present in the circuit"
+
+
+    let HFGain = findHFGain inputNode outputNode
+
+    let tau = findTau ()
+    let f = match yssAsVS.Type with |VoltageSource (Sine (_,_,f)) -> f |_ -> 0.
+
+    let alpha = HFGain * findInputAtTime vs 0. - findInputAtTime (Some yssAsVS) 0.
+    
+    let dts = if f=0. then [0.0..(tau/10.)..tau*10.] else [0.0..(1./(100.*f))..5./f]
+
+    dts
+    |> List.map (fun t->
+        let y_tr = alpha*exp(-t/tau)
+        let yss = findInputAtTime (Some yssAsVS) t
+        (t,y_tr,yss)
+    )
+    |> List.unzip3
+    
     
 

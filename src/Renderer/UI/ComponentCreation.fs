@@ -68,9 +68,9 @@ let createVSPopup (model:Model) (compType:ComponentType) dispatch =
             
             let inputValue1 = getText dialogData
             let value1 = Option.get (textToFloatValue inputValue1)
-            let inputValue2 = getText dialogData
+            let inputValue2 = getText2 dialogData
             let value2 = Option.get (textToFloatValue inputValue2)
-            let inputValue3 = getText dialogData
+            let inputValue3 = getText3 dialogData
             let value3 = Option.get (textToFloatValue inputValue3)
             
             let newComp =
@@ -101,6 +101,23 @@ let createACPopup (model:Model) dispatch =
     let isDisabled =
         fun (dialogData : PopupDialogData) -> 
             match dialogData.ACSource,dialogData.ACOutput with
+            |Some x,Some y when x<>"sel" && y<>"sel" -> false
+            |_ -> true
+    dialogPopup title body buttonText buttonAction isDisabled [] dispatch
+
+let createTimePopup (model:Model) dispatch =
+    
+    let title = sprintf "Setup Time Domain Simulation"
+    let body = dialogPopupAC model dispatch
+    let buttonText = "Start"
+    let buttonAction =
+        fun (dialogData : PopupDialogData) ->
+                            
+            SetGraphVisibility true |> dispatch
+            dispatch ClosePopup
+    let isDisabled =
+        fun (dialogData : PopupDialogData) -> 
+            match dialogData.TimeInput,dialogData.TimeOutput with
             |Some x,Some y when x<>"sel" && y<>"sel" -> false
             |_ -> true
     dialogPopup title body buttonText buttonAction isDisabled [] dispatch

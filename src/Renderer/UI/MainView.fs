@@ -88,6 +88,8 @@ let init() = {
         VSType= None
         ACOutput=None
         ACSource=None
+        TimeInput=None
+        TimeOutput=None
     }
     Notifications = {
         FromDiagram = None
@@ -139,6 +141,15 @@ let viewSimSubTab canvasState model dispatch =
                     Button.Color IsInfo
                 ] 
                 [ str "Print Currents" ]
+              Button.button 
+                [ 
+                    Button.OnClick(fun _ ->
+                        //(printfn "currents: %A" componentCurrents)
+                        //Sheet (DrawModelType.SheetT.Msg.UpdateComponentCurrents componentCurrents) |> dispatch                        ) 
+                        UpdateVoltages (Array.toList res) |> dispatch)
+                    Button.Color IsInfo
+                ] 
+                [ str "Print V" ]
                                   
             
               Table.table [] [
@@ -166,13 +177,25 @@ let viewSimSubTab canvasState model dispatch =
                         SetPopupDialogACSource None |> dispatch
                         ComponentCreation.createACPopup model dispatch)
                 ]  
-                [str "Setup"]
+                [str "Setup AC"]
             
               Button.button [Button.OnClick(fun _ -> SetGraphVisibility false |> dispatch)] [str "X"]
                 
             ]
     | TimeSim -> 
-        div [] [str "placeholder"]
+        div [] 
+            [ Button.button
+                [
+                    Button.OnClick(fun _ -> 
+                        SetPopupDialogTimeOut None |> dispatch
+                        SetPopupDialogTimeSource None |> dispatch
+                        ComponentCreation.createTimePopup model dispatch)
+                ]  
+                [str "Setup Time"]
+            
+              Button.button [Button.OnClick(fun _ -> SetGraphVisibility false |> dispatch)] [str "X"]
+                
+            ]
 
 /// Display the content of the right tab.
 let private  viewRightTab canvasState model dispatch =

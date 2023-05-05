@@ -32,7 +32,8 @@ type MathsJS =
     abstract reshape : ResizeArray<float> * ResizeArray<int> -> obj
     abstract reshape : obj * ResizeArray<int> -> ResizeArray<obj>
     abstract inv : obj -> obj 
-    abstract multiply : obj*obj -> ResizeArray<float>
+    //abstract multiply : obj*obj -> ResizeArray<float>
+    abstract multiply : obj*obj -> ResizeArray<obj>
     abstract divide : obj*obj -> obj
     abstract det : obj -> float
     abstract re: obj -> float
@@ -103,7 +104,8 @@ let safeSolveMatrixVec flattenedMatrix vec =
         match dim = Array.length vec with
         |false -> failwithf "Cannot perform multiplication -> sizes do not match"
         |true -> 
-            Maths.multiply (invM,ResizeArray(vec))
+            let res = Maths.multiply (invM,ResizeArray(vec))
+            res.ToArray() |> Array.map (Maths.re)
 
 
 let safeInvComplexMatrix (flattenedMatrix:ComplexC array) =
@@ -121,5 +123,22 @@ let safeInvComplexMatrix (flattenedMatrix:ComplexC array) =
         flat.ToArray()
         |> Array.map (toComplexF)
 
-        
+let safeSolveMatrixVecComplex flattenedMatrix vec =
+    let matrix =  
+        flattenedMatrix
+        |> flattenedToMatrix
+    let det = Maths.det(matrix)
 
+    let jsVec = vec |> Array.map(toComplexJS)
+
+    match det = 0.0 with
+    |true -> failwithf "det is 0, cannot invert"
+    |false ->
+        let dim = flattenedMatrix |> Array.length |> float |> sqrt |> int
+        let invM = Maths.inv(matrix)
+        match dim = Array.length vec with
+        |false -> failwithf "Cannot perform multiplication -> sizes do not match"
+        |true -> 
+            let res = Maths.multiply (invM,jsVec)
+            res.ToArray() 
+            |> Array.map (toComplexF)
