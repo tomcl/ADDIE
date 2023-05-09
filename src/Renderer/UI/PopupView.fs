@@ -406,7 +406,7 @@ let dialogPopupVS dispatch =
             | _ -> "DC Voltage value (V)" |> str
         let before2 = 
             match dialogData.VSType with
-            |Some "Sine" -> "DC Offset (V)" |> str
+            |Some "Sine" -> "Phase Offset (V)" |> str
             |Some "Pulse" -> "V2 (V)" |> str
             | _ -> "DC Voltage value (V)" |> str
         let before3 = 

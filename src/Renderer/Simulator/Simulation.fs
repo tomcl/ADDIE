@@ -36,11 +36,17 @@ let findNodesOfComp (nodeToCompsList:(Component*int option) list list) comp =
 let findConnectionsOnNode (nodeToCompsList:(Component*int option) list list) (index:int) (conns:Connection list) =
     
     let nodeComps = nodeToCompsList[index]
-    let nodeCompIds = nodeComps |> List.map (fun (c,pNo) -> c.Id)
 
     conns
     |> List.filter (fun conn ->
-        List.exists (fun id -> id=conn.Source.HostId) nodeCompIds && List.exists (fun id -> id=conn.Target.HostId) nodeCompIds
+        List.exists (fun (c:Component,pNo) -> 
+            match pNo with
+            |Some portNumber -> c.Id=conn.Source.HostId && c.IOPorts[portNumber].Id=conn.Source.Id
+            |_ -> c.Id=conn.Source.HostId) nodeComps 
+        && List.exists (fun (c:Component,pNo) -> 
+            match pNo with
+            |Some portNumber -> c.Id=conn.Target.HostId && c.IOPorts[portNumber].Id=conn.Target.Id
+            |_ -> c.Id=conn.Target.HostId) nodeComps 
     )
 
 
@@ -409,24 +415,28 @@ let calcVectorBElement row (nodeToCompsList:(Component*int option) list list) =
     
     let vsNo = List.length allVoltageSources
 
-    if row < nodesNo then
+    if row < nodesNo then   //current rows
         let currentNode = nodeToCompsList[row]
         findNodeTotalCurrent currentNode
-    else if row < (nodesNo + vsNo) then
+    else if row < (nodesNo + vsNo) then  //voltage source rows
         allVoltageSources[row-nodesNo]
         |> (fun c -> 
             match c.Type with
             |VoltageSource (DC v) -> {Re=v;Im=0.}
-            |VoltageSource (Sine _) -> {Re=1;Im=0.}
+            |VoltageSource (Sine (a,o,f)) -> {Re=1;Im=0.}
             |_ -> failwithf "Impossible"
         )
-    else
+    else    //opamp rows
         {Re=0.;Im=0.}
 
 
 
 /// Calculates the value of the MNA matrix at the specified
 /// row and column (Count starts from 1)
+/// Matrix consist of submatrices
+/// More info on github
+/// A = [G B]
+///     [C D]
 let calcMatrixElementValue row col (nodeToCompsList:(Component*int option) list list) omega vecB = 
     let findMatrixGCompValue (comp,no) omega =
         match comp.Type with
@@ -515,6 +525,7 @@ let calcMatrixElementValue row col (nodeToCompsList:(Component*int option) list 
     else 
     // extra elements for modified nodal analysis (vs / opamp)
         if (row >= nodesNo && col >= nodesNo) then
+            // matrix D is always 0
             {Re=0.;Im=0.}
         else
             if row < nodesNo then
@@ -528,7 +539,13 @@ let calcMatrixElementValue row col (nodeToCompsList:(Component*int option) list 
                     s + (findMatrixCVoltageValue c vsAndOpamps row nodesNo)
                 )       
 
-let findComponentCurrents results nodesNo nodeLst =
+
+
+/// Finds resistor, vs and opamp currents
+/// Current direction in vs will always be from + to -
+/// In opamps: output to input(V+/V-)
+/// In resistors: left2right or top2bottom
+let findComponentCurrents results nodesNo nodeLst conns =
     let allDCVoltageSources = 
         nodeLst
         |> List.removeAt 0
@@ -577,12 +594,47 @@ let findComponentCurrents results nodesNo nodeLst =
             |None -> failwithf "Attempting to find current that doesn't exist in the result vector"
         )
 
+    let topLeftToBottomRight n1 n2 (comp: Component) =
+        let conns1 = findConnectionsOnNode nodeLst n1 conns
+        let conns2 = findConnectionsOnNode nodeLst n2 conns
+        let portId1 = conns1 |> List.collect (fun conn -> 
+            if conn.Source.Id = comp.IOPorts[0].Id 
+            || conn.Source.Id = comp.IOPorts[1].Id 
+                then [conn.Source.Id]
+                else if conn.Target.Id = comp.IOPorts[0].Id 
+                || conn.Target.Id = comp.IOPorts[1].Id 
+                then [conn.Target.Id]
+                else []
+            )
+        let portId2 = conns2 |> List.collect (fun conn -> 
+            if conn.Source.Id = comp.IOPorts[0].Id 
+            || conn.Source.Id = comp.IOPorts[1].Id 
+                then [conn.Source.Id]
+                else if conn.Target.Id = comp.IOPorts[0].Id 
+                || conn.Target.Id = comp.IOPorts[1].Id 
+                then [conn.Target.Id]
+                else []
+            )
+
+        let edge1,edge2 = 
+            match comp.SymbolInfo with
+            |None -> Top,Bottom
+            |Some info ->
+                info.PortOrientation[portId1[0]], info.PortOrientation[portId2[0]]
+
+        match edge1,edge2 with
+        |Top,Bottom |Left,Right -> n1,n2
+        |Bottom,Top |Right,Left -> n2,n1
+        |_ -> failwithf "Cannot identify node orientation relative to symbol"
+
+
     let resistorCurrents= 
         allResistors
         |> List.map (findNodesOfComp nodeLst)
         |> List.mapi (fun i (n1,n2)->
-            let v1 = if n1=0 then 0. else results[n1-1]
-            let v2 = if n2=0 then 0. else results[n2-1]
+            let n1',n2' = topLeftToBottomRight n1 n2 allResistors[i]
+            let v1 = if n1'=0 then 0. else results[n1'-1]
+            let v2 = if n2'=0 then 0. else results[n2'-1]
             let resistance = 
                 match allResistors[i].Type with 
                 |Resistor (v,_) -> v 
@@ -595,6 +647,14 @@ let findComponentCurrents results nodesNo nodeLst =
     |> List.append resistorCurrents
     |> Map.ofList
 
+
+///////// MAIN SIMULATION FUNCTIONS //////////
+
+
+
+/// Performs MNA on the current canvas state. 
+/// Returns: (i) result of MNA (node Voltages, vs/opamp currents)
+/// (ii) component Currents, (iii) nodeToCompsList
 let modifiedNodalAnalysisDC (comps,conns) =
     
     // transform canvas state for DC Analysis  
@@ -645,9 +705,10 @@ let modifiedNodalAnalysisDC (comps,conns) =
 
     let result = mul |> Array.map (fun x->System.Math.Round (x,4))
     
-    let componentCurrents = findComponentCurrents result (List.length nodeLst-1) nodeLst 
+    let componentCurrents = findComponentCurrents result (List.length nodeLst-1) nodeLst conns
 
     result, componentCurrents, nodeLst 
+
 
 
 let acAnalysis matrix nodeLst vecB wmega outputNode =    
@@ -661,6 +722,7 @@ let acAnalysis matrix nodeLst vecB wmega outputNode =
         )
         |> Array.collect (id)
     let result = safeSolveMatrixVecComplex flattenedMatrix vecB
+    printfn "result %A" result
     result[outputNode-1]        
 
      
@@ -881,6 +943,6 @@ let transientAnalysis (comps,conns) inputNode outputNode =
         (t,y_tr,yss)
     )
     |> List.unzip3
-    
+     
     
 
