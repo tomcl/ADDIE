@@ -4,7 +4,7 @@ open Fable.React
 open Fable.React.Props
 open Simulation
 open CommonTypes
-
+open Fulma
 
 
 let getDCTable (results: float array) canvasState (nodeLst:(Component*int option) list list) =
@@ -15,24 +15,21 @@ let getDCTable (results: float array) canvasState (nodeLst:(Component*int option
         let nodeNo = 
             if index' < List.length nodeLst then 
                 "Node " + string index' + " (V)"
-            else " I (A)"
+            else " I (VS)"
         let nodeComps = 
             if index' < List.length nodeLst then 
                 ("",nodeLst[index']) ||> List.fold (fun s (v,i) -> s+"-"+v.Label )
             else ""
         tr [] [
             td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str nodeNo]
-            td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str line]
-            td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str nodeComps]
-
+            td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str (line+" V")]
         ]
 
     let getCurrentTableLine resistorLabel value : ReactElement =
         let name = "I(" + resistorLabel + ")"
         tr [] [
             td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str name]
-            td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str value]
-            td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str "Amperes"]
+            td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str (value+" A")]
 
         ]
 
@@ -41,15 +38,13 @@ let getDCTable (results: float array) canvasState (nodeLst:(Component*int option
     let tableFormat =
         [
         colgroup [] [
-            col [Style [Width "25%";]]
-            col [Style [Width "40%"; WhiteSpace WhiteSpaceOptions.PreLine]]
-            col [Style [Width "35%"; WhiteSpace WhiteSpaceOptions.PreLine]]
+            col [Style [Width "50%";]]
+            col [Style [Width "50%"; WhiteSpace WhiteSpaceOptions.PreLine]]
             ]
         thead [] [
             tr [] [
-                th [Style [WhiteSpace WhiteSpaceOptions.Pre]] [str "  Node"]
+                th [Style [WhiteSpace WhiteSpaceOptions.Pre]] [str "Element"]
                 th [] [str "Value"]
-                th [] [str "Comps"]
             ]
         ]
         ]
@@ -85,15 +80,15 @@ let getDCTable (results: float array) canvasState (nodeLst:(Component*int option
 
     let tableChildren = List.append tableFormat (tableLines@resistorCurrentLines)
     if List.length tableLines <> 0 then 
-        table 
-            [Style 
-                [ 
-                FontSize "16px"; 
-                TableLayout "Fixed"; 
-                Width "100%";
-                BorderRight "groove";
-                BorderLeft "groove"]
-                ]
+        Table.table []
+            //[Style 
+            //    [ 
+            //    FontSize "16px"; 
+            //    TableLayout "Fixed"; 
+            //    Width "100%";
+            //    BorderRight "groove";
+            //    BorderLeft "groove"]
+            //    ]
             tableChildren
     else
         table [] []

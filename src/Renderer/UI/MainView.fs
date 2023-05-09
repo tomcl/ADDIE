@@ -151,19 +151,11 @@ let viewSimSubTab canvasState model dispatch =
                 ] 
                 [ str "Print V" ]
                                   
-            
-              Table.table [] [
-                    tr [] [
-                        td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str "test1"]
-                        td [Style [Color "Black"; WhiteSpace WhiteSpaceOptions.PreWrap]] [str "test2"]
-                    ]
-            
-              ]
-
               br []
-
-              getDCTable res canvasState nodeLst
-
+              br []
+              div [Style [Margin "20px"]] [
+                getDCTable res canvasState nodeLst
+              ]
             
             ]
 

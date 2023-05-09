@@ -623,8 +623,8 @@ let findComponentCurrents results nodesNo nodeLst conns =
                 info.PortOrientation[portId1[0]], info.PortOrientation[portId2[0]]
 
         match edge1,edge2 with
-        |Top,Bottom |Left,Right -> n1,n2
-        |Bottom,Top |Right,Left -> n2,n1
+        |Top,Bottom |Left,Right -> n2,n1
+        |Bottom,Top |Right,Left -> n1,n2
         |_ -> failwithf "Cannot identify node orientation relative to symbol"
 
 
