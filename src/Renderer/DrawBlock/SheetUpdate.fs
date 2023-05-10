@@ -12,6 +12,7 @@ open SheetUpdateHelpers
 open Sheet
 open Optics
 open FilesIO
+open CanvasStateAnalyser
 open Simulation
 open FSharp.Core
 open Fable.Core
@@ -442,10 +443,11 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
     | UpdateNodes -> 
         let comps = SymbolUpdate.extractComponents model.Wire.Symbol
         let conns = BusWire.extractConnections model.Wire
-        let nodeLst = createNodetoCompsList (comps,conns)
+        let comps',conns' = combineGrounds (comps,conns)
+        let nodeLst = createNodetoCompsList (comps',conns')
         let nodeLoc =
             [1..List.length nodeLst-1]
-            |> List.map (fun i -> findConnectionsOnNode nodeLst i (conns))
+            |> List.map (fun i -> findConnectionsOnNode nodeLst i (conns'))
             |> List.map (findNodeLocation)
 
         {model with NodeLocations = nodeLoc}, Cmd.none

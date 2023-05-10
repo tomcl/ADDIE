@@ -469,8 +469,8 @@ let dialogPopupAC model dispatch =
     fun (dialogData : PopupDialogData) ->
         let conns = BusWire.extractConnections model.Sheet.Wire
         let comps = SymbolUpdate.extractComponents model.Sheet.Wire.Symbol
-        
-        let nodeLst = Simulation.createNodetoCompsList (comps,conns)
+        let comps',conns' = Simulation.combineGrounds (comps,conns)
+        let nodeLst = CanvasStateAnalyser.createNodetoCompsList (comps',conns')
 
         let sourceOptions =
             comps

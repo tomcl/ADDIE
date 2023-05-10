@@ -26,9 +26,8 @@
 
     <Compile Include="Interface\JSHelpers.fs" />
 
-
-
 	  <!-- Simulator -->
+    <Compile Include="Simulator\CanvasStateAnalyser.fs" />
 	<Compile Include="Simulator\MathJsHelpers.fs" />
 	<Compile Include="Simulator\Extractor.fs" />
     <Compile Include="Simulator\NumberHelpers.fs" />

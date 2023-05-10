@@ -10,6 +10,7 @@ open FileMenuView
 open Sheet.SheetInterface
 open DrawModelType
 open CommonTypes
+open CanvasStateAnalyser
 open Simulation
 open SimulationHelpers
 
@@ -114,81 +115,85 @@ let makeSelectionChangeMsg (model:Model) (dispatch: Msg -> Unit) (ev: 'a) =
 // -- Create View
 
 let viewSimSubTab canvasState model dispatch =
-    
-    match model.SimSubTabVisible with
-    | DCsim -> 
-        let res,componentCurrents,nodeLst = Simulation.modifiedNodalAnalysisDC canvasState
-        let nodeLoc =
-            [1..List.length nodeLst-1]
-            |> List.map (fun i -> findConnectionsOnNode nodeLst i (snd canvasState))
-            |> List.map (findNodeLocation)
-        div [] 
-            [ Button.button 
-                [ 
-                    Button.OnClick(fun _ -> 
-                        (printfn "nodes: %A" res)
-                        UpdateNodes nodeLoc |> dispatch
-                        ) 
-                    Button.Color IsInfo
-                ] 
-                [ str "Print Nodes" ]
-              Button.button 
-                [ 
-                    Button.OnClick(fun _ ->
-                        (printfn "currents: %A" componentCurrents)
-                        //Sheet (DrawModelType.SheetT.Msg.UpdateComponentCurrents componentCurrents) |> dispatch                        ) 
-                        UpdateCurrents componentCurrents |> dispatch)
-                    Button.Color IsInfo
-                ] 
-                [ str "Print Currents" ]
-              Button.button 
-                [ 
-                    Button.OnClick(fun _ ->
-                        //(printfn "currents: %A" componentCurrents)
-                        //Sheet (DrawModelType.SheetT.Msg.UpdateComponentCurrents componentCurrents) |> dispatch                        ) 
-                        UpdateVoltages (Array.toList res) |> dispatch)
-                    Button.Color IsInfo
-                ] 
-                [ str "Print V" ]
+    let comps',conns' = combineGrounds canvasState
+    match checkCanvasStateForErrors (comps',conns') with
+    |[] ->
+        match model.SimSubTabVisible with
+        | DCsim -> 
+            let res,componentCurrents,nodeLst = Simulation.modifiedNodalAnalysisDC canvasState
+            let nodeLoc =
+                [1..List.length nodeLst-1]
+                |> List.map (fun i -> findConnectionsOnNode nodeLst i (snd canvasState))
+                |> List.map (findNodeLocation)
+            div [] 
+                [ Button.button 
+                    [ 
+                        Button.OnClick(fun _ -> 
+                            (printfn "nodes: %A" res)
+                            UpdateNodes nodeLoc |> dispatch
+                            ) 
+                        Button.Color IsInfo
+                    ] 
+                    [ str "Print Nodes" ]
+                  Button.button 
+                    [ 
+                        Button.OnClick(fun _ ->
+                            (printfn "currents: %A" componentCurrents)
+                            //Sheet (DrawModelType.SheetT.Msg.UpdateComponentCurrents componentCurrents) |> dispatch                        ) 
+                            UpdateCurrents componentCurrents |> dispatch)
+                        Button.Color IsInfo
+                    ] 
+                    [ str "Print Currents" ]
+                  Button.button 
+                    [ 
+                        Button.OnClick(fun _ ->
+                            //(printfn "currents: %A" componentCurrents)
+                            //Sheet (DrawModelType.SheetT.Msg.UpdateComponentCurrents componentCurrents) |> dispatch                        ) 
+                            UpdateVoltages (Array.toList res) |> dispatch)
+                        Button.Color IsInfo
+                    ] 
+                    [ str "Print V" ]
                                   
-              br []
-              br []
-              div [Style [Margin "20px"]] [
-                getDCTable res componentCurrents canvasState nodeLst
-              ]
+                  br []
+                  br []
+                  div [Style [Margin "20px"]] [
+                    getDCTable res componentCurrents canvasState nodeLst
+                  ]
             
-            ]
+                ]
 
 
-    | ACsim ->
-        div [] 
-            [ Button.button
-                [
-                    Button.OnClick(fun _ -> 
-                        SetPopupDialogACOut None |> dispatch
-                        SetPopupDialogACSource None |> dispatch
-                        ComponentCreation.createACPopup model dispatch)
-                ]  
-                [str "Setup AC"]
+        | ACsim ->
+            div [] 
+                [ Button.button
+                    [
+                        Button.OnClick(fun _ -> 
+                            SetPopupDialogACOut None |> dispatch
+                            SetPopupDialogACSource None |> dispatch
+                            ComponentCreation.createACPopup model dispatch)
+                    ]  
+                    [str "Setup AC"]
             
-              Button.button [Button.OnClick(fun _ -> SetGraphVisibility false |> dispatch)] [str "X"]
+                  Button.button [Button.OnClick(fun _ -> SetGraphVisibility false |> dispatch)] [str "X"]
                 
-            ]
-    | TimeSim -> 
-        div [] 
-            [ Button.button
-                [
-                    Button.OnClick(fun _ -> 
-                        SetPopupDialogTimeOut None |> dispatch
-                        SetPopupDialogTimeSource None |> dispatch
-                        ComponentCreation.createTimePopup model dispatch)
-                ]  
-                [str "Setup Time"]
+                ]
+        | TimeSim -> 
+            div [] 
+                [ Button.button
+                    [
+                        Button.OnClick(fun _ -> 
+                            SetPopupDialogTimeOut None |> dispatch
+                            SetPopupDialogTimeSource None |> dispatch
+                            ComponentCreation.createTimePopup model dispatch)
+                    ]  
+                    [str "Setup Time"]
             
-              Button.button [Button.OnClick(fun _ -> SetGraphVisibility false |> dispatch)] [str "X"]
+                  Button.button [Button.OnClick(fun _ -> SetGraphVisibility false |> dispatch)] [str "X"]
                 
-            ]
-
+                ]
+    |_ -> 
+        printfn "errors %A" (checkCanvasStateForErrors (comps',conns'))
+        div [] [str "Cannot simulate circuit. Please fix all errors first!"]
 /// Display the content of the right tab.
 let private  viewRightTab canvasState model dispatch =
     let pane = model.RightPaneTabVisible
