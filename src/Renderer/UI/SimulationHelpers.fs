@@ -7,26 +7,19 @@ open CommonTypes
 open Fulma
 
 
-let getDCTable (results: float array) canvasState (nodeLst:(Component*int option) list list) =
+let getDCTable (results: float array) componentCurrents canvasState (nodeLst:(Component*int option) list list) =
 
 
     let getDCTableLine index line : ReactElement =
         let index' = index+1
-        let nodeNo = 
-            if index' < List.length nodeLst then 
-                "Node " + string index' + " (V)"
-            else " I (VS)"
-        let nodeComps = 
-            if index' < List.length nodeLst then 
-                ("",nodeLst[index']) ||> List.fold (fun s (v,i) -> s+"-"+v.Label )
-            else ""
+        let nodeNo = "V(Node " + string index' + ")"
         tr [] [
             td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str nodeNo]
             td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str (line+" V")]
         ]
 
-    let getCurrentTableLine resistorLabel value : ReactElement =
-        let name = "I(" + resistorLabel + ")"
+    let getCurrentTableLine label value : ReactElement =
+        let name = "I(" + label + ")"
         tr [] [
             td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str name]
             td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str (value+" A")]
@@ -34,7 +27,8 @@ let getDCTable (results: float array) canvasState (nodeLst:(Component*int option
         ]
 
        
-    
+    let nodesNo = List.length nodeLst-1
+
     let tableFormat =
         [
         colgroup [] [
@@ -50,36 +44,25 @@ let getDCTable (results: float array) canvasState (nodeLst:(Component*int option
         ]
 
     
-    let tableLines =
+    let voltageLines =
         results
         |> Array.toList
+        |> List.removeManyAt (nodesNo) (Array.length results-nodesNo)
         |> List.indexed
         |> List.collect (fun (i,v) -> [getDCTableLine i (string v)])
-    
-    let resistors =
-        canvasState
-        |> fst
-        |> List.filter (fun c -> match c.Type with |Resistor _ -> true |_ -> false)
         
-    let resistorCurrentLines = 
-        resistors
-        |> List.map (findNodesOfComp nodeLst)
-        |> List.mapi (fun i (n1,n2)->
-            let v1 = if n1=0 then 0. else results[n1-1]
-            let v2 = if n2=0 then 0. else results[n2-1]
-            let resistance = 
-                match resistors[i].Type with 
-                |Resistor (v,_) -> v 
-                |_ -> failwithf "Attempting to find Resistance of a non-Resistor comp"
-            (resistors[i].Label,(v2-v1)/resistance)
+    let currentLines = 
+        componentCurrents
+        |> Map.toList
+        |> List.collect (fun (ComponentId id,current)-> 
+            let comp = List.find(fun (c:Component)->c.Id = id) (fst canvasState)
+            [getCurrentTableLine comp.Label (string current)]
         )
-        |> List.map (fun (r,v)->(r, System.Math.Round (v,4)))
-        |> List.collect (fun (r,v) -> [getCurrentTableLine r (string v)])
+        
 
 
-
-    let tableChildren = List.append tableFormat (tableLines@resistorCurrentLines)
-    if List.length tableLines <> 0 then 
+    let tableChildren = List.append tableFormat (voltageLines@currentLines)
+    if List.length voltageLines <> 0 then 
         Table.table []
             //[Style 
             //    [ 

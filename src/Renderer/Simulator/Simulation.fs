@@ -553,7 +553,7 @@ let findComponentCurrents results nodesNo nodeLst conns =
             nodeComps
             |> List.collect (fun (comp,_) ->
                 match comp.Type with
-                |VoltageSource (DC (_)) -> [comp]
+                |VoltageSource (_) -> [comp]
                 |_ -> []
             )
         )

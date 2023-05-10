@@ -154,7 +154,7 @@ let viewSimSubTab canvasState model dispatch =
               br []
               br []
               div [Style [Margin "20px"]] [
-                getDCTable res canvasState nodeLst
+                getDCTable res componentCurrents canvasState nodeLst
               ]
             
             ]

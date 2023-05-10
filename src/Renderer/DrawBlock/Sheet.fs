@@ -1014,7 +1014,7 @@ let view
         |> List.collect (fun (i,pos)->
             [
                 makeCircle pos.X pos.Y { portCircle with Fill = "Red" }
-                makeText pos.X (pos.Y-20.) (getText i) {defaultText with  FontSize = "15px"; Fill = "Red"}
+                makeText (pos.X+8.) (pos.Y-20.) (getText i) {defaultText with  FontSize = "15px"; Fill = "Red"}
             ]
         )
 
