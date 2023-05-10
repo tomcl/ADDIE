@@ -493,7 +493,10 @@ let createNewSymbol (ldcs: LoadedComponent list) (pos: XYPos) (comptype: Compone
     let id = JSHelpers.uuid ()
     let style = Constants.componentLabelStyle
     let comp = makeComponent pos comptype id label
-    let transform = {Rotation= Degree0; flipped= false}
+    let transform = 
+        match comptype with
+        |VoltageSource _ |CurrentSource _ -> {Rotation= Degree90; flipped= false}
+        |_ -> {Rotation= Degree0; flipped= false}
 
     { 
       Pos = { X = pos.X - float comp.W / 2.0; Y = pos.Y - float comp.H / 2.0 }

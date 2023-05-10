@@ -523,29 +523,29 @@ let notIntersectingComponents (model: Model) (box1: BoundingBox) (inputId: Commo
 /// according to its position and rotation
 let drawCurrentNextToSymbol model symId current =
         let symbol = model.Wire.Symbol.Symbols[symId]
-        match symbol.Component.Type, symbol.STransform.Rotation with
-        |Resistor _,Degree0 |Resistor _, Degree180 
-        |Inductor _,Degree0 |Inductor _, Degree180
-        | VoltageSource _, Degree90 | VoltageSource _, Degree270
-        | Opamp, Degree0 | Opamp, Degree180 -> 
-            let pos = symbol.Pos + {X=symbol.Component.W/4.; Y=symbol.Component.H+15.} 
-            if current >= 0. then
-                [
-                    makeLine pos.X pos.Y (pos.X+symbol.Component.W/2.) pos.Y {defaultLine with Stroke="green"} 
-                    makeText (pos.X+symbol.Component.W/4.) (pos.Y+5.) (string ((abs current))+"A") {defaultText with  FontSize = "15px"; Fill = "green";FontWeight="bold"}
-                    makeLine (pos.X+symbol.Component.W/2.) pos.Y (pos.X+symbol.Component.W/2.-5.) (pos.Y-5.) {defaultLine with Stroke="green"} 
-                    makeLine (pos.X+symbol.Component.W/2.) pos.Y (pos.X+symbol.Component.W/2.-5.) (pos.Y+5.) {defaultLine with Stroke="green"} 
-                ]
-            else [
-                    makeLine pos.X pos.Y (pos.X+symbol.Component.W/2.) pos.Y {defaultLine with Stroke="green"} 
-                    makeText (pos.X+symbol.Component.W/4.) (pos.Y+5.) (string ((abs current))+"A") {defaultText with  FontSize = "15px"; Fill = "green";FontWeight="bold"}
-                    makeLine pos.X pos.Y (pos.X+5.) (pos.Y-5.) {defaultLine with Stroke="green"}
-                    makeLine pos.X pos.Y (pos.X+5.) (pos.Y+5.) {defaultLine with Stroke="green"}
-                ]
-        |Resistor _,Degree90 |Resistor _, Degree270 
-        |Inductor _,Degree90 |Inductor _, Degree270
-        | VoltageSource _, Degree0 | VoltageSource _, Degree180
-        | Opamp, Degree90 | Opamp, Degree270 -> 
+        match symbol.Component.Type with
+        |Resistor _ |Inductor _
+        |VoltageSource _ |Opamp ->
+            match symbol.STransform.Rotation with
+            |Degree0 | Degree180 ->
+                let pos = 
+                    match symbol.Component.Type with
+                    |Opamp -> symbol.Pos + {X=symbol.Component.W/4.; Y=symbol.Component.H}
+                    |_ -> symbol.Pos + {X=symbol.Component.W/4.; Y=symbol.Component.H+15.} 
+                if current >= 0. then
+                    [
+                        makeLine pos.X pos.Y (pos.X+symbol.Component.W/2.) pos.Y {defaultLine with Stroke="green"} 
+                        makeText (pos.X+symbol.Component.W/4.) (pos.Y+5.) (string ((abs current))+"A") {defaultText with  FontSize = "15px"; Fill = "green";FontWeight="bold"}
+                        makeLine (pos.X+symbol.Component.W/2.) pos.Y (pos.X+symbol.Component.W/2.-5.) (pos.Y-5.) {defaultLine with Stroke="green"} 
+                        makeLine (pos.X+symbol.Component.W/2.) pos.Y (pos.X+symbol.Component.W/2.-5.) (pos.Y+5.) {defaultLine with Stroke="green"} 
+                    ]
+                else [
+                        makeLine pos.X pos.Y (pos.X+symbol.Component.W/2.) pos.Y {defaultLine with Stroke="green"} 
+                        makeText (pos.X+symbol.Component.W/4.) (pos.Y+5.) (string ((abs current))+"A") {defaultText with  FontSize = "15px"; Fill = "green";FontWeight="bold"}
+                        makeLine pos.X pos.Y (pos.X+5.) (pos.Y-5.) {defaultLine with Stroke="green"}
+                        makeLine pos.X pos.Y (pos.X+5.) (pos.Y+5.) {defaultLine with Stroke="green"}
+                    ]
+            |Degree90 |Degree270 ->
             let pos = symbol.Pos + {X=(-15.); Y=symbol.Component.W/4.} 
             if current >= 0. then
                 [

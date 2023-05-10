@@ -308,11 +308,15 @@ let checkCanvasStateForErrors (comps,conns) =
             match conn.Source.HostId = conn.Target.HostId with
             |false -> []
             |true ->
-                [{
-                Msg = sprintf "Loop connection" 
-                ComponentsAffected = [] 
-                ConnectionsAffected = [ConnectionId conn.Id]
-                }]    
+                let comp = List.find (fun (c:Component) ->c.Id = conn.Source.HostId) comps
+                match comp.Type with
+                |Opamp -> []
+                |_ ->
+                    [{
+                    Msg = sprintf "Loop connection" 
+                    ComponentsAffected = [] 
+                    ConnectionsAffected = [ConnectionId conn.Id]
+                    }]    
         
         )
  

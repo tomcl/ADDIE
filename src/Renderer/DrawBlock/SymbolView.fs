@@ -227,16 +227,16 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
         match comp.Type with
         | CurrentSource _ -> 
             match transform.Rotation with 
-            | Degree0 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 30 45 30 15 defaultLine; makeLine 20 25 30 15 defaultLine; makeLine 40 25 30 15 defaultLine]
-            | Degree90 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 45 30 15 30 defaultLine; makeLine 25 40 15 30 defaultLine; makeLine 25 20 15 30 defaultLine]
-            | Degree180 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 30 15 30 45 defaultLine; makeLine 20 35 30 45 defaultLine; makeLine 40 35 30 45 defaultLine]
-            | Degree270 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 15 30 45 30 defaultLine; makeLine 35 20 45 30 defaultLine; makeLine 35 40 45 30 defaultLine]
+            | Degree0 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 15 30 45 30 defaultLine; makeLine 35 20 45 30 defaultLine; makeLine 35 40 45 30 defaultLine]
+            | Degree90 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 30 45 30 15 defaultLine; makeLine 20 25 30 15 defaultLine; makeLine 40 25 30 15 defaultLine]
+            | Degree180 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 45 30 15 30 defaultLine; makeLine 25 40 15 30 defaultLine; makeLine 25 20 15 30 defaultLine]
+            | Degree270 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 30 15 30 45 defaultLine; makeLine 20 35 30 45 defaultLine; makeLine 40 35 30 45 defaultLine]
         | VoltageSource _ -> 
             match transform.Rotation with
-            | Degree0 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 22.5 50 37.5 50 defaultLine; makeLine 22.5 15 37.5 15 defaultLine; makeLine 30 22.5 30 7.5 defaultLine]
-            | Degree90 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 45 37.5 45 22.5 defaultLine; makeLine 15 37.5 15 22.5 defaultLine; makeLine 7.5 30 22.5 30 defaultLine]
-            | Degree180 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 22.5 45 37.5 45 defaultLine; makeLine 30 37.5 30 52.5 defaultLine; makeLine 22.5 15 37.5 15 defaultLine ]
-            | Degree270 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 40 30 55 30 defaultLine; makeLine 47.5 37.5 47.5 22.5 defaultLine; makeLine 12.5 37.5 12.5 22.5 defaultLine]
+            | Degree0 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 40 30 55 30 defaultLine; makeLine 47.5 37.5 47.5 22.5 defaultLine; makeLine 12.5 37.5 12.5 22.5 defaultLine]
+            | Degree90 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 22.5 50 37.5 50 defaultLine; makeLine 22.5 15 37.5 15 defaultLine; makeLine 30 22.5 30 7.5 defaultLine]
+            | Degree180 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 45 37.5 45 22.5 defaultLine; makeLine 15 37.5 15 22.5 defaultLine; makeLine 7.5 30 22.5 30 defaultLine]
+            | Degree270 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 22.5 45 37.5 45 defaultLine; makeLine 30 37.5 30 52.5 defaultLine; makeLine 22.5 15 37.5 15 defaultLine ]
         |Capacitor _ ->
             match transform.Rotation with
             | Degree0 | Degree180 -> [makeLine 0 15 25 15 capacitorLine; makeLine 25 0 25 30 capacitorLine;makeLine 35 0 35 30 capacitorLine;makeLine 35 15 60 15 capacitorLine]
