@@ -89,7 +89,13 @@ let findNodeLocation (connsOnNode: Connection list) =
         |> List.countBy id
         |> List.sortBy (fun (pos,count) -> count)
         |> List.head
-        |> fst
+        |> (fun (pos,count) -> 
+            if count <> 1 then
+                pos
+            else
+                connsOnNode[0].Vertices |> removeDuplicates |> removeSticks |> findMid
+        )
+
 
 
 
