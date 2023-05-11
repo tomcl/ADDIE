@@ -272,7 +272,11 @@ let findComponentCurrents results nodesNo nodeLst conns =
         |> List.mapi (fun i comp ->
             let current = Array.tryItem (i+nodesNo) results
             match current with
-            |Some curr -> (ComponentId comp.Id, curr)
+            |Some curr -> 
+                match comp.Type,comp.SymbolInfo with
+                |Opamp,Some x when x.STransform.Rotation = Degree270||x.STransform.Rotation = Degree0 -> (ComponentId comp.Id, -curr)
+                |VoltageSource _,Some x when x.STransform.Rotation = Degree270||x.STransform.Rotation = Degree0 -> (ComponentId comp.Id, -curr)
+                |_-> (ComponentId comp.Id, curr)
             |None -> failwithf "Attempting to find current that doesn't exist in the result vector"
         )
 
@@ -387,7 +391,7 @@ let modifiedNodalAnalysisDC (comps,conns) =
 
     let result = mul |> Array.map (fun x->System.Math.Round (x,4))
     
-    let componentCurrents = findComponentCurrents result (List.length nodeLst-1) nodeLst conns
+    let componentCurrents = findComponentCurrents result (List.length nodeLst-1) nodeLst conns'
 
     result, componentCurrents, nodeLst 
 

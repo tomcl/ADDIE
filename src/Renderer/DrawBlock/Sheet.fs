@@ -535,13 +535,13 @@ let drawCurrentNextToSymbol model symId current =
                 if current >= 0. then
                     [
                         makeLine pos.X pos.Y (pos.X+symbol.Component.W/2.) pos.Y {defaultLine with Stroke="green"} 
-                        makeText (pos.X+symbol.Component.W/4.) (pos.Y+5.) (string ((abs current))+"A") {defaultText with  FontSize = "15px"; Fill = "green";FontWeight="bold"}
+                        makeText (pos.X+symbol.Component.W/4.) (pos.Y+5.) (NumberHelpers.floatValueToText ((abs current))+"A") {defaultText with  FontSize = "15px"; Fill = "green";FontWeight="bold"}
                         makeLine (pos.X+symbol.Component.W/2.) pos.Y (pos.X+symbol.Component.W/2.-5.) (pos.Y-5.) {defaultLine with Stroke="green"} 
                         makeLine (pos.X+symbol.Component.W/2.) pos.Y (pos.X+symbol.Component.W/2.-5.) (pos.Y+5.) {defaultLine with Stroke="green"} 
                     ]
                 else [
                         makeLine pos.X pos.Y (pos.X+symbol.Component.W/2.) pos.Y {defaultLine with Stroke="green"} 
-                        makeText (pos.X+symbol.Component.W/4.) (pos.Y+5.) (string ((abs current))+"A") {defaultText with  FontSize = "15px"; Fill = "green";FontWeight="bold"}
+                        makeText (pos.X+symbol.Component.W/4.) (pos.Y+5.) (NumberHelpers.floatValueToText ((abs current))+"A") {defaultText with  FontSize = "15px"; Fill = "green";FontWeight="bold"}
                         makeLine pos.X pos.Y (pos.X+5.) (pos.Y-5.) {defaultLine with Stroke="green"}
                         makeLine pos.X pos.Y (pos.X+5.) (pos.Y+5.) {defaultLine with Stroke="green"}
                     ]
@@ -550,13 +550,13 @@ let drawCurrentNextToSymbol model symId current =
             if current >= 0. then
                 [
                     makeLine pos.X pos.Y pos.X (pos.Y+symbol.Component.W/2.) {defaultLine with Stroke="green"} 
-                    makeText (pos.X-5.) (pos.Y+symbol.Component.W/4.-5.) (string ((abs current))+"A") {defaultText with  FontSize = "15px"; Fill = "green";FontWeight="bold";TextAnchor="end"}
+                    makeText (pos.X-5.) (pos.Y+symbol.Component.W/4.-5.) (NumberHelpers.floatValueToText ((abs current))+"A") {defaultText with  FontSize = "15px"; Fill = "green";FontWeight="bold";TextAnchor="end"}
                     makeLine pos.X (pos.Y+symbol.Component.W/2.) (pos.X-5.) (pos.Y+symbol.Component.W/2.-5.) {defaultLine with Stroke="green"} 
                     makeLine pos.X (pos.Y+symbol.Component.W/2.) (pos.X+5.) (pos.Y+symbol.Component.W/2.-5.) {defaultLine with Stroke="green"} 
                 ]
             else [
                     makeLine pos.X pos.Y pos.X (pos.Y+symbol.Component.W/2.) {defaultLine with Stroke="green"} 
-                    makeText (pos.X-5.) (pos.Y+symbol.Component.W/4.) (string ((abs current))+"A") {defaultText with  FontSize = "15px"; Fill = "green";FontWeight="bold";TextAnchor="end"}
+                    makeText (pos.X-5.) (pos.Y+symbol.Component.W/4.) (NumberHelpers.floatValueToText ((abs current))+"A") {defaultText with  FontSize = "15px"; Fill = "green";FontWeight="bold";TextAnchor="end"}
                     makeLine pos.X (pos.Y) (pos.X-5.) (pos.Y+5.) {defaultLine with Stroke="green"} 
                     makeLine pos.X (pos.Y) (pos.X+5.) (pos.Y+5.) {defaultLine with Stroke="green"}
                 ]

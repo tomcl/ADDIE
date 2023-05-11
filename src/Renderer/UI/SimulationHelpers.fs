@@ -4,25 +4,26 @@ open Fable.React
 open Fable.React.Props
 open Simulation
 open CommonTypes
+open NumberHelpers
 open Fulma
 
 
 let getDCTable (results: float array) componentCurrents canvasState (nodeLst:(Component*int option) list list) =
 
 
-    let getDCTableLine index line : ReactElement =
+    let getDCTableLine index value : ReactElement =
         let index' = index+1
         let nodeNo = "V(Node " + string index' + ")"
         tr [] [
             td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str nodeNo]
-            td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str (line+" V")]
+            td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str (value+"V")]
         ]
 
     let getCurrentTableLine label value : ReactElement =
         let name = "I(" + label + ")"
         tr [] [
             td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str name]
-            td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str (value+" A")]
+            td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str (value+"A")]
 
         ]
 
@@ -49,14 +50,14 @@ let getDCTable (results: float array) componentCurrents canvasState (nodeLst:(Co
         |> Array.toList
         |> List.removeManyAt (nodesNo) (Array.length results-nodesNo)
         |> List.indexed
-        |> List.collect (fun (i,v) -> [getDCTableLine i (string v)])
+        |> List.collect (fun (i,v) -> [getDCTableLine i (floatValueToText v)])
         
     let currentLines = 
         componentCurrents
         |> Map.toList
         |> List.collect (fun (ComponentId id,current)-> 
             let comp = List.find(fun (c:Component)->c.Id = id) (fst canvasState)
-            [getCurrentTableLine comp.Label (string current)]
+            [getCurrentTableLine comp.Label (floatValueToText current)]
         )
         
 

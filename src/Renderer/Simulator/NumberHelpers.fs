@@ -189,3 +189,43 @@ let textToFloatValue (text:string) =
 
 
 
+let floatValueToText (value:float) :string =
+    let asStr = string value
+    let hasDot = asStr |> Seq.contains '.'
+    let hasMinus = asStr[0]='-'
+    
+    let str = if hasMinus then asStr[1..(String.length asStr)] else asStr
+    let length = Seq.length str   
+
+    let result=
+        match hasDot with
+        |true ->
+            let dotIndex = str |> Seq.findIndex (fun ch -> ch='.')
+            let intPart = str[0..(dotIndex-1)]//str[dotIndex..(Seq.length str-dotIndex)]
+            let floatPart = str[(dotIndex+1)..(String.length str-1)]//str |> Seq.removeManyAt 0 (dotIndex+1) |> string
+            // case <1
+            if intPart = "0" then
+                let cut = 
+                    match floatPart with
+                    |x when x[0..5] = "000000" -> x[6..(Seq.length floatPart-1)]+" n"
+                    |y when y[0..2] = "000" -> y[3..(Seq.length floatPart-1)]+" u"
+                    |_ -> floatPart+" m"
+                let cut' =
+                    if String.length cut > 5 then cut[0..2]+"."+cut[3..(String.length cut-1)] 
+                    else if String.length cut = 5 then cut
+                    else if String.length cut = 4 then cut[0..1]+"0"+cut[2..3]
+                    else (string cut[0])+"00"+cut[1..2]
+                ("",cut') ||> Seq.fold (fun s v -> if (s="" && v='0') then s else s+(string v))
+            else str
+        |false ->
+            match str with
+            |x when x[(length-6)..(length-1)] = "000000" -> x[0..(length-7)]+" M"
+            |y when y[(length-3)..(length-1)] = "000" -> y[0..(length-4)]+" k"
+            |_ -> str+" "
+    
+    match hasMinus with
+    |true -> "-"+result
+    |false -> result
+
+
+

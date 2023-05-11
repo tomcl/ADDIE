@@ -261,7 +261,7 @@ let private makeSliderField model (comp:Component) text dispatch =
                 let props = errorPropsNotification "Invalid number value"
                 dispatch <| SetPropertiesNotification props
             else
-                model.Sheet.ChangeRLCIValue sheetDispatch (ComponentId comp.Id) (Option.get (textToFloatValue newValue)) newValue
+                model.Sheet.ChangeRLCIValue sheetDispatch (ComponentId comp.Id) (Option.get (textToFloatValue newValue)) (floatValueToText (Option.get (textToFloatValue newValue)))
                 //SetComponentLabelFromText model comp text' // change the JS component label
                 let lastUsedWidth = model.LastUsedDialogWidth 
                 dispatch (ReloadSelectedComponent (lastUsedWidth)) // reload the new component
