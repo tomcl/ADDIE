@@ -384,13 +384,9 @@ let update (msg : Msg) oldModel =
         |true -> {model with Sheet = {model.Sheet with NodeLocations = newLocs}}, Cmd.none
         |false -> {model with Sheet = {model.Sheet with NodeLocations = []}}, Cmd.none
     | UpdateVoltages newVolts -> 
-        match List.isEmpty model.Sheet.NodeVoltages with
-        |true -> {model with Sheet = {model.Sheet with NodeVoltages = newVolts}}, Cmd.none
-        |false -> {model with Sheet = {model.Sheet with NodeVoltages = []}}, Cmd.none
+        {model with Sheet = {model.Sheet with NodeVoltages = newVolts}}, Cmd.none
     | UpdateCurrents newCurrents -> 
-        match Map.isEmpty model.Sheet.ComponentCurrents with
-        |true -> {model with Sheet = {model.Sheet with ComponentCurrents = newCurrents}}, Cmd.none
-        |false -> {model with Sheet = {model.Sheet with ComponentCurrents = Map.empty}}, Cmd.none
+        {model with Sheet = {model.Sheet with ComponentCurrents = newCurrents}}, Cmd.none
     | UpdateDCSim newSim ->
         {model with Sheet = {model.Sheet with DCSim=newSim}}, Cmd.none
     | UpdateACSim newSim ->
