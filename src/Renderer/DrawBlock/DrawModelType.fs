@@ -451,6 +451,7 @@ module SheetT =
         | MovePort of MouseT //different from mousemsg because ctrl pressed too
         | SaveSymbols
         | UpdateNodes
+        | CanvasChanged
         | UpdateComponentCurrents of Map<ComponentId,float>
         
 
@@ -500,6 +501,11 @@ module SheetT =
         NodeLocations : XYPos list
         ComponentCurrents: Map<ComponentId,float>
         NodeVoltages: float list
+        ShowNodesNotVoltages: bool
+        UpdateSim: bool
+        DCSim: DCSimulationResults
+        ACSim: ComplexP list
+        TimeSim: TimeSimulationResults
         }
     
     open Operators

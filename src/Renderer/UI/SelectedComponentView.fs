@@ -266,6 +266,7 @@ let private makeSliderField model (comp:Component) text dispatch =
                 let lastUsedWidth = model.LastUsedDialogWidth 
                 dispatch (ReloadSelectedComponent (lastUsedWidth)) // reload the new component
                 dispatch <| SetPopupDialogText (Some newValue)
+                //sheetDispatch <| SheetT.CanvasChanged
                 dispatch ClosePropertiesNotification
     )
 

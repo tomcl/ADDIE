@@ -7,8 +7,6 @@ open System
 open CanvasStateAnalyser
 
 
-
-
 //////////////////  SIMULATION HELPERS   /////////////////
 
 let combineGrounds (comps,conns) =
@@ -637,3 +635,4 @@ let transientAnalysis (comps,conns) inputNode outputNode =
      
     
 
+    

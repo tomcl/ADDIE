@@ -12,6 +12,7 @@ open CommonTypes
 open Fable.React
 open Sheet.SheetInterface
 open Optics
+open MathJsHelpers
 
 module Constants =
     /// DiagramStyle.rightSectinoWidthL = 650,
@@ -189,6 +190,11 @@ type Msg =
     | UpdateNodes of XYPos list
     | UpdateCurrents of Map<ComponentId,float>
     | UpdateVoltages of float list
+    | UpdateDCSim of DCSimulationResults
+    | UpdateACSim of ComplexP list
+    | UpdateTimeSim of TimeSimulationResults
+    | ShowNodesOrVoltages
+    | SimulationUpdated
 
 
 //================================//
@@ -222,6 +228,8 @@ type SpinPayload = {
     ToDo: int
     Total: int
     }
+
+
 
 type Model = {
     UserData: UserData

@@ -2,30 +2,7 @@
 
 open Fable.Core
 open System
-
-type ComplexC =
-    {
-        Re: float
-        Im: float
-    }
-
-    static member inline ( + ) (left: ComplexC, right: ComplexC) =
-            { Re = left.Re + right.Re; Im = left.Im + right.Im }
-    
-    /// Subtract positions as vectors (overloaded operator)
-    static member inline ( - ) (left: ComplexC, right: ComplexC) =
-        { Re = left.Re - right.Re; Im = left.Im - right.Im }
-    
-    /// Scale a position by a number (overloaded operator).
-    static member inline ( * ) (num: ComplexC, scaleFactor: float) =
-        {Re = num.Re*scaleFactor; Im = num.Im * scaleFactor }
-
-type ComplexP =
-    {
-        Mag: float
-        Phase: float
-    }
-
+open CommonTypes
 
 type MathsJS =
     abstract complex : float * float -> obj

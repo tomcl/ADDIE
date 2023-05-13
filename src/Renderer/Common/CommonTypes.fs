@@ -176,6 +176,9 @@ module CommonTypes
     Data : Map<int64,int64>  
     } 
 
+
+
+
     type VoltageSourceType =
         |DC of Voltage:float
         |ACAnalysis of Amplitude:float * Phase:float
@@ -319,6 +322,29 @@ module CommonTypes
     //=======//
     // Other //
     //=======//
+
+    type ComplexC =
+        {
+            Re: float
+            Im: float
+        }
+
+        static member inline ( + ) (left: ComplexC, right: ComplexC) =
+                { Re = left.Re + right.Re; Im = left.Im + right.Im }
+    
+        /// Subtract positions as vectors (overloaded operator)
+        static member inline ( - ) (left: ComplexC, right: ComplexC) =
+            { Re = left.Re - right.Re; Im = left.Im - right.Im }
+    
+        /// Scale a position by a number (overloaded operator).
+        static member inline ( * ) (num: ComplexC, scaleFactor: float) =
+            {Re = num.Re*scaleFactor; Im = num.Im * scaleFactor }
+
+    type ComplexP =
+        {
+            Mag: float
+            Phase: float
+        }
 
     ///unconfigured replaces Some -1, Error replaces None, Configured of int replaces Some (positive int)
     type WireWidth = | Configured of int | Unconfigured | ErrorWidth
@@ -491,3 +517,15 @@ module CommonTypes
         | UnselectComponent of unit
         | InferWidths of unit
         | SetHasUnsavedChanges of bool
+
+    type DCSimulationResults = {
+        MNA: float array
+        ComponentCurrents: Map<ComponentId,float>
+        NodeList: (Component*int option) list list
+        }
+
+    type TimeSimulationResults = {
+        TimeSteps: float list
+        Transient: float list
+        SteadyState: float list
+        }

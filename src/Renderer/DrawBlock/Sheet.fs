@@ -83,6 +83,7 @@ module SheetInterface =
 
         member this.ChangeRLCIValue (dispatch: Dispatch<Msg>) (compId: ComponentId) (newValue: float) (newStr:string) =
             dispatch <| (Wire (BusWireT.Symbol (SymbolT.ChangeRLCIValue (compId, newValue, newStr) ) ) )
+            dispatch <| CanvasChanged
 
 
         /// Given a compId and a width, update the width of the Component specified by compId
@@ -1004,7 +1005,7 @@ let view
     
     let nodes =
         let getText i =
-            if List.isEmpty model.NodeVoltages then
+            if model.ShowNodesNotVoltages then
                 (string (i+1))
             else
                 string model.NodeVoltages[i]+"V"

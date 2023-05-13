@@ -108,6 +108,30 @@ let init() = {
 }
 
 
+let runSimulation (model:Model) dispatch = 
+    match model.Sheet.UpdateSim with
+    |false -> ()
+    |true -> 
+        let canvasState = model.Sheet.GetCanvasState ()
+        SimulationUpdated |> dispatch
+        let res,componentCurrents,nodeLst = Simulation.modifiedNodalAnalysisDC canvasState
+        UpdateVoltages (Array.toList res) |> dispatch
+        UpdateCurrents componentCurrents |> dispatch
+        match model.SimSubTabVisible with
+        |DCsim -> 
+            UpdateDCSim {MNA=res;ComponentCurrents=componentCurrents;NodeList=nodeLst} |> dispatch
+        |ACsim -> 
+            let outputNode = model.PopupDialogData.ACOutput |> Option.defaultValue "1" |> int
+            let res = (frequencyResponse canvasState outputNode)
+            UpdateACSim res |> dispatch
+        |TimeSim ->
+            let inputNode = "2" |> int
+            let outputNode = model.PopupDialogData.TimeOutput |> Option.defaultValue "1" |> int
+            let t,ytr,yss = (transientAnalysis canvasState inputNode outputNode)
+            UpdateTimeSim {TimeSteps=t;Transient=ytr;SteadyState=yss} |> dispatch
+
+
+
 
 let makeSelectionChangeMsg (model:Model) (dispatch: Msg -> Unit) (ev: 'a) =
     dispatch SelectionHasChanged
@@ -149,10 +173,11 @@ let viewSimSubTab canvasState model dispatch =
                         Button.OnClick(fun _ ->
                             //(printfn "currents: %A" componentCurrents)
                             //Sheet (DrawModelType.SheetT.Msg.UpdateComponentCurrents componentCurrents) |> dispatch                        ) 
-                            UpdateVoltages (Array.toList res) |> dispatch)
+                            //UpdateVoltages (Array.toList res) |> dispatch)
+                            ShowNodesOrVoltages |> dispatch)
                         Button.Color IsInfo
                     ] 
-                    [ str "Print V" ]
+                    [ str "Show Nodes/V" ]
                                   
                   br []
                   br []
@@ -376,6 +401,10 @@ let displayView model dispatch =
     let conns = BusWire.extractConnections model.Sheet.Wire
     let comps = SymbolUpdate.extractComponents model.Sheet.Wire.Symbol
     let canvasState = comps,conns  
+    
+    // run Simulation
+    runSimulation model dispatch
+
     match model.Spinner with
     | Some fn -> 
         dispatch <| UpdateModel fn
@@ -393,10 +422,9 @@ let displayView model dispatch =
             OverflowX OverflowOptions.Auto
             Height "calc(100%-4px)"
             Cursor topCursorText ] ] [
-        // transient
-        
+                
+
         FileMenuView.viewNoProjectMenu model dispatch
-        
         
         PopupView.viewPopup model dispatch 
         // Top bar with buttons and menus: some subfunctions are fed in here as parameters because the

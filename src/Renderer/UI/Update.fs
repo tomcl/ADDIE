@@ -391,6 +391,16 @@ let update (msg : Msg) oldModel =
         match Map.isEmpty model.Sheet.ComponentCurrents with
         |true -> {model with Sheet = {model.Sheet with ComponentCurrents = newCurrents}}, Cmd.none
         |false -> {model with Sheet = {model.Sheet with ComponentCurrents = Map.empty}}, Cmd.none
+    | UpdateDCSim newSim ->
+        {model with Sheet = {model.Sheet with DCSim=newSim}}, Cmd.none
+    | UpdateACSim newSim ->
+        {model with Sheet = {model.Sheet with ACSim=newSim}}, Cmd.none
+    | UpdateTimeSim newSim ->
+        {model with Sheet = {model.Sheet with TimeSim=newSim}}, Cmd.none
+    | SimulationUpdated ->
+        {model with Sheet = {model.Sheet with UpdateSim=false}}, Cmd.none
+    | ShowNodesOrVoltages ->
+        {model with Sheet = {model.Sheet with ShowNodesNotVoltages=(not model.Sheet.ShowNodesNotVoltages)}}, Cmd.none
     | ExecutePendingMessages n ->
         if n = (List.length model.Pending)
         then 

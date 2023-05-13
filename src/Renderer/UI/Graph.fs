@@ -9,6 +9,7 @@ open Feliz.Plotly
 open System
 open ModelType
 open CommonTypes
+open Simulation
 
 
 let viewGraph (model:Model) =
@@ -17,12 +18,12 @@ let viewGraph (model:Model) =
     | Some p,true ->
         match model.SimSubTabVisible with
         |ACsim -> 
-            let conns = BusWire.extractConnections model.Sheet.Wire
-            let comps = SymbolUpdate.extractComponents model.Sheet.Wire.Symbol
-            let canvasState = comps,conns  
-            let outputNode = model.PopupDialogData.ACOutput |> Option.defaultValue "1" |> int
-            let ACMag = (Simulation.frequencyResponse canvasState outputNode) |> List.map (fun x -> (log10 x.Mag)*20.)
-            let ACPhase = (Simulation.frequencyResponse canvasState outputNode) |> List.map (fun x -> x.Phase*180./Math.PI)
+            //let conns = BusWire.extractConnections model.Sheet.Wire
+            //let comps = SymbolUpdate.extractComponents model.Sheet.Wire.Symbol
+            //let canvasState = comps,conns  
+            //let outputNode = model.PopupDialogData.ACOutput |> Option.defaultValue "1" |> int
+            let ACMag = model.Sheet.ACSim |> List.map (fun x -> (log10 x.Mag)*20.)
+            let ACPhase = model.Sheet.ACSim |> List.map (fun x -> x.Phase*180./Math.PI)
             let freqs = [0.0..0.05..7.0] |> List.map (fun x -> 10.**x)
     
             div [Style [Width "90%"; Float FloatOptions.Left]] [
@@ -82,12 +83,14 @@ let viewGraph (model:Model) =
                         ]
         
         |TimeSim ->
-            let conns = BusWire.extractConnections model.Sheet.Wire
+            //let conns = BusWire.extractConnections model.Sheet.Wire
             let comps = SymbolUpdate.extractComponents model.Sheet.Wire.Symbol
-            let canvasState = comps,conns  
-            let inputNode = "2" |> int // model.PopupDialogData.TimeInput |> Option.defaultValue "1" |> int
-            let outputNode = model.PopupDialogData.TimeOutput |> Option.defaultValue "1" |> int
-            let t,ytr,yss = (Simulation.transientAnalysis canvasState inputNode outputNode)
+            let extractTimeSimResults res =
+                (res.TimeSteps,res.Transient,res.SteadyState)
+            //let canvasState = comps,conns  
+            //let inputNode = "2" |> int // model.PopupDialogData.TimeInput |> Option.defaultValue "1" |> int
+            //let outputNode = model.PopupDialogData.TimeOutput |> Option.defaultValue "1" |> int
+            let t,ytr,yss = extractTimeSimResults model.Sheet.TimeSim
             let y = [0.;0.] @ List.map2 (fun x y -> x+y) ytr yss
             let t_y = [-t[(List.length t/5)|> int]]@[0.0]@t
             let vs = comps |> List.find (fun c->match c.Type with |VoltageSource _ -> true |_ -> false)

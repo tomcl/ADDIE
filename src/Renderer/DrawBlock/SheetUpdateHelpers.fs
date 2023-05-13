@@ -155,7 +155,8 @@ let moveSymbols (model: Model) (mMsg: MouseT) =
                     Cmd.ofMsg (UpdateSingleBoundingBox model.SelectedComponents.Head)
                     symbolCmd (ErrorSymbols (errorComponents,model.SelectedComponents,isDragAndDrop))
                     Cmd.ofMsg CheckAutomaticScrolling
-                    wireCmd (BusWireT.UpdateWires (model.SelectedComponents, moveDelta))]
+                    wireCmd (BusWireT.UpdateWires (model.SelectedComponents, moveDelta))
+                    Cmd.ofMsg CanvasChanged]
     | _ -> // Moving multiple symbols -> don't do snap-to-grid
         let errorComponents =
             model.SelectedComponents

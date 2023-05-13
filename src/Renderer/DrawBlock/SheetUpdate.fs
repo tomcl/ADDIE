@@ -454,6 +454,8 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
     | SetSpinner isOn ->
         if isOn then {model with CursorType = Spinner}, Cmd.none
         else {model with CursorType = Default}, Cmd.none
+    | CanvasChanged ->
+        {model with UpdateSim = true}, Cmd.none
     
     | ToggleNet _ | DoNothing | _ -> model, Cmd.none
     |> Optic.map fst_ postUpdateChecks
@@ -502,6 +504,19 @@ let init () =
         NodeLocations = []
         ComponentCurrents = Map.empty
         NodeVoltages = []
+        UpdateSim = false
+        ShowNodesNotVoltages = true
+        ACSim = []
+        DCSim = {
+            MNA=[||]
+            ComponentCurrents = Map.empty
+            NodeList= []
+        }
+        TimeSim = {
+            TimeSteps=[]
+            Transient=[]
+            SteadyState=[]
+        }
     }, Cmd.none
 
 
