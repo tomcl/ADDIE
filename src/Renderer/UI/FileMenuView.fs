@@ -937,6 +937,7 @@ let viewTopMenu model dispatch =
                                         dispatch <| ExecFuncInMessage(
                                             (fun model dispatch -> 
                                                 let p = Option.get model.CurrentProj
+                                                dispatch ForceStopSim
                                                 openFileInProject name p model dispatch), dispatch)) ] [ str "open" ] 
                           ]
                           // Add option to rename?

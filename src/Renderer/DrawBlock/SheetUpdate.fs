@@ -505,6 +505,7 @@ let init () =
         ComponentCurrents = Map.empty
         NodeVoltages = []
         UpdateSim = false
+        CanRunSimulation = false
         ShowNodesNotVoltages = true
         ACSim = []
         DCSim = {

@@ -522,8 +522,7 @@ let notIntersectingComponents (model: Model) (box1: BoundingBox) (inputId: Commo
 
 /// Displays current arrow and value next to a symbol
 /// according to its position and rotation
-let drawCurrentNextToSymbol model symId current =
-        let symbol = model.Wire.Symbol.Symbols[symId]
+let drawCurrentNextToSymbol (symbol:SymbolT.Symbol) current =
         match symbol.Component.Type with
         |Resistor _ |Inductor _
         |VoltageSource _ |Opamp ->
@@ -1010,23 +1009,30 @@ let view
             else
                 string model.NodeVoltages[i]+"V"
         
-        model.NodeLocations
-        |> List.indexed
-        |> List.collect (fun (i,pos)->
-            [
-                makeCircle pos.X pos.Y { portCircle with Fill = "Red" }
-                makeText (pos.X+8.) (pos.Y-20.) (getText i) {defaultText with  FontSize = "15px"; Fill = "Red"}
-            ]
-        )
+        if model.CanRunSimulation then
+            model.NodeLocations
+            |> List.indexed
+            |> List.collect (fun (i,pos)->
+                [
+                    makeCircle pos.X pos.Y { portCircle with Fill = "Red" }
+                    makeText (pos.X+8.) (pos.Y-20.) (getText i) {defaultText with  FontSize = "15px"; Fill = "Red"}
+                ]
+            )
+        else []
 
     
 
     let currents =
-        model.ComponentCurrents
-        |> Map.toList
-        |> List.collect (fun (id,v)->
-            drawCurrentNextToSymbol model id v
-        )
+        if model.CanRunSimulation then
+            model.ComponentCurrents
+            |> Map.toList
+            |> List.collect (fun (id,v)->
+                match Map.tryFind id model.Wire.Symbol.Symbols with
+                |Some symbol ->
+                    drawCurrentNextToSymbol symbol v
+                |_ -> []
+            )
+        else []
 
     let displayElements =
         if model.ShowGrid

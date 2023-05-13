@@ -19,7 +19,7 @@ open DrawModelType
 open Fable.SimpleJson
 open Helpers
 open NumberHelpers
-open DiagramStyle
+open CanvasStateAnalyser
 open UpdateHelpers
 open Optics
 open Optic
@@ -379,10 +379,13 @@ let update (msg : Msg) oldModel =
         model, Cmd.none
     | SelectionHasChanged ->
         model, Cmd.none
-    | UpdateNodes newLocs -> 
-        match List.isEmpty model.Sheet.NodeLocations  with
-        |true -> {model with Sheet = {model.Sheet with NodeLocations = newLocs}}, Cmd.none
-        |false -> {model with Sheet = {model.Sheet with NodeLocations = []}}, Cmd.none
+    | UpdateNodes -> 
+        let nodeLst = model.Sheet.DCSim.NodeList
+        let nodeLoc =
+            [1..List.length nodeLst-1]
+            |> List.map (fun i -> findConnectionsOnNode nodeLst i (BusWire.extractConnections model.Sheet.Wire))
+            |> List.map (findNodeLocation)
+        {model with Sheet = {model.Sheet with NodeLocations = nodeLoc}}, Cmd.none
     | UpdateVoltages newVolts -> 
         {model with Sheet = {model.Sheet with NodeVoltages = newVolts}}, Cmd.none
     | UpdateCurrents newCurrents -> 
@@ -395,6 +398,12 @@ let update (msg : Msg) oldModel =
         {model with Sheet = {model.Sheet with TimeSim=newSim}}, Cmd.none
     | SimulationUpdated ->
         {model with Sheet = {model.Sheet with UpdateSim=false}}, Cmd.none
+    | RunSim ->
+        {model with Sheet = {model.Sheet with UpdateSim=true}}, Cmd.none
+    | ForceStopSim ->
+        {model with Sheet = {model.Sheet with CanRunSimulation=false}}, Cmd.none
+    | SafeStartSim ->
+        {model with Sheet = {model.Sheet with CanRunSimulation=true}}, Cmd.none
     | ShowNodesOrVoltages ->
         {model with Sheet = {model.Sheet with ShowNodesNotVoltages=(not model.Sheet.ShowNodesNotVoltages)}}, Cmd.none
     | ExecutePendingMessages n ->

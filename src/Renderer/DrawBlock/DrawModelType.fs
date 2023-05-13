@@ -503,6 +503,7 @@ module SheetT =
         NodeVoltages: float list
         ShowNodesNotVoltages: bool
         UpdateSim: bool
+        CanRunSimulation: bool
         DCSim: DCSimulationResults
         ACSim: ComplexP list
         TimeSim: TimeSimulationResults

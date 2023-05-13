@@ -109,12 +109,16 @@ let init() = {
 
 
 let runSimulation (model:Model) dispatch = 
-    match model.Sheet.UpdateSim with
+    match model.Sheet.UpdateSim && model.Sheet.CanRunSimulation with
     |false -> ()
     |true -> 
-        let canvasState = model.Sheet.GetCanvasState ()
+        let canvasState = model.Sheet.GetCanvasState () |> combineGrounds
         SimulationUpdated |> dispatch
         let res,componentCurrents,nodeLst = Simulation.modifiedNodalAnalysisDC canvasState
+        let nodeLoc =
+            [1..List.length nodeLst-1]
+            |> List.map (fun i -> findConnectionsOnNode nodeLst i (snd canvasState))
+            |> List.map (findNodeLocation)
         UpdateVoltages (Array.toList res) |> dispatch
         UpdateCurrents componentCurrents |> dispatch
         match model.SimSubTabVisible with
@@ -145,16 +149,11 @@ let viewSimSubTab canvasState model dispatch =
         match model.SimSubTabVisible with
         | DCsim -> 
             let res,componentCurrents,nodeLst = Simulation.modifiedNodalAnalysisDC canvasState
-            let nodeLoc =
-                [1..List.length nodeLst-1]
-                |> List.map (fun i -> findConnectionsOnNode nodeLst i (snd canvasState))
-                |> List.map (findNodeLocation)
             div [] 
                 [ Button.button 
                     [ 
                         Button.OnClick(fun _ -> 
-                            (printfn "nodes: %A" res)
-                            UpdateNodes nodeLoc |> dispatch
+                            UpdateNodes |> dispatch
                             ) 
                         Button.Color IsInfo
                     ] 
@@ -335,7 +334,10 @@ let viewRightTabs canvasState model dispatch =
                 [ a [ OnClick (fun _ -> dispatch <| ChangeRightTab Properties )] [str "Properties"  ] ]
             Tabs.tab // simulation tab to view all simulators
                 [ Tabs.Tab.IsActive (model.RightPaneTabVisible = Simulation) ]
-                [ a [  OnClick (fun _ -> dispatch <| ChangeRightTab Simulation ) ] [str "Simulations"] ]
+                [ a [  OnClick (fun _ -> 
+                    dispatch <| ChangeRightTab Simulation 
+                    dispatch SafeStartSim
+                    dispatch RunSim) ] [str "Simulations"] ]
         ]
         div [HTMLAttr.Id "TabBody"; belowHeaderStyle "36px"; Style [OverflowY scrollType]] [viewRightTab canvasState model dispatch]
 
