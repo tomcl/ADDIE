@@ -223,10 +223,8 @@ let calcLabelBoundingBox (sym: Symbol) =
     let labW = getTextWidthInPixels(comp.Label,textStyle)// width of label text
     let boxTopLeft =
         match labelRotation with 
-        | Degree0 -> {X = centre.X - labW/2. - margin; Y = comp.Y - labH - 2.*margin }
-        | Degree270 -> {X = comp.X + w; Y = centre.Y - labH/2. - margin}
-        | Degree90 -> {X = comp.X - 2.*margin - labW ; Y = centre.Y - labH/2. - margin}
-        | Degree180 -> {X = centre.X - labW/2. - margin; Y = comp.Y + h}
+        |Degree90 |Degree270 -> sym.Pos + {X=w + 7.; Y=(h/8.)}
+        |Degree0 | Degree180 -> sym.Pos + {X=(0.);Y=(-20.)}
     let box =
         match comp.Label, sym.LabelHasDefaultPos with
         | "", _ -> 

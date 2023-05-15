@@ -37,7 +37,7 @@ let addCompValue (symbol: Symbol) (name:string)  weight size =
     let h,w = getRotatedHAndW symbol
     let pos,align = 
         match symbol.STransform.Rotation with
-        |Degree0 |Degree180 -> symbolPos + {X=(3.*w/4.);Y=(-20.)},"middle"
+        |Degree0 |Degree180 -> symbolPos + {X=(5.*w/8.);Y=(-20.)},"left"
         |Degree270 |Degree90 -> symbolPos + {X=(w+3.);Y=0.75*h},"left"
         //|Degree90 -> symbolPos + {X=(-10.);Y=0.75*h},"right"
     
@@ -286,25 +286,7 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
         let box = symbol.LabelBoundingBox
         let margin = Constants.componentLabelOffsetDistance
 
-        // uncomment this to display label bounding box corners for testing new fonts etc.
-        (*let dimW = {X=box.W;Y=0.}
-        let dimH = {X=0.;Y=box.H}
-        let corners = 
-            [box.TopLeft; box.TopLeft+dimW; box.TopLeft+dimH; box.TopLeft+dimW+dimH]
-            |> List.map (fun c -> 
-                let c' = c - symbol.Pos
-                makeCircle (c'.X) (c'.Y) {defaultCircle with R=3.})*)
-        let p = box.TopLeft - symbol.Pos + {X=margin;Y=margin} + Constants.labelCorrection
-        let pos =
-            match transform.Rotation with
-            |Degree0 -> p + {X=(-box.W)+5.; Y=2.6}
-            |Degree90 -> p + {X=2.*box.W; Y=(-box.H)}
-            |Degree180 -> p + {X=(-box.W)+5.;Y=(-2.*box.H)}
-            |Degree270 -> p + {X=0.; Y=(-box.H)}
-            //|Degree0 -> p 
-            //|Degree90 -> p + {X=0.; Y=(-box.H)}
-            //|Degree180 -> p + {X=0.;Y=(-2.*box.H)}
-            //|Degree270 -> p + {X=0.; Y=(-box.H)}
+        let pos = box.TopLeft - symbol.Pos
         
         let text = addStyledText {style with DominantBaseline="hanging"} pos compLabel
         match colour with
@@ -344,7 +326,8 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
         |Resistor (v,s) -> if s<>"" then (s + omegaString) else string v + omegaString
         |CurrentSource (v,s) -> if s<>"" then (s + "A") else string v + "A"
         |VoltageSource (DC v) -> string v + "V"
-        |VoltageSource (Sine (v,_,_)) |VoltageSource(Pulse (v,_,_)) -> string v + "V"
+        |VoltageSource (Sine (a,o,f))  -> "Sine("+string a+"V,"+NumberHelpers.floatValueToText f+"Hz)"
+        |VoltageSource(Pulse (v,_,_)) -> string v + "V"
         |_ -> ""
    
     let doubleRotate (transform:STransform) = 
