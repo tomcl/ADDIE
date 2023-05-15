@@ -48,9 +48,14 @@ let getDCTable (simDC:DCSimulationResults) canvasState  =
     let voltageLines =
         simDC.MNA
         |> Array.toList
-        |> List.removeManyAt (nodesNo) (Array.length simDC.MNA-nodesNo)
-        |> List.indexed
-        |> List.collect (fun (i,v) -> [getDCTableLine i (floatValueToText v)])
+        |> (fun lst ->
+            match lst with
+            |[] -> [div [] []]
+            |_ -> 
+                lst
+                |> List.removeManyAt (nodesNo) (Array.length simDC.MNA-nodesNo)
+                |> List.indexed
+                |> List.collect (fun (i,v) -> [getDCTableLine i (floatValueToText v)]))
         
     let currentLines = 
         simDC.ComponentCurrents

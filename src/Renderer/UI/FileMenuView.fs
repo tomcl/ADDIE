@@ -938,6 +938,7 @@ let viewTopMenu model dispatch =
                                             (fun model dispatch -> 
                                                 let p = Option.get model.CurrentProj
                                                 dispatch ForceStopSim
+                                                dispatch ClearSimulationResults
                                                 openFileInProject name p model dispatch), dispatch)) ] [ str "open" ] 
                           ]
                           // Add option to rename?
