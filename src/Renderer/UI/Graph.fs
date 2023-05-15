@@ -12,7 +12,7 @@ open CommonTypes
 open Simulation
 
 
-let viewGraph (model:Model) =
+let viewGraph (model:Model) dispatch =
     match model.CurrentProj,model.showGraphArea with
     | None,_ |Some _,false -> div [] []
     | Some p,true ->
@@ -22,9 +22,13 @@ let viewGraph (model:Model) =
             //let comps = SymbolUpdate.extractComponents model.Sheet.Wire.Symbol
             //let canvasState = comps,conns  
             //let outputNode = model.PopupDialogData.ACOutput |> Option.defaultValue "1" |> int
-            let ACMag = model.Sheet.ACSim |> List.map (fun x -> (log10 x.Mag)*20.)
+            let dBOrNot x = if model.SimulationData.ACMagInDB then (log10 x.Mag)*20. else x.Mag
+            let HzOrOmega x = if model.SimulationData.ACFreqInHz then x/(2.*Math.PI) else x
+
+
+            let ACMag = model.Sheet.ACSim |> List.map (dBOrNot)
             let ACPhase = model.Sheet.ACSim |> List.map (fun x -> x.Phase*180./Math.PI)
-            let freqs = [0.0..0.05..7.0] |> List.map (fun x -> 10.**x)
+            let freqs = [0.0..0.05..7.0] |> List.map (fun x -> 10.**x) |> List.map (HzOrOmega)
     
             div [Style [Width "90%"; Float FloatOptions.Left]] [
                         Plotly.plot [
@@ -32,12 +36,12 @@ let viewGraph (model:Model) =
                                 traces.scatter [
                                     scatter.x freqs
                                     scatter.y ACMag
-                                    scatter.name "Magnitude"
+                                    scatter.name ("Mag(Node "+(string model.SimulationData.ACOutput)+")")
                                 ]
                                 traces.scatter [
                                     scatter.x freqs
                                     scatter.y ACPhase
-                                    scatter.name "Phase"
+                                    scatter.name ("Phase(Node "+(string model.SimulationData.ACOutput)+")")
                                     scatter.yaxis 2
                                     scatter.line [
                                         line.dash.dot
@@ -52,20 +56,23 @@ let viewGraph (model:Model) =
                                 layout.xaxis [
                                     xaxis.type'.log
                                     xaxis.autorange.true'
+                                    xaxis.title [
+                                        title.text (if model.SimulationData.ACFreqInHz then "Frequency (Hz)" else "Frequency (rads/s)")
+                                    ]
                                 ]
                                 layout.title [
                                     title.text "Magnitude and Phase"
                                 ]
                                 layout.yaxis [
                                     yaxis.title [
-                                        title.text "Magnitude (dB)"
+                                        title.text (if model.SimulationData.ACMagInDB then "Magnitude (dB)" else "Magnitude")
                                     ]
                                     yaxis.autorange.true'
                                     yaxis.zeroline false
                                 ]
                                 layout.yaxis (2, [
                                     yaxis.title [
-                                        title.text "Phase"
+                                        title.text ("Phase("+degreesSymbol+")")
                                         title.font [
                                             font.color (color.rgb(148, 103, 189))
                                         ]
@@ -148,4 +155,6 @@ let viewGraph (model:Model) =
                         ]
                         ]
                         ]
-        |_ -> div [] []
+        |_ -> 
+            SetGraphVisibility false |> dispatch
+            div [] []

@@ -87,37 +87,3 @@ let createVSPopup (model:Model) (compType:ComponentType) dispatch =
             |Some f -> false
             |None -> true
     dialogPopup title body buttonText buttonAction isDisabled [] dispatch
-
-let createACPopup (model:Model) dispatch =
-    
-    let title = sprintf "Setup Frequency Response Simulation"
-    let body = dialogPopupAC model dispatch
-    let buttonText = "Start"
-    let buttonAction =
-        fun (dialogData : PopupDialogData) ->
-                            
-            SetGraphVisibility true |> dispatch
-            dispatch ClosePopup
-    let isDisabled =
-        fun (dialogData : PopupDialogData) -> 
-            match dialogData.ACSource,dialogData.ACOutput with
-            |Some x,Some y when x<>"sel" && y<>"sel" -> false
-            |_ -> true
-    dialogPopup title body buttonText buttonAction isDisabled [] dispatch
-
-let createTimePopup (model:Model) dispatch =
-    
-    let title = sprintf "Setup Time Domain Simulation"
-    let body = dialogPopupAC model dispatch
-    let buttonText = "Start"
-    let buttonAction =
-        fun (dialogData : PopupDialogData) ->
-                            
-            SetGraphVisibility true |> dispatch
-            dispatch ClosePopup
-    let isDisabled =
-        fun (dialogData : PopupDialogData) -> 
-            match dialogData.TimeInput,dialogData.TimeOutput with
-            |Some x,Some y when x<>"sel" && y<>"sel" -> false
-            |_ -> true
-    dialogPopup title body buttonText buttonAction isDisabled [] dispatch

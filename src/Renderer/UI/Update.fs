@@ -299,14 +299,18 @@ let update (msg : Msg) oldModel =
         set (popupDialogData_ >-> text3_) text model, Cmd.none
     | SetPopupDialogVSType tp ->
         set (popupDialogData_ >-> vsType_) tp model, Cmd.none
-    | SetPopupDialogACSource tp ->
-        set (popupDialogData_ >-> acSource_) tp model, Cmd.none
-    | SetPopupDialogACOut tp ->
-        set (popupDialogData_ >-> acOutput_) tp model, Cmd.none
-    | SetPopupDialogTimeSource tp ->
-        set (popupDialogData_ >-> timeSource_) tp model, Cmd.none
-    | SetPopupDialogTimeOut tp ->
-        set (popupDialogData_ >-> timeOutput_) tp model, Cmd.none
+    | SetSimulationACSource tp ->
+        set (simulationData_ >-> acSource_) tp model, Cmd.none
+    | SetSimulationACOut tp ->
+        set (simulationData_ >-> acOutput_) tp model, Cmd.none
+    | SetSimulationACInDB ->
+        set (simulationData_ >-> acMag_) (not model.SimulationData.ACMagInDB) model, Cmd.none
+    | SetSimulationACInHz ->
+        set (simulationData_ >-> acFreq_) (not model.SimulationData.ACFreqInHz) model, Cmd.none
+    | SetSimulationTimeSource tp ->
+        set (simulationData_ >-> timeSource_) tp model, Cmd.none
+    | SetSimulationTimeOut tp ->
+        set (simulationData_ >-> timeOutput_) tp model, Cmd.none
     | SetPopupDialogBadLabel isBad ->
         set (popupDialogData_ >-> badLabel_) isBad model, Cmd.none
     | SetPopupDialogInt int ->
@@ -394,6 +398,8 @@ let update (msg : Msg) oldModel =
         {model with Sheet = {model.Sheet with DCSim=newSim}}, Cmd.none
     | UpdateACSim newSim ->
         {model with Sheet = {model.Sheet with ACSim=newSim}}, Cmd.none
+    | ClearSimulationResults ->
+        {model with Sheet = {model.Sheet with ACSim=[];DCSim=emptyDCResults;TimeSim=emptyTimeResults}}, Cmd.none
     | UpdateTimeSim newSim ->
         {model with Sheet = {model.Sheet with TimeSim=newSim}}, Cmd.none
     | SimulationUpdated ->

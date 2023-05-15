@@ -379,6 +379,9 @@ module CommonTypes
     let capacitorSymbol = "\u2351"
     let diodeSymbol = "\u23C4"
     let inductorSymbol = "\u23d6"
+    let restartSymbol  = "\u27f3"
+    let degreesSymbol  = "\u00b0"
+
 
     // The next types are not strictly necessary, but help in understanding what is what.
     // Used consistently they provide type protection that greatly reduces coding errors
@@ -525,11 +528,15 @@ module CommonTypes
         NodeList: (Component*int option) list list
         }
 
+    let emptyDCResults = {MNA=[||];ComponentCurrents=Map.empty;NodeList=[]}
+
     type TimeSimulationResults = {
         TimeSteps: float list
         Transient: float list
         SteadyState: float list
         }
+
+    let emptyTimeResults = {TimeSteps=[];Transient=[];SteadyState=[]}
 
     type DCNodesOrVoltagesOrNone = 
         |Nodes

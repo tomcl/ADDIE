@@ -87,12 +87,6 @@ let init() = {
         VoltageSource = None
         BadLabel = false
         VSType= None
-        ACOutput=None
-        ACSource=None
-        ACMagInDB=true
-        ACPhaseInDegrees=true
-        TimeInput=None
-        TimeOutput=None
     }
     Notifications = {
         FromDiagram = None
@@ -107,6 +101,14 @@ let init() = {
     Pending = []
     UIState = None
     showGraphArea = false
+    SimulationData = {
+        ACOutput=None
+        ACSource=None
+        ACMagInDB=true
+        ACFreqInHz=true
+        TimeInput=None
+        TimeOutput=None
+    }
 }
 
 
@@ -115,27 +117,30 @@ let runSimulation (model:Model) dispatch =
     |false -> ()
     |true -> 
         let canvasState = model.Sheet.GetCanvasState () |> combineGrounds
-        SimulationUpdated |> dispatch
-        let res,componentCurrents,nodeLst = Simulation.modifiedNodalAnalysisDC canvasState
-        let nodeLoc =
-            [1..List.length nodeLst-1]
-            |> List.map (fun i -> findConnectionsOnNode nodeLst i (snd canvasState))
-            |> List.map (findNodeLocation)
-        UpdateVoltages (Array.toList res) |> dispatch
-        UpdateCurrents componentCurrents |> dispatch
-        match model.SimSubTabVisible with
-        |DCsim -> 
-            UpdateDCSim {MNA=res;ComponentCurrents=componentCurrents;NodeList=nodeLst} |> dispatch
-        |ACsim -> 
-            let outputNode = model.PopupDialogData.ACOutput |> Option.defaultValue "1" |> int
-            let res = (frequencyResponse canvasState outputNode)
-            UpdateACSim res |> dispatch
-        |TimeSim ->
-            let inputNode = "2" |> int
-            let outputNode = model.PopupDialogData.TimeOutput |> Option.defaultValue "1" |> int
-            let t,ytr,yss = (transientAnalysis canvasState inputNode outputNode)
-            UpdateTimeSim {TimeSteps=t;Transient=ytr;SteadyState=yss} |> dispatch
-
+        match checkCanvasStateForErrors canvasState with
+        |[] ->
+            SimulationUpdated |> dispatch
+            let res,componentCurrents,nodeLst = Simulation.modifiedNodalAnalysisDC canvasState
+            let nodeLoc =
+                [1..List.length nodeLst-1]
+                |> List.map (fun i -> findConnectionsOnNode nodeLst i (snd canvasState))
+                |> List.map (findNodeLocation)
+            UpdateVoltages (Array.toList res) |> dispatch
+            UpdateCurrents componentCurrents |> dispatch
+            match model.SimSubTabVisible with
+            |DCsim -> 
+                UpdateDCSim {MNA=res;ComponentCurrents=componentCurrents;NodeList=nodeLst} |> dispatch
+            |ACsim -> 
+                let outputNode = model.SimulationData.ACOutput |> Option.defaultValue "1" |> int
+                let res = (frequencyResponse canvasState outputNode)
+                UpdateACSim res |> dispatch
+            |TimeSim ->
+                let inputNode = "2" |> int
+                let outputNode = model.SimulationData.TimeOutput |> Option.defaultValue "1" |> int
+                let t,ytr,yss = (transientAnalysis canvasState inputNode outputNode)
+                UpdateTimeSim {TimeSteps=t;Transient=ytr;SteadyState=yss} |> dispatch
+        |_ ->
+            dispatch ForceStopSim
 
 
 
@@ -143,6 +148,79 @@ let makeSelectionChangeMsg (model:Model) (dispatch: Msg -> Unit) (ev: 'a) =
     dispatch SelectionHasChanged
 
 // -- Create View
+
+let createACSimSubTab model comps dispatch =
+    let sourceOptions =
+        comps
+        |> List.collect (fun c->
+            match c.Type with
+            |VoltageSource _ -> [option [Value (c.Id)] [str (c.Label)]]
+            |_ -> []
+        )
+
+    let outputOptions =
+        [1..((List.length model.Sheet.DCSim.NodeList)-1)]
+        |> List.collect (fun i ->
+            [option [Value (string i)] [str ("Node "+(string i))]]    
+        )
+
+    let isDisabled = 
+        match model.SimulationData.ACSource,model.SimulationData.ACOutput with
+        |Some x,Some y when x<>"sel" && y<>"sel" -> false
+        |_ -> true
+
+    let magButtonText = if model.SimulationData.ACMagInDB then "dB" else "Normal"
+    let freqButtonText = if model.SimulationData.ACFreqInHz then "Hz" else "rads/s"
+
+    div [Style [Margin "20px"]] 
+        [ 
+            Heading.h4 [] [str "Setup AC Simulation"]
+            div [] [
+            div [Style [Width "50%"; Float FloatOptions.Left]] [
+                Label.label [] [ str "Input" ]
+                Label.label [ ]
+                    [Select.select []
+                    [ select [(OnChange(fun option -> SetSimulationACSource (Some option.Value) |> dispatch))]
+                        ([option [Value ("sel")] [str ("Select")]] @ sourceOptions)
+                        ]
+                    ]
+            
+                Label.label [] [ str "Output" ]
+                Label.label [ ]
+                    [Select.select []
+                    [ select 
+                        [(OnChange(fun option -> SetSimulationACOut (Some option.Value) |> dispatch))]
+                        ([option [Value ("sel")] [str ("Select")]] @ outputOptions)
+                        ]
+                    ]
+                ]
+            div [Style [Width "50%"; Float FloatOptions.Right]] [
+                Label.label [] [ str "Magnitude" ]
+                Label.label [ ]
+                    [Button.button [Button.OnClick (fun _ -> dispatch SetSimulationACInDB); Button.Color IsLight] [str magButtonText]]
+            
+                Label.label [] [ str "Frequency" ]
+                Label.label [ ]
+                    [
+                        Button.button [Button.OnClick (fun _ -> dispatch SetSimulationACInHz);Button.Color IsLight] [str freqButtonText] 
+                    ]
+                ]
+
+            div [] [str "h"]
+            br []
+
+            Button.button 
+                [   Button.OnClick (fun _ -> 
+                        RunSim |> dispatch
+                        SetGraphVisibility true |> dispatch); 
+                        Button.Color IsPrimary;
+                        Button.Disabled isDisabled] 
+                [str "Start"]
+
+            ]
+        ]
+
+
 
 let viewSimSubTab canvasState model dispatch =
     let comps',conns' = combineGrounds canvasState
@@ -153,83 +231,37 @@ let viewSimSubTab canvasState model dispatch =
             let nodesVoltagesState = match model.Sheet.ShowNodesOrVoltages with |Neither -> IsDanger |Nodes -> IsWarning |Voltages -> IsPrimary
             let currentsState = if model.Sheet.ShowCurrents then IsPrimary else IsDanger
             div [Style [Margin "20px"]] 
-                
                 [ 
-                  //button 
-                  //  [
-                  //      Style [Height "100px"; Width "100px"]
-                  //      OnClick (fun _ -> ())
-                  //  ] 
-                  //  [
-                  //      svg [Style [Fill "White"] ;ViewBox "0 0 24 24";] 
-                  //          [
-                  //              path [D "M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"] []
-                  //          ]
-
-                  //  ]
-
-                  //Button.button 
-                  //  [ 
-                  //      Button.OnClick(fun _ -> 
-                  //          UpdateNodes |> dispatch
-                  //          ) 
-                  //      Button.Color IsInfo
-                  //  ] 
-                  //  [ str "Print Nodes" ]
-                  Button.button 
-                    [ 
-                        Button.OnClick(fun _ ->
-                            //(printfn "currents: %A" componentCurrents)
-                            //Sheet (DrawModelType.SheetT.Msg.UpdateComponentCurrents componentCurrents) |> dispatch                        ) 
-                            //UpdateCurrents model.Sheet.DCSim.ComponentCurrents |> dispatch
-                            ShowCurrents |> dispatch)
-                        Button.Color currentsState
-                    ] 
-                    [ str "Currents" ]
+                  Heading.h5 [] [str "Adjust on-Canvas Elements"]
+                  Button.button [Button.OnClick(fun _ -> ShowCurrents |> dispatch); Button.Color currentsState] [ str "Currents" ]
                   span [Style [Width "20px";Color "White"]] [str "asd"]
-                  Button.button 
-                    [ 
-                        Button.OnClick(fun _ ->
-                            //(printfn "currents: %A" componentCurrents)
-                            //Sheet (DrawModelType.SheetT.Msg.UpdateComponentCurrents componentCurrents) |> dispatch                        ) 
-                            //UpdateVoltages (Array.toList res) |> dispatch)
-                            ShowNodesOrVoltages |> dispatch)
-                        Button.Color nodesVoltagesState
-                    ] 
-                    [ str "Nodes/Voltages" ]
+                  Button.button [ 
+                    Button.OnClick(fun _ -> 
+                    UpdateNodes |> dispatch
+                    ShowNodesOrVoltages |> dispatch); Button.Color nodesVoltagesState] [ str "Nodes/Voltages" ]
                                   
                   br []
                   br []
+                  Heading.h5 [] [str "DC Results"]
                   div [] [
                     getDCTable model.Sheet.DCSim canvasState
+                    
+                    //hack to avoid hidden results
                     div [Style [Height "100px"]] []
                   ]
-            
                 ]
 
 
-        | ACsim ->
-            div [] 
-                [ Button.button
-                    [
-                        Button.OnClick(fun _ -> 
-                            SetPopupDialogACOut None |> dispatch
-                            SetPopupDialogACSource None |> dispatch
-                            ComponentCreation.createACPopup model dispatch)
-                    ]  
-                    [str "Setup AC"]
-            
-                  Button.button [Button.OnClick(fun _ -> SetGraphVisibility false |> dispatch)] [str "X"]
-                
-                ]
+        | ACsim -> 
+            createACSimSubTab model comps' dispatch
         | TimeSim -> 
             div [] 
                 [ Button.button
                     [
                         Button.OnClick(fun _ -> 
-                            SetPopupDialogTimeOut None |> dispatch
-                            SetPopupDialogTimeSource None |> dispatch
-                            ComponentCreation.createTimePopup model dispatch)
+                            SetSimulationTimeSource None |> dispatch
+                            SetSimulationTimeOut None |> dispatch)
+                            //ComponentCreation.createTimePopup model dispatch)
                     ]  
                     [str "Setup Time"]
             
@@ -358,7 +390,8 @@ let viewRightTabs canvasState model dispatch =
                 [ a [  OnClick (fun _ -> 
                     dispatch <| ChangeRightTab Simulation 
                     dispatch SafeStartSim
-                    dispatch RunSim) ] [str "Simulations"] ]
+                    dispatch RunSim
+                    dispatch UpdateNodes) ] [str "Simulations"] ]
         ]
         div [HTMLAttr.Id "TabBody"; belowHeaderStyle "36px"; Style [OverflowY scrollType]] [viewRightTab canvasState model dispatch]
 
@@ -478,7 +511,7 @@ let displayView model dispatch =
          
         div [HTMLAttr.Id "BottomSection"; bottomSectionStyle model; Hidden (not model.showGraphArea)]
             [ 
-                Graph.viewGraph model   
+                Graph.viewGraph model dispatch  
                 div [Style [Width "10%"; Float FloatOptions.Left; Padding "20px"]] [Delete.delete [ Delete.Size IsMedium; Delete.OnClick(fun _ -> SetGraphVisibility false |> dispatch) ] [ ]]//[Button.button [Button.OnClick(fun _ -> SetGraphVisibility false |> dispatch)] [str "X"]]
                 
             ]

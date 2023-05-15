@@ -54,6 +54,22 @@ type SimSubTab =
     | TimeSim
 
 
+type SimData = {
+    ACSource: string option
+    ACOutput: string option
+    ACMagInDB: bool
+    ACFreqInHz: bool
+    TimeInput: string option
+    TimeOutput: string option
+}
+
+let acSource_ = Lens.create (fun a -> a.ACSource) (fun s a -> {a with ACSource= s})
+let acOutput_ = Lens.create (fun a -> a.ACOutput) (fun s a -> {a with ACOutput= s})
+let timeSource_ = Lens.create (fun a -> a.TimeInput) (fun s a -> {a with TimeInput = s})
+let timeOutput_ = Lens.create (fun a -> a.TimeOutput) (fun s a -> {a with TimeOutput= s})
+let acMag_ = Lens.create (fun a -> a.ACMagInDB) (fun s a -> {a with ACMagInDB = s})
+let acFreq_ = Lens.create (fun a -> a.ACFreqInHz) (fun s a -> {a with ACFreqInHz= s})
+
 /// Possible fields that may (or may not) be used in a dialog popup.
 type PopupDialogData = {
     Text : string option;
@@ -65,12 +81,6 @@ type PopupDialogData = {
     ProjectPath: string
     BadLabel: bool
     VSType: string option
-    ACSource: string option
-    ACOutput: string option
-    ACMagInDB: bool
-    ACPhaseInDegrees: bool
-    TimeInput: string option
-    TimeOutput: string option
 }
 
 let text_ = Lens.create (fun a -> a.Text) (fun s a -> {a with Text = s})
@@ -81,10 +91,7 @@ let int2_ = Lens.create (fun a -> a.Int2) (fun s a -> {a with Int2 = s})
 let projectPath_ = Lens.create (fun a -> a.ProjectPath) (fun s a -> {a with ProjectPath = s})
 let badLabel_ = Lens.create (fun a -> a.BadLabel) (fun s a -> {a with BadLabel= s})
 let vsType_ = Lens.create (fun a -> a.VSType) (fun s a -> {a with VSType= s})
-let acSource_ = Lens.create (fun a -> a.ACSource) (fun s a -> {a with ACSource= s})
-let acOutput_ = Lens.create (fun a -> a.ACOutput) (fun s a -> {a with ACOutput= s})
-let timeSource_ = Lens.create (fun a -> a.TimeInput) (fun s a -> {a with TimeInput = s})
-let timeOutput_ = Lens.create (fun a -> a.TimeOutput) (fun s a -> {a with TimeOutput= s})
+
 
 type TopMenu = | Closed | Project | Files
 
@@ -154,10 +161,12 @@ type Msg =
     | SetPopupDialogText2 of string option
     | SetPopupDialogText3 of string option
     | SetPopupDialogVSType of string option
-    | SetPopupDialogACSource of string option
-    | SetPopupDialogACOut of string option
-    | SetPopupDialogTimeSource of string option
-    | SetPopupDialogTimeOut of string option
+    | SetSimulationACSource of string option
+    | SetSimulationACOut of string option
+    | SetSimulationTimeSource of string option
+    | SetSimulationTimeOut of string option
+    | SetSimulationACInDB
+    | SetSimulationACInHz
     | SetPopupDialogInt of int option
     | SetPopupDialogInt2 of int64 option
     | CloseDiagramNotification
@@ -201,6 +210,7 @@ type Msg =
     | ForceStopSim
     | SafeStartSim
     | ShowCurrents
+    | ClearSimulationResults
 
 
 //================================//
@@ -295,11 +305,13 @@ type Model = {
     Pending: Msg list
     UIState: UICommandType Option
     showGraphArea: bool
+    SimulationData: SimData
 } 
 
     
 let sheet_ = Lens.create (fun a -> a.Sheet) (fun s a -> {a with Sheet = s})
 let popupDialogData_ = Lens.create (fun a -> a.PopupDialogData) (fun p a -> {a with PopupDialogData = p})
+let simulationData_ = Lens.create (fun a -> a.SimulationData) (fun p a -> {a with SimulationData = p})
 let currentProj_ = Lens.create (fun a -> a.CurrentProj) (fun s a -> {a with CurrentProj = s})
 
 
