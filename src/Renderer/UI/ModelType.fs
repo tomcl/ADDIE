@@ -67,6 +67,8 @@ type PopupDialogData = {
     VSType: string option
     ACSource: string option
     ACOutput: string option
+    ACMagInDB: bool
+    ACPhaseInDegrees: bool
     TimeInput: string option
     TimeOutput: string option
 }
@@ -198,6 +200,7 @@ type Msg =
     | RunSim
     | ForceStopSim
     | SafeStartSim
+    | ShowCurrents
 
 
 //================================//

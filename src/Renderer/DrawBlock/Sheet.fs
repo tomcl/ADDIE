@@ -1004,12 +1004,12 @@ let view
     
     let nodes =
         let getText i =
-            if model.ShowNodesNotVoltages then
+            if model.ShowNodesOrVoltages = Nodes then
                 (string (i+1))
             else
                 string model.NodeVoltages[i]+"V"
         
-        if model.CanRunSimulation then
+        if model.CanRunSimulation && model.ShowNodesOrVoltages <> Neither then
             model.NodeLocations
             |> List.indexed
             |> List.collect (fun (i,pos)->
@@ -1023,7 +1023,7 @@ let view
     
 
     let currents =
-        if model.CanRunSimulation then
+        if model.CanRunSimulation && model.ShowCurrents then
             model.ComponentCurrents
             |> Map.toList
             |> List.collect (fun (id,v)->

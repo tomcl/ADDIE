@@ -8,7 +8,7 @@ open NumberHelpers
 open Fulma
 
 
-let getDCTable (results: float array) componentCurrents canvasState (nodeLst:(Component*int option) list list) =
+let getDCTable (simDC:DCSimulationResults) canvasState  =
 
 
     let getDCTableLine index value : ReactElement =
@@ -28,7 +28,7 @@ let getDCTable (results: float array) componentCurrents canvasState (nodeLst:(Co
         ]
 
        
-    let nodesNo = List.length nodeLst-1
+    let nodesNo = List.length simDC.NodeList-1
 
     let tableFormat =
         [
@@ -46,14 +46,14 @@ let getDCTable (results: float array) componentCurrents canvasState (nodeLst:(Co
 
     
     let voltageLines =
-        results
+        simDC.MNA
         |> Array.toList
-        |> List.removeManyAt (nodesNo) (Array.length results-nodesNo)
+        |> List.removeManyAt (nodesNo) (Array.length simDC.MNA-nodesNo)
         |> List.indexed
         |> List.collect (fun (i,v) -> [getDCTableLine i (floatValueToText v)])
         
     let currentLines = 
-        componentCurrents
+        simDC.ComponentCurrents
         |> Map.toList
         |> List.collect (fun (ComponentId id,current)-> 
             let comp = List.find(fun (c:Component)->c.Id = id) (fst canvasState)

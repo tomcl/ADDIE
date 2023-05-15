@@ -405,7 +405,12 @@ let update (msg : Msg) oldModel =
     | SafeStartSim ->
         {model with Sheet = {model.Sheet with CanRunSimulation=true}}, Cmd.none
     | ShowNodesOrVoltages ->
-        {model with Sheet = {model.Sheet with ShowNodesNotVoltages=(not model.Sheet.ShowNodesNotVoltages)}}, Cmd.none
+        let newState =
+            match model.Sheet.ShowNodesOrVoltages with
+            |Neither -> Nodes |Nodes -> Voltages |Voltages -> Neither
+        {model with Sheet = {model.Sheet with ShowNodesOrVoltages=newState}}, Cmd.none
+    | ShowCurrents ->
+        {model with Sheet = {model.Sheet with ShowCurrents = (not model.Sheet.ShowCurrents)}}, Cmd.none
     | ExecutePendingMessages n ->
         if n = (List.length model.Pending)
         then 

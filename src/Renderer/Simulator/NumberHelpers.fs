@@ -208,7 +208,7 @@ let floatValueToText (value:float) :string =
                 let cut = 
                     match floatPart with
                     |x when x[0..5] = "000000" -> x[6..(Seq.length floatPart-1)]+" n"
-                    |y when y[0..2] = "000" -> y[3..(Seq.length floatPart-1)]+" u"
+                    |y when y[0..2] = "000" -> y[3..(Seq.length floatPart-1)]+" "+muString
                     |_ -> floatPart+" m"
                 let cut' =
                     if String.length cut > 5 then cut[0..2]+"."+cut[3..(String.length cut-1)] 

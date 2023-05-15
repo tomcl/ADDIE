@@ -501,7 +501,8 @@ module SheetT =
         NodeLocations : XYPos list
         ComponentCurrents: Map<ComponentId,float>
         NodeVoltages: float list
-        ShowNodesNotVoltages: bool
+        ShowNodesOrVoltages: DCNodesOrVoltagesOrNone
+        ShowCurrents: bool
         UpdateSim: bool
         CanRunSimulation: bool
         DCSim: DCSimulationResults

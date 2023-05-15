@@ -89,6 +89,8 @@ let init() = {
         VSType= None
         ACOutput=None
         ACSource=None
+        ACMagInDB=true
+        ACPhaseInDegrees=true
         TimeInput=None
         TimeOutput=None
     }
@@ -148,25 +150,43 @@ let viewSimSubTab canvasState model dispatch =
     |[] ->
         match model.SimSubTabVisible with
         | DCsim -> 
-            let res,componentCurrents,nodeLst = Simulation.modifiedNodalAnalysisDC canvasState
-            div [] 
-                [ Button.button 
-                    [ 
-                        Button.OnClick(fun _ -> 
-                            UpdateNodes |> dispatch
-                            ) 
-                        Button.Color IsInfo
-                    ] 
-                    [ str "Print Nodes" ]
+            let nodesVoltagesState = match model.Sheet.ShowNodesOrVoltages with |Neither -> IsDanger |Nodes -> IsWarning |Voltages -> IsPrimary
+            let currentsState = if model.Sheet.ShowCurrents then IsPrimary else IsDanger
+            div [Style [Margin "20px"]] 
+                
+                [ 
+                  //button 
+                  //  [
+                  //      Style [Height "100px"; Width "100px"]
+                  //      OnClick (fun _ -> ())
+                  //  ] 
+                  //  [
+                  //      svg [Style [Fill "White"] ;ViewBox "0 0 24 24";] 
+                  //          [
+                  //              path [D "M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"] []
+                  //          ]
+
+                  //  ]
+
+                  //Button.button 
+                  //  [ 
+                  //      Button.OnClick(fun _ -> 
+                  //          UpdateNodes |> dispatch
+                  //          ) 
+                  //      Button.Color IsInfo
+                  //  ] 
+                  //  [ str "Print Nodes" ]
                   Button.button 
                     [ 
                         Button.OnClick(fun _ ->
-                            (printfn "currents: %A" componentCurrents)
+                            //(printfn "currents: %A" componentCurrents)
                             //Sheet (DrawModelType.SheetT.Msg.UpdateComponentCurrents componentCurrents) |> dispatch                        ) 
-                            UpdateCurrents componentCurrents |> dispatch)
-                        Button.Color IsInfo
+                            //UpdateCurrents model.Sheet.DCSim.ComponentCurrents |> dispatch
+                            ShowCurrents |> dispatch)
+                        Button.Color currentsState
                     ] 
-                    [ str "Print Currents" ]
+                    [ str "Currents" ]
+                  span [Style [Width "20px";Color "White"]] [str "asd"]
                   Button.button 
                     [ 
                         Button.OnClick(fun _ ->
@@ -174,14 +194,15 @@ let viewSimSubTab canvasState model dispatch =
                             //Sheet (DrawModelType.SheetT.Msg.UpdateComponentCurrents componentCurrents) |> dispatch                        ) 
                             //UpdateVoltages (Array.toList res) |> dispatch)
                             ShowNodesOrVoltages |> dispatch)
-                        Button.Color IsInfo
+                        Button.Color nodesVoltagesState
                     ] 
-                    [ str "Show Nodes/V" ]
+                    [ str "Nodes/Voltages" ]
                                   
                   br []
                   br []
-                  div [Style [Margin "20px"]] [
-                    getDCTable res componentCurrents canvasState nodeLst
+                  div [] [
+                    getDCTable model.Sheet.DCSim canvasState
+                    div [Style [Height "100px"]] []
                   ]
             
                 ]

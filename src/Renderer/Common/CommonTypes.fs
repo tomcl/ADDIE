@@ -373,6 +373,7 @@ module CommonTypes
             | c -> sprintf "%A" c
             
     let omegaString = "\u03a9"
+    let muString = "\u03bc"
     let groundSymbol = "\u23DA"
     let resistorSymbol = "\u2307"
     let capacitorSymbol = "\u2351"
@@ -529,3 +530,8 @@ module CommonTypes
         Transient: float list
         SteadyState: float list
         }
+
+    type DCNodesOrVoltagesOrNone = 
+        |Nodes
+        |Voltages
+        |Neither
