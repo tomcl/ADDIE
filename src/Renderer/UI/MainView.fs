@@ -232,6 +232,7 @@ let viewSimSubTab canvasState model dispatch =
             let currentsState = if model.Sheet.ShowCurrents then IsPrimary else IsDanger
             div [Style [Margin "20px"]] 
                 [ 
+                  Button.button [Button.Color IsDanger; Button.OnClick (fun _-> dispatch ForceStopSim)] [str "Stop"]
                   Heading.h5 [] [str "Adjust on-Canvas Elements"]
                   Button.button [Button.OnClick(fun _ -> ShowCurrents |> dispatch); Button.Color currentsState] [ str "Currents" ]
                   span [Style [Width "20px";Color "White"]] [str "asd"]

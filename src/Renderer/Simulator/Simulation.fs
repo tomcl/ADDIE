@@ -46,6 +46,9 @@ let shortInductorsForDC (comps,conns) =
         )
     (comps',conns)
 
+let findAllVoltageSources comps =
+    comps |> List.filter (fun c->match c.Type with |VoltageSource _ ->true |_->false)
+
    
 
 
@@ -70,7 +73,7 @@ let findInputAtTime vs t =
 /// which is of the form:
 /// [I1,I2,...,In,Va,Vb,...,Vm,0o] 
 /// n -> number of nodes, m number of Voltage Sources, o number of opamps
-let calcVectorBElement row (nodeToCompsList:(Component*int option) list list) =
+let calcVectorBElement row comps (nodeToCompsList:(Component*int option) list list) =
     let nodesNo = List.length nodeToCompsList
     
     let findNodeTotalCurrent currentNode = 
@@ -82,18 +85,18 @@ let calcVectorBElement row (nodeToCompsList:(Component*int option) list list) =
             |_ -> s
         )
 
-    let allVoltageSources = 
-        nodeToCompsList
-        |> List.removeAt 0
-        |> List.collect (fun nodeComps ->
-            nodeComps
-            |> List.collect (fun (comp,_) ->
-                match comp.Type with
-                |VoltageSource (_) -> [comp]
-                |_ -> []
-            )
-        )
-        |> List.distinctBy (fun c->c.Id)
+    let allVoltageSources = findAllVoltageSources comps
+        //nodeToCompsList
+        //|> List.removeAt 0
+        //|> List.collect (fun nodeComps ->
+        //    nodeComps
+        //    |> List.collect (fun (comp,_) ->
+        //        match comp.Type with
+        //        |VoltageSource (_) -> [comp]
+        //        |_ -> []
+        //    )
+        //)
+        //|> List.distinctBy (fun c->c.Id)
     
     let vsNo = List.length allVoltageSources
 
@@ -119,7 +122,7 @@ let calcVectorBElement row (nodeToCompsList:(Component*int option) list list) =
 /// More info on github
 /// A = [G B]
 ///     [C D]
-let calcMatrixElementValue row col (nodeToCompsList:(Component*int option) list list) omega vecB = 
+let calcMatrixElementValue row col (nodeToCompsList:(Component*int option) list list) comps omega vecB = 
     let findMatrixGCompValue (comp,no) omega =
         match comp.Type with
         |Resistor (v,_) -> {Re= (1./v); Im=0.}
@@ -160,18 +163,18 @@ let calcMatrixElementValue row col (nodeToCompsList:(Component*int option) list 
                 
     let nodesNo = List.length nodeToCompsList
     
-    let allVoltageSources = 
-        nodeToCompsList
-        |> List.removeAt 0
-        |> List.collect (fun nodeComps ->
-            nodeComps
-            |> List.collect (fun (comp,_) ->
-                match comp.Type with
-                |VoltageSource (_) -> [comp]
-                |_ -> []
-            )
-        )
-        |> List.distinctBy (fun c->c.Id)
+    let allVoltageSources = findAllVoltageSources comps
+        //nodeToCompsList
+        //|> List.removeAt 0
+        //|> List.collect (fun nodeComps ->
+        //    nodeComps
+        //    |> List.collect (fun (comp,_) ->
+        //        match comp.Type with
+        //        |VoltageSource (_) -> [comp]
+        //        |_ -> []
+        //    )
+        //)
+        //|> List.distinctBy (fun c->c.Id)
     
     let allOpamps = 
         nodeToCompsList
@@ -227,19 +230,8 @@ let calcMatrixElementValue row col (nodeToCompsList:(Component*int option) list 
 /// Current direction in vs will always be from + to -
 /// In opamps: output to input(V+/V-)
 /// In resistors: left2right or top2bottom
-let findComponentCurrents results nodesNo nodeLst conns =
-    let allDCVoltageSources = 
-        nodeLst
-        |> List.removeAt 0
-        |> List.collect (fun nodeComps ->
-            nodeComps
-            |> List.collect (fun (comp,_) ->
-                match comp.Type with
-                |VoltageSource (_) -> [comp]
-                |_ -> []
-            )
-        )
-        |> List.distinctBy (fun c->c.Id)
+let findComponentCurrents results nodesNo nodeLst comps conns =
+    let allVoltageSources = findAllVoltageSources comps
     
     let allOpamps = 
         nodeLst
@@ -268,7 +260,7 @@ let findComponentCurrents results nodesNo nodeLst conns =
         |> List.distinctBy (fun c->c.Id)
     
     let vsAndOpampCurrents =
-        allDCVoltageSources@allOpamps
+        allVoltageSources@allOpamps
         |> List.mapi (fun i comp ->
             let current = Array.tryItem (i+nodesNo) results
             match current with
@@ -327,7 +319,7 @@ let findComponentCurrents results nodesNo nodeLst conns =
                 |_ -> failwithf "Attempting to find Resistance of a non-Resistor comp"
             (ComponentId allResistors[i].Id,(v2-v1)/resistance)
         )
-        |> List.map (fun (r,v)->(r, System.Math.Round (v,4)))
+        |> List.map (fun (r,v)->(r, System.Math.Round (v,6)))
         
     vsAndOpampCurrents
     |> List.append resistorCurrents
@@ -348,6 +340,7 @@ let rec modifiedNodalAnalysisDC (comps,conns) =
         (comps,conns)
         |> combineGrounds
         |> shortInductorsForDC 
+        |> transformSingleDiode
 
     
     /////// required information ////////
@@ -369,7 +362,7 @@ let rec modifiedNodalAnalysisDC (comps,conns) =
 
     let vecB =
         Array.create n {Re=0.0;Im=0.0}
-        |> Array.mapi (fun i v -> (calcVectorBElement (i+1) nodeLst))
+        |> Array.mapi (fun i v -> (calcVectorBElement (i+1) comps' nodeLst))
         |> Array.map (fun c -> c.Re)
     
     let flattenedMatrix =
@@ -377,7 +370,7 @@ let rec modifiedNodalAnalysisDC (comps,conns) =
         |> Array.mapi (fun i top ->
             top
             |> Array.mapi (fun j v ->
-                calcMatrixElementValue (i+1) (j+1) nodeLst 0. vecB
+                calcMatrixElementValue (i+1) (j+1) nodeLst comps' 0. vecB
             )
         )
         |> Array.collect (id)
@@ -389,45 +382,50 @@ let rec modifiedNodalAnalysisDC (comps,conns) =
 
     let mul = safeSolveMatrixVec flattenedMatrix vecB
 
-    let result = mul |> Array.map (fun x->System.Math.Round (x,4))
+    let result = mul |> Array.map (fun x->System.Math.Round (x,6))
     
-    let componentCurrents = findComponentCurrents result (List.length nodeLst-1) nodeLst conns'
+    let componentCurrents = findComponentCurrents result (List.length nodeLst-1) nodeLst comps' conns'
 
     result, componentCurrents, nodeLst 
 
-and transformSingleDiode (comps,conns) whichComp =
-    let comps1 = 
-        comps
-        |> List.map (fun (c:Component)->
-            if c.Id = whichComp.Id then
-                {c with Type=(VoltageSource (DC 0.7))}
-            else c        
-        )
+and transformSingleDiode (comps,conns) =
+    let whichComp = List.tryFind (fun c->c.Type=Diode) comps
+    match whichComp with
+    |Some diode -> 
+        let comps1 = 
+            comps
+            |> List.map (fun (c:Component)->
+                if c.Id = diode.Id then
+                    {c with Type=(VoltageSource (DC 0.7))}
+                else c        
+            )
 
-    let comps2 =
-        comps
-        |> List.map (fun (c:Component)->
-            if c.Id = whichComp.Id then
-                {c with Type=(CurrentSource (0.,"0"))}
-            else c        
-        )
+        let comps2 =
+            comps
+            |> List.map (fun (c:Component)->
+                if c.Id = diode.Id then
+                    {c with Type=(CurrentSource (0.,"0"))}
+                else c        
+            )
 
-    let res,_,_ = modifiedNodalAnalysisDC (comps1,conns)
+        let res,_,nodeLst = modifiedNodalAnalysisDC (comps1,conns)
 
-    //let allVoltageSources = 
-    
-    
-    
-    (comps1,conns)
+        let allVoltageSources = findAllVoltageSources comps1
+        let indexOfDiode = allVoltageSources |> List.findIndex (fun c->c.Id=diode.Id)
+        let nodesNo = List.length nodeLst-1
+        if res[nodesNo+indexOfDiode] >= 0 then        
+            (comps1,conns)
+        else (comps2,conns)
+    |None -> (comps,conns)
 
 
-let acAnalysis matrix nodeLst vecB wmega outputNode =    
+let acAnalysis matrix nodeLst comps vecB wmega outputNode =    
     let flattenedMatrix =
         matrix
         |> Array.mapi (fun i top ->
             top
             |> Array.mapi (fun j v ->
-                calcMatrixElementValue (i+1) (j+1) nodeLst wmega vecB
+                calcMatrixElementValue (i+1) (j+1) nodeLst comps wmega vecB
             )
         )
         |> Array.collect (id)
@@ -458,14 +456,14 @@ let frequencyResponse (comps,conns) outputNode  =
     
     let vecB =
         Array.create n {Re=0.0;Im=0.0}
-        |> Array.mapi (fun i v -> (calcVectorBElement (i+1) nodeLst))
+        |> Array.mapi (fun i v -> (calcVectorBElement (i+1) comps' nodeLst))
     
 
     let frequencies = [0.0..0.05..7.0] |> List.map (fun x -> 10.**x)
     
     frequencies
     |> List.map (fun wmega->
-        acAnalysis matrix nodeLst vecB wmega outputNode
+        acAnalysis matrix nodeLst comps' vecB wmega outputNode
     )
     |> List.map complexCToP
     
@@ -632,8 +630,8 @@ let transientAnalysis (comps,conns) inputNode outputNode =
                 let matrix = Array.create n arr
                 let vecB =
                     Array.create n {Re=0.0;Im=0.0}
-                    |> Array.mapi (fun i v -> (calcVectorBElement (i+1) nodeLst))
-                let res = acAnalysis matrix nodeLst vecB (2.*System.Math.PI*f) outputNode |> complexCToP
+                    |> Array.mapi (fun i v -> (calcVectorBElement (i+1) comps' nodeLst))
+                let res = acAnalysis matrix nodeLst comps' vecB (2.*System.Math.PI*f) outputNode |> complexCToP
                 printfn "res = %A" res
                 {comp with Type = VoltageSource (Sine (a*res.Mag,o+res.Phase,f))}
 
