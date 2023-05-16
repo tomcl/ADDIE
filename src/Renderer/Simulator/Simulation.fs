@@ -47,6 +47,8 @@ let shortInductorsForDC (comps,conns) =
     (comps',conns)
 
    
+
+
 let findInputAtTime vs t =
         match vs with
         |None -> failwithf "No Voltage Source present in the circuit"
@@ -339,7 +341,7 @@ let findComponentCurrents results nodesNo nodeLst conns =
 /// Performs MNA on the current canvas state. 
 /// Returns: (i) result of MNA (node Voltages, vs/opamp currents)
 /// (ii) component Currents, (iii) nodeToCompsList
-let modifiedNodalAnalysisDC (comps,conns) =
+let rec modifiedNodalAnalysisDC (comps,conns) =
     
     // transform canvas state for DC Analysis  
     let comps',conns' = 
@@ -393,6 +395,30 @@ let modifiedNodalAnalysisDC (comps,conns) =
 
     result, componentCurrents, nodeLst 
 
+and transformSingleDiode (comps,conns) whichComp =
+    let comps1 = 
+        comps
+        |> List.map (fun (c:Component)->
+            if c.Id = whichComp.Id then
+                {c with Type=(VoltageSource (DC 0.7))}
+            else c        
+        )
+
+    let comps2 =
+        comps
+        |> List.map (fun (c:Component)->
+            if c.Id = whichComp.Id then
+                {c with Type=(CurrentSource (0.,"0"))}
+            else c        
+        )
+
+    let res,_,_ = modifiedNodalAnalysisDC (comps1,conns)
+
+    //let allVoltageSources = 
+    
+    
+    
+    (comps1,conns)
 
 
 let acAnalysis matrix nodeLst vecB wmega outputNode =    
