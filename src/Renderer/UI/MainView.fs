@@ -135,7 +135,7 @@ let runSimulation (model:Model) dispatch =
                 let res = (frequencyResponse canvasState outputNode)
                 UpdateACSim res |> dispatch
             |TimeSim ->
-                let inputNode = "2" |> int
+                let inputNode = "1" |> int
                 let outputNode = model.SimulationData.TimeOutput |> Option.defaultValue "1" |> int
                 let t,ytr,yss = (transientAnalysis canvasState inputNode outputNode)
                 UpdateTimeSim {TimeSteps=t;Transient=ytr;SteadyState=yss} |> dispatch
@@ -220,6 +220,58 @@ let createACSimSubTab model comps dispatch =
             ]
         ]
 
+let createTimeSimSubTab model comps dispatch =
+    let sourceOptions =
+        comps
+        |> List.collect (fun c->
+            match c.Type with
+            |VoltageSource _ -> [option [Value (c.Id)] [str (c.Label)]]
+            |_ -> []
+        )
+
+    let outputOptions =
+        [1..((List.length model.Sheet.DCSim.NodeList)-1)]
+        |> List.collect (fun i ->
+            [option [Value (string i)] [str ("Node "+(string i))]]    
+        )
+
+    let isDisabled = 
+        match model.SimulationData.TimeInput,model.SimulationData.TimeOutput with
+        |Some x,Some y when x<>"sel" && y<>"sel" -> false
+        |_ -> true
+
+    let magButtonText = if model.SimulationData.ACMagInDB then "dB" else "Normal"
+    let freqButtonText = if model.SimulationData.ACFreqInHz then "Hz" else "rads/s"
+
+    div [Style [Margin "20px"]] 
+        [ 
+            Heading.h4 [] [str "Setup AC Simulation"]
+            div [] [
+                Label.label [] [ str "Input" ]
+                Label.label [ ]
+                    [Select.select []
+                    [ select [(OnChange(fun option -> SetSimulationTimeSource (Some option.Value) |> dispatch))]
+                        ([option [Value ("sel")] [str ("Select")]] @ sourceOptions)
+                        ]
+                    ]
+            
+                Label.label [] [ str "Output" ]
+                Label.label [ ]
+                    [Select.select [] [ select [(OnChange(fun option -> SetSimulationTimeOut (Some option.Value) |> dispatch))]
+                        ([option [Value ("sel")] [str ("Select")]] @ outputOptions)
+                        ]
+                    ]
+            ]
+            Button.button 
+                [   Button.OnClick (fun _ -> 
+                        RunSim |> dispatch
+                        SetGraphVisibility true |> dispatch); 
+                        Button.Color IsPrimary;
+                        Button.Disabled isDisabled] 
+                [str "Start"]
+
+        ]
+
 
 
 let viewSimSubTab canvasState model dispatch =
@@ -255,20 +307,21 @@ let viewSimSubTab canvasState model dispatch =
 
         | ACsim -> 
             createACSimSubTab model comps' dispatch
-        | TimeSim -> 
-            div [] 
-                [ Button.button
-                    [
-                        Button.OnClick(fun _ -> 
-                            SetSimulationTimeSource None |> dispatch
-                            SetSimulationTimeOut None |> dispatch)
-                            //ComponentCreation.createTimePopup model dispatch)
-                    ]  
-                    [str "Setup Time"]
+        | TimeSim ->
+            createTimeSimSubTab model comps' dispatch
+            //div [] 
+            //    [ Button.button
+            //        [
+            //            Button.OnClick(fun _ -> 
+            //                SetSimulationTimeSource None |> dispatch
+            //                SetSimulationTimeOut None |> dispatch)
+            //                //ComponentCreation.createTimePopup model dispatch)
+            //        ]  
+            //        [str "Setup Time"]
             
-                  Button.button [Button.OnClick(fun _ -> SetGraphVisibility false |> dispatch)] [str "X"]
+            //      Button.button [Button.OnClick(fun _ -> SetGraphVisibility false |> dispatch)] [str "X"]
                 
-                ]
+            //    ]
     |_ -> 
         printfn "errors %A" (checkCanvasStateForErrors (comps',conns'))
         div [] [str "Cannot simulate circuit. Please fix all errors first!"]
