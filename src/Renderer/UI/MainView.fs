@@ -117,36 +117,41 @@ let findInputNodeFromComp (nodeLst: (Component*int option) list list) compId =
     nodeLst |> List.findIndex (List.exists (fun (c,i)->c.Id = compId && i = (Some 0)))
 
 let runSimulation (model:Model) dispatch = 
-    
-    match model.Sheet.UpdateSim && model.Sheet.SimulationRunning with
-    |false -> ()
-    |true -> 
-        let canvasState = model.Sheet.GetCanvasState () |> combineGrounds
+    let CS = model.Sheet.GetCanvasState ()
+    match CS with
+    |[],[] -> 
+        dispatch ForceStopSim
+        dispatch <| SetGraphVisibility false
+    |_ ->
+        let canvasState = CS |> combineGrounds
         let compsNo,connsNo= List.length (fst canvasState),List.length (snd canvasState)
         match model.PrevCanvasStateSizes = (compsNo,connsNo) with
         |true ->
-            match checkCanvasStateForErrors canvasState with
-            |[] ->
-                CircuitHasNoErrors |> dispatch
-                SimulationUpdated |> dispatch
-                let res,componentCurrents,nodeLst = Simulation.modifiedNodalAnalysisDC canvasState
-                UpdateVoltages (Array.toList res) |> dispatch
-                UpdateCurrents componentCurrents |> dispatch
-                match model.SimSubTabVisible with
-                |DCsim ->
-                    UpdateDCSim {MNA=res;ComponentCurrents=componentCurrents;NodeList=nodeLst} |> dispatch
-                |ACsim -> 
-                    let outputNode = model.SimulationData.ACOutput |> Option.defaultValue "1" |> int
-                    let res = (frequencyResponse canvasState outputNode)
-                    UpdateACSim res |> dispatch
-                |TimeSim ->
-                    let inputNode = model.SimulationData.TimeInput |> Option.defaultValue "VS1" |> findInputNodeFromComp nodeLst
-                    let outputNode = model.SimulationData.TimeOutput |> Option.defaultValue "1" |> int
-                    let t,ytr,yss = (transientAnalysis canvasState inputNode outputNode)
-                    UpdateTimeSim {TimeSteps=t;Transient=ytr;SteadyState=yss} |> dispatch
-            |_ ->
-                dispatch ForceStopSim
-                dispatch CircuitHasErrors
+            match model.Sheet.UpdateSim && model.Sheet.SimulationRunning with
+            |false -> ()
+            |true -> 
+                match checkCanvasStateForErrors canvasState with
+                    |[] ->
+                        CircuitHasNoErrors |> dispatch
+                        SimulationUpdated |> dispatch
+                        let res,componentCurrents,nodeLst = Simulation.modifiedNodalAnalysisDC canvasState
+                        UpdateVoltages (Array.toList res) |> dispatch
+                        UpdateCurrents componentCurrents |> dispatch
+                        match model.SimSubTabVisible with
+                        |DCsim ->
+                            UpdateDCSim {MNA=res;ComponentCurrents=componentCurrents;NodeList=nodeLst} |> dispatch
+                        |ACsim -> 
+                            let outputNode = model.SimulationData.ACOutput |> Option.defaultValue "1" |> int
+                            let res = (frequencyResponse canvasState outputNode)
+                            UpdateACSim res |> dispatch
+                        |TimeSim ->
+                            let inputNode = model.SimulationData.TimeInput |> Option.defaultValue "VS1" |> findInputNodeFromComp nodeLst
+                            let outputNode = model.SimulationData.TimeOutput |> Option.defaultValue "1" |> int
+                            let t,ytr,yss = (transientAnalysis canvasState inputNode outputNode)
+                            UpdateTimeSim {TimeSteps=t;Transient=ytr;SteadyState=yss} |> dispatch
+                    |_ ->
+                        dispatch ForceStopSim
+                        dispatch CircuitHasErrors
         |false ->
             dispatch <| UpdateCanvasStateSizes (compsNo,connsNo)
             dispatch ForceStopSim

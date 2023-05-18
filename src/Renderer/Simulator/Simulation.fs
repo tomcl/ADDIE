@@ -37,11 +37,19 @@ let combineGrounds (comps,conns) =
 /// Inductors by 0-Volts DC Sources (short circuit) for
 /// the MNA to work 
 let shortInductorsForDC (comps,conns) =
+    
+    // necessary for current orientation
+    let updateSymbolInfo siOpt =
+        let rotateRight r = match r with |Degree90->Degree0|Degree270->Degree180|Degree180->Degree0|Degree0->Degree180 
+        match siOpt with
+        |Some si ->
+            Some {si with STransform={si.STransform with Rotation=(rotateRight si.STransform.Rotation)}}
+        |None -> None
     let comps' =
         comps
         |> List.map (fun c->
             match c.Type with
-            |Inductor _ -> {c with Type = VoltageSource (DC 0.)}
+            |Inductor _ -> {c with Type = VoltageSource (DC 0.);SymbolInfo = (updateSymbolInfo c.SymbolInfo)}
             |_ -> c
         )
     (comps',conns)
@@ -128,7 +136,7 @@ let calcMatrixElementValue row col (nodeToCompsList:(Component*int option) list 
         |Resistor (v,_) -> {Re= (1./v); Im=0.}
         |Inductor (v,_) -> {Re = 0.; Im= -(1./(v*omega))}
         |Capacitor (v,_) -> {Re = 0.; Im= (v*omega)}
-        |CurrentSource _ |VoltageSource _ |Opamp -> {Re = 0.0; Im=0.0}
+        |CurrentSource _ |VoltageSource _ |Opamp |Diode -> {Re = 0.0; Im=0.0}
         |_ -> failwithf "Not Implemented yet"
     
 

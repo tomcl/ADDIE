@@ -341,6 +341,7 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
             symbolCmd (SymbolT.RotateLeft(model.SelectedComponents, rotation)) // Better to have Symbol keep track of clipboard as symbols can get deleted before pasting.
             wireCmd (BusWireT.UpdateConnectedWires model.SelectedComponents)
             Cmd.ofMsg SheetT.UpdateBoundingBoxes
+            Cmd.ofMsg CanvasChanged
         ]
 
     | Flip orientation ->
