@@ -205,12 +205,17 @@ type Msg =
     | UpdateACSim of ComplexP list
     | UpdateTimeSim of TimeSimulationResults
     | ShowNodesOrVoltages
+    | HideNodesOrVoltages
     | SimulationUpdated
     | RunSim
     | ForceStopSim
+    | CircuitHasErrors
+    | CircuitHasNoErrors
     | SafeStartSim
-    | ShowCurrents
+    | ShowOrHideCurrents
+    | HideCurrents
     | ClearSimulationResults
+    | UpdateCanvasStateSizes of int*int
 
 
 //================================//
@@ -306,6 +311,7 @@ type Model = {
     UIState: UICommandType Option
     showGraphArea: bool
     SimulationData: SimData
+    PrevCanvasStateSizes: int*int
 } 
 
     

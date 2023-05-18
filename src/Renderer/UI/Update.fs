@@ -407,16 +407,27 @@ let update (msg : Msg) oldModel =
     | RunSim ->
         {model with Sheet = {model.Sheet with UpdateSim=true}}, Cmd.none
     | ForceStopSim ->
-        {model with Sheet = {model.Sheet with CanRunSimulation=false}}, Cmd.none
+        let cmd' = [HideCurrents;HideNodesOrVoltages] |> List.map Cmd.ofMsg
+        {model with Sheet = {model.Sheet with SimulationRunning=false}}, Cmd.batch cmd'
     | SafeStartSim ->
+        {model with Sheet = {model.Sheet with SimulationRunning=true}}, Cmd.ofMsg RunSim
+    | CircuitHasErrors ->
+        {model with Sheet = {model.Sheet with CanRunSimulation=false}}, Cmd.none
+    | CircuitHasNoErrors ->
         {model with Sheet = {model.Sheet with CanRunSimulation=true}}, Cmd.none
+    | UpdateCanvasStateSizes (compsNo,connsNo) ->
+        {model with PrevCanvasStateSizes = (compsNo,connsNo)}, Cmd.ofMsg RunSim
     | ShowNodesOrVoltages ->
         let newState =
             match model.Sheet.ShowNodesOrVoltages with
             |Neither -> Nodes |Nodes -> Voltages |Voltages -> Neither
         {model with Sheet = {model.Sheet with ShowNodesOrVoltages=newState}}, Cmd.none
-    | ShowCurrents ->
+    | ShowOrHideCurrents ->
         {model with Sheet = {model.Sheet with ShowCurrents = (not model.Sheet.ShowCurrents)}}, Cmd.none
+    | HideCurrents ->
+        {model with Sheet = {model.Sheet with ShowCurrents = false}}, Cmd.none
+    | HideNodesOrVoltages -> 
+        {model with Sheet = {model.Sheet with ShowNodesOrVoltages = Neither}}, Cmd.none
     | ExecutePendingMessages n ->
         if n = (List.length model.Pending)
         then 

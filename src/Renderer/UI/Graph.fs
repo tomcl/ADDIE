@@ -98,63 +98,66 @@ let viewGraph (model:Model) dispatch =
             //let inputNode = "2" |> int // model.PopupDialogData.TimeInput |> Option.defaultValue "1" |> int
             //let outputNode = model.PopupDialogData.TimeOutput |> Option.defaultValue "1" |> int
             let t,ytr,yss = extractTimeSimResults model.Sheet.TimeSim
-            let y = [0.;0.] @ List.map2 (fun x y -> x+y) ytr yss
-            let t_y = [-t[(List.length t/5)|> int]]@[0.0]@t
-            let vs = comps |> List.find (fun c->match c.Type with |VoltageSource _ -> true |_ -> false)
-            let x = [0.;0.] @ List.map (Simulation.findInputAtTime (Some vs)) t
-            div [Style [Width "90%"; Float FloatOptions.Left]] [
-                        Plotly.plot [
-                            plot.traces [
-                                traces.scatter [
-                                    scatter.x t_y
-                                    scatter.y y
-                                    scatter.name "y"
-                                ]
-                                traces.scatter [
-                                    scatter.x t
-                                    scatter.y yss
-                                    scatter.name "y_ss"
-                                    scatter.line [
-                                    line.dash.dot
-                                    line.width 1
-                                    line.color "green"]
+            match t,ytr,yss with
+            |[],[],[] -> div [] []
+            |_ ->
+                let y = [0.;0.] @ List.map2 (fun x y -> x+y) ytr yss
+                let t_y = [-t[(List.length t/5)|> int]]@[0.0]@t
+                let vs = comps |> List.find (fun c->match c.Type with |VoltageSource _ -> true |_ -> false)
+                let x = [0.;0.] @ List.map (Simulation.findInputAtTime (Some vs)) t
+                div [Style [Width "90%"; Float FloatOptions.Left]] [
+                            Plotly.plot [
+                                plot.traces [
+                                    traces.scatter [
+                                        scatter.x t_y
+                                        scatter.y y
+                                        scatter.name "y"
                                     ]
-                                traces.scatter [
-                                    scatter.x t
-                                    scatter.y ytr
-                                    scatter.name "y_tr"
-                                    scatter.line [
+                                    traces.scatter [
+                                        scatter.x t
+                                        scatter.y yss
+                                        scatter.name "y_ss"
+                                        scatter.line [
                                         line.dash.dot
                                         line.width 1
-                                        line.color "red"
+                                        line.color "green"]
+                                        ]
+                                    traces.scatter [
+                                        scatter.x t
+                                        scatter.y ytr
+                                        scatter.name "y_tr"
+                                        scatter.line [
+                                            line.dash.dot
+                                            line.width 1
+                                            line.color "red"
+                                        ]
                                     ]
-                                ]
-                                traces.scatter [
-                                    scatter.x t_y
-                                    scatter.y x
-                                    scatter.name "x"
-                                    scatter.line [
-                                    line.color "black"
+                                    traces.scatter [
+                                        scatter.x t_y
+                                        scatter.y x
+                                        scatter.name "x"
+                                        scatter.line [
+                                        line.color "black"
+                                        ]
                                     ]
-                                ]
                             
-                            ]
-                            plot.layout [
-                                layout.height 350
-                                layout.width 1300
-                                layout.title [
-                                    title.text "Time Analysis"
                                 ]
-                                layout.yaxis [
-                                    yaxis.title [
-                                        title.text "Voltage (V)"
+                                plot.layout [
+                                    layout.height 350
+                                    layout.width 1300
+                                    layout.title [
+                                        title.text "Time Analysis"
                                     ]
-                                    yaxis.autorange.true'
-                                    yaxis.zeroline false
-                                ]
-                        ]
-                        ]
-                        ]
+                                    layout.yaxis [
+                                        yaxis.title [
+                                            title.text "Voltage (V)"
+                                        ]
+                                        yaxis.autorange.true'
+                                        yaxis.zeroline false
+                                    ]
+                            ]
+                            ]
+                            ]
         |_ -> 
             SetGraphVisibility false |> dispatch
             div [] []

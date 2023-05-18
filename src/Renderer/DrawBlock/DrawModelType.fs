@@ -505,6 +505,7 @@ module SheetT =
         ShowCurrents: bool
         UpdateSim: bool
         CanRunSimulation: bool
+        SimulationRunning: bool
         DCSim: DCSimulationResults
         ACSim: ComplexP list
         TimeSim: TimeSimulationResults

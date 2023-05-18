@@ -70,6 +70,7 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
         Cmd.batch [ wireCmd (BusWireT.DeleteWires wireUnion) // Delete Wires before components so nothing bad happens
                     symbolCmd (SymbolT.DeleteSymbols model.SelectedComponents)
                     Cmd.ofMsg UpdateBoundingBoxes
+                    Cmd.ofMsg CanvasChanged
                   ]
     | KeyPress CtrlS -> // For Demo, Add a new square in upper left corner
         { model with BoundingBoxes = Symbol.getBoundingBoxes model.Wire.Symbol; UndoList = appendUndoList model.UndoList model ; RedoList = []},
@@ -506,6 +507,7 @@ let init () =
         NodeVoltages = []
         UpdateSim = false
         CanRunSimulation = false
+        SimulationRunning = false
         ShowNodesOrVoltages = Neither
         ShowCurrents = false
         ACSim = []

@@ -561,7 +561,8 @@ let mUpUpdate (model: Model) (mMsg: MouseT) : Model * Cmd<Msg> = // mMsg is curr
                         Cmd.ofMsg UpdateBoundingBoxes
                         symbolCmd (SymbolT.SelectSymbols (model.SelectedComponents))
                         wireCmd (BusWireT.UpdateWires (model.SelectedComponents, model.LastValidPos - mMsg.Pos))
-                        wireCmd (BusWireT.MakeJumps movingWires) ]
+                        wireCmd (BusWireT.MakeJumps movingWires) 
+                        Cmd.ofMsg UpdateNodes]
     | ConnectingIO portId ->
         let cmd, undoList ,redoList =
             if model.TargetPortId <> "" // If a target has been found, connect a wire

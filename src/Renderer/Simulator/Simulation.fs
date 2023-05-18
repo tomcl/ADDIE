@@ -329,7 +329,6 @@ let findComponentCurrents results nodesNo nodeLst comps conns =
 ///////// MAIN SIMULATION FUNCTIONS //////////
 
 
-
 /// Performs MNA on the current canvas state. 
 /// Returns: (i) result of MNA (node Voltages, vs/opamp currents)
 /// (ii) component Currents, (iii) nodeToCompsList
@@ -549,7 +548,27 @@ let replaceCLWithTinyR (comps,conns) =
             )
     comps',conns
         
-        
+
+let DCTimeAnalysis (comps,conns) inputNode outputNode =
+
+    let vsIndex = comps |> List.tryFindIndex (fun c->match c.Type with |VoltageSource _ -> true |_ -> false)
+    match vsIndex with
+    |Some i ->
+        let vs = comps[i]
+        let f = match vs.Type with |VoltageSource (Sine (_,_,f)) -> f |_ -> 0.
+        let dts = if f=0. then [0.0..(1./100.)..10.] else [0.0..(1./(100.*f))..5./f]
+
+        dts
+        |> List.map (fun t->
+            let vIn = findInputAtTime (Some vs) t 
+            let comps' = List.updateAt i {vs with Type = VoltageSource (DC vIn)} comps
+            let y_tr = 0.
+            let res,_,_ = modifiedNodalAnalysisDC (comps',conns)
+            (t,y_tr,res[outputNode-1])
+        )
+        |> List.unzip3
+    |_ -> failwithf "No voltage Source present in the circuit"
+
 
 
 
@@ -603,59 +622,62 @@ let transientAnalysis (comps,conns) inputNode outputNode =
         result[nodeY-1]/result[nodeX-1]
     
 
-    // find tau from Thevenin Resistance -> DONE
-    // find DC/HF gain -> PENDING for inductor
-    // take input signal, find A and plot results
-    let vs = comps' |> List.tryFind (fun c->match c.Type with |VoltageSource _ -> true |_->false)
+    match List.exists (fun c->match c.Type with |Capacitor _ |Inductor _ -> true |_ -> false) comps' with
+    |true ->
+        // find tau from Thevenin Resistance -> DONE
+        // find DC/HF gain -> PENDING for inductor
+        // take input signal, find A and plot results
+        let vs = comps' |> List.tryFind (fun c->match c.Type with |VoltageSource _ -> true |_->false)
 
-    let yssAsVS =
-        match vs with
-        |Some comp ->
-            match comp.Type with
-            |VoltageSource (DC v) ->
-                let res,_,_ = modifiedNodalAnalysisDC (comps',conns')
-                {comp with Type = VoltageSource (DC res[outputNode-1])}
-            |VoltageSource (Sine (a,o,f)) -> 
-                let nodeLst = createNodetoCompsList (comps',conns')
+        let yssAsVS =
+            match vs with
+            |Some comp ->
+                match comp.Type with
+                |VoltageSource (DC v) ->
+                    let res,_,_ = modifiedNodalAnalysisDC (comps',conns')
+                    {comp with Type = VoltageSource (DC res[outputNode-1])}
+                |VoltageSource (Sine (a,o,f)) -> 
+                    let nodeLst = createNodetoCompsList (comps',conns')
 
-                let vs = 
-                    comps'
-                    |> List.filter (fun c-> match c.Type with |VoltageSource _ -> true |_ -> false)
-                    |> List.length
+                    let vs = 
+                        comps'
+                        |> List.filter (fun c-> match c.Type with |VoltageSource _ -> true |_ -> false)
+                        |> List.length
 
-                let opamps = comps' |> List.filter (fun c-> c.Type=Opamp) |> List.length
+                    let opamps = comps' |> List.filter (fun c-> c.Type=Opamp) |> List.length
 
-                let n = List.length nodeLst - 1 + vs + opamps
-                let arr = Array.create n 0.0
-                let matrix = Array.create n arr
-                let vecB =
-                    Array.create n {Re=0.0;Im=0.0}
-                    |> Array.mapi (fun i v -> (calcVectorBElement (i+1) comps' nodeLst))
-                let res = acAnalysis matrix nodeLst comps' vecB (2.*System.Math.PI*f) outputNode |> complexCToP
-                printfn "res = %A" res
-                {comp with Type = VoltageSource (Sine (a*res.Mag,o+res.Phase,f))}
-
-
-            |_ -> failwithf "Impossible"
-        |None -> failwithf "No Voltage Source present in the circuit"
+                    let n = List.length nodeLst - 1 + vs + opamps
+                    let arr = Array.create n 0.0
+                    let matrix = Array.create n arr
+                    let vecB =
+                        Array.create n {Re=0.0;Im=0.0}
+                        |> Array.mapi (fun i v -> (calcVectorBElement (i+1) comps' nodeLst))
+                    let res = acAnalysis matrix nodeLst comps' vecB (2.*System.Math.PI*f) outputNode |> complexCToP
+                    printfn "res = %A" res
+                    {comp with Type = VoltageSource (Sine (a*res.Mag,o+res.Phase,f))}
 
 
-    let HFGain = findHFGain inputNode outputNode
+                |_ -> failwithf "Impossible"
+            |None -> failwithf "No Voltage Source present in the circuit"
 
-    let tau = findTau ()
-    let f = match yssAsVS.Type with |VoltageSource (Sine (_,_,f)) -> f |_ -> 0.
 
-    let alpha = HFGain * findInputAtTime vs 0. - findInputAtTime (Some yssAsVS) 0.
+        let HFGain = findHFGain inputNode outputNode
+
+        let tau = findTau ()
+        let f = match yssAsVS.Type with |VoltageSource (Sine (_,_,f)) -> f |_ -> 0.
+
+        let alpha = HFGain * findInputAtTime vs 0. - findInputAtTime (Some yssAsVS) 0.
     
-    let dts = if f=0. then [0.0..(tau/10.)..tau*10.] else [0.0..(1./(100.*f))..5./f]
+        let dts = if f=0. then [0.0..(tau/10.)..tau*10.] else [0.0..(1./(100.*f))..5./f]
 
-    dts
-    |> List.map (fun t->
-        let y_tr = alpha*exp(-t/tau)
-        let yss = findInputAtTime (Some yssAsVS) t
-        (t,y_tr,yss)
-    )
-    |> List.unzip3
+        dts
+        |> List.map (fun t->
+            let y_tr = alpha*exp(-t/tau)
+            let yss = findInputAtTime (Some yssAsVS) t
+            (t,y_tr,yss)
+        )
+        |> List.unzip3
+    |_ -> DCTimeAnalysis (comps',conns') inputNode outputNode
      
     
 
