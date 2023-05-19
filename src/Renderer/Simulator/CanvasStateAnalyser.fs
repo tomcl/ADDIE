@@ -192,6 +192,10 @@ let checkCanvasStateForErrors (comps,conns) =
     let nodeLst = createNodetoCompsList (comps,conns)
     let allCompsOfNodeLst = nodeLst |> List.collect (id) |> List.distinctBy (fun (c,pn) -> c.Id)
 
+    let findLabelFromId id =
+        let c = comps |> List.find (fun c->c.Id=id)
+        c.Label
+
     let extractVS comps =
         comps 
         |> List.filter (fun c -> 
@@ -300,7 +304,7 @@ let checkCanvasStateForErrors (comps,conns) =
                 || (c1.Source.Id = c2.Target.Id && c1.Target.Id = c2.Source.Id))
                 && c1.Id <> c2.Id then
                     [{
-                    Msg = sprintf "Duplicate connection" 
+                    Msg = sprintf "Duplicate connection between %s and %s" (findLabelFromId c1.Source.HostId) (findLabelFromId c1.Target.HostId) 
                     ComponentsAffected = [] 
                     ConnectionsAffected = [ConnectionId c1.Id; ConnectionId c2.Id]
                     }]  
@@ -319,7 +323,7 @@ let checkCanvasStateForErrors (comps,conns) =
                 |Opamp -> []
                 |_ ->
                     [{
-                    Msg = sprintf "Loop connection" 
+                    Msg = sprintf "Loop connection on %s" (findLabelFromId conn.Source.HostId) 
                     ComponentsAffected = [] 
                     ConnectionsAffected = [ConnectionId conn.Id]
                     }]    

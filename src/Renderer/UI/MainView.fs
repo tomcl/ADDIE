@@ -132,6 +132,7 @@ let runSimulation (model:Model) dispatch =
             |true -> 
                 match checkCanvasStateForErrors canvasState with
                     |[] ->
+                        ClosePropertiesNotification |> dispatch
                         CircuitHasNoErrors |> dispatch
                         SimulationUpdated |> dispatch
                         let res,componentCurrents,nodeLst = Simulation.modifiedNodalAnalysisDC canvasState
@@ -149,9 +150,10 @@ let runSimulation (model:Model) dispatch =
                             let outputNode = model.SimulationData.TimeOutput |> Option.defaultValue "1" |> int
                             let t,ytr,yss = (transientAnalysis canvasState inputNode outputNode)
                             UpdateTimeSim {TimeSteps=t;Transient=ytr;SteadyState=yss} |> dispatch
-                    |_ ->
+                    |err ->
                         dispatch ForceStopSim
                         dispatch CircuitHasErrors
+                        dispatch (SetPropertiesNotification (Notifications.errorPropsNotification err[0].Msg))
         |false ->
             dispatch <| UpdateCanvasStateSizes (compsNo,connsNo)
             dispatch ForceStopSim
@@ -460,9 +462,7 @@ let viewRightTabs canvasState model dispatch =
             Tabs.tab // simulation tab to view all simulators
                 [ Tabs.Tab.IsActive (model.RightPaneTabVisible = Simulation) ]
                 [ a [  OnClick (fun _ -> 
-                    dispatch <| ChangeRightTab Simulation 
-                    dispatch SafeStartSim
-                    dispatch UpdateNodes) ] [str "Simulations"] ]
+                    dispatch <| ChangeRightTab Simulation ) ] [str "Simulations"] ]
         ]
         div [HTMLAttr.Id "TabBody"; belowHeaderStyle "36px"; Style [OverflowY scrollType]] [viewRightTab canvasState model dispatch]
 
