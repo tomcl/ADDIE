@@ -985,6 +985,7 @@ let viewTopMenu model dispatch =
 
     let toString = Array.fold (fun x (pos:XYPos) -> x + (sprintf $" {pos.X},{pos.Y}")) "" 
 
+    let compButtonStyle = [Height "48px"; Width "48px"; PaddingLeft "1px"; PaddingRight "1px"]
 
     let fileTab model =
         match model.CurrentProj with
@@ -1136,7 +1137,7 @@ let viewTopMenu model dispatch =
                                 ]
                             Navbar.Item.div []
                                 [ button 
-                                    [Style[Height "48px";Width "48px"];OnClick(fun _ -> createRCLIPopup model (Resistor (0,"0")) dispatch) ] [
+                                    [Class "button is-grey"; Style compButtonStyle; OnClick(fun _ -> createRCLIPopup model (Resistor (0,"0")) dispatch) ] [
                                   svg [ViewBox "0 0 48 48"] [ 
                                       //path [D "M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"] []
                                       //path [D "M 0 24 l 4 0 M 4 24 l 4 -6 M 8 18 l 8 12 M 16 30 l 8 -12 M 24 18 l 8 12"; Style[Stroke "black"]] []
@@ -1144,6 +1145,35 @@ let viewTopMenu model dispatch =
                                       let points = [|{X=0;Y=0.5*H};{X=0.125*W;Y=0.5*H};{X=0.1875*W;Y=0};{X=0.3125*W;Y=H};{X=0.4375*W;Y=0};{X=0.5625*W;Y=H};{X=0.6875*W;Y=0};{X=0.8125*W;Y=H};{X=0.875*W;Y=0.5*H};{X=W;Y=0.5*H};{X=0.875*W;Y=0.5*H};{X=0.8125*W;Y=H};{X=0.6875*W;Y=0};{X=0.5625*W;Y=H};{X=0.4375*W;Y=0};{X=0.3125*W;Y=H};{X=0.1875*W;Y=0};{X=0.125*W;Y=0.5*H}|]
                                       makePolygon (points |> Array.map (fun pos->{X=pos.X;Y=pos.Y+12.})|> toString) defaultPolygon 
                                   ] 
+                                ]
+                                ]
+                            Navbar.Item.div []
+                                [ button 
+                                    [Class "button is-grey"; Style compButtonStyle; OnClick(fun _ -> createRCLIPopup model (Diode) dispatch) ] [
+                                  svg [ViewBox "-9 2 48 48"] [ 
+                                      //path [D "M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"] []
+                                      //path [D "M 0 24 l 4 0 M 4 24 l 4 -6 M 8 18 l 8 12 M 16 30 l 8 -12 M 24 18 l 8 12"; Style[Stroke "black"]] []
+                                      let H,W=30.,30.
+                                      let points = [|{X=0;Y=0};{X=0;Y=H};{X=W;Y=0.5*H};{X=W;Y=H};{X=W;Y=0};{X=W;Y=0.5*H}|]
+                                      makePolygon (points |> Array.map (fun pos->{X=pos.X;Y=pos.Y+12.})|> toString) defaultPolygon 
+                                  ] 
+                                ]
+                                ]
+
+                            Navbar.Item.div []
+                                [ button 
+                                    [Class "button is-grey"; Style compButtonStyle;  OnClick(fun _ -> createRCLIPopup model (Diode) dispatch) ] [
+                                    let arcs = [makePartArcAttr 10 10 10 10 10;makePartArcAttr 10 10 10 10 10;makePartArcAttr 10 10 10 10 10]
+                                    let startingPoint = {X=15;Y=15}
+                                    let capacitorLine = {defaultLine with StrokeWidth = "2.5px";} 
+                                    let renderedSegmentList : ReactElement List = 
+                                        arcs
+                                        |> String.concat " "
+                                        |> (fun attr -> [makeAnyPath startingPoint attr {defaultPath with StrokeWidth = "2.5px"}])
+                                        |> List.append [makeLine 0 15 15 15 capacitorLine; makeLine 75 15 90 15 capacitorLine]
+                                  svg [ViewBox "0 -36 96 96"]  
+                                      renderedSegmentList
+                                  
                                 ]
                                 ]
                                 
@@ -1202,10 +1232,8 @@ let viewTopMenu model dispatch =
                                 ]
 
                             Navbar.Item.div []
-                                [ Button.button 
-                                    [ Button.OnClick(fun _ -> createCompStdLabel Ground model dispatch)
-                                      Button.Color IsGrey
-                                    ] 
+                                [ button 
+                                    [ Class "button is-grey"; Style [Height "48px";Width "48px"];OnClick(fun _ -> createCompStdLabel Ground model dispatch)] 
                                     [ str groundSymbol ] 
                                 // add space padding on RH of navbar to improve top bar formatting
                                 // this is a bit of a hack - but much easier than matching styles
