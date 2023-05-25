@@ -14,12 +14,12 @@ let findComponentsBetweenNodes (node1:int, node2:int) (nodeToCompsList:(Componen
     comps1
     |> List.filter (fun (c1,no) -> (List.exists (fun (c2:Component,no) -> c1.Id = c2.Id) comps2))
 
-let findNodesOfComp (nodeToCompsList:(Component*int option) list list) comp =
+let findNodesOfComp (nodeToCompsList:(Component*int option) list list) compId =
     let pair =
         nodeToCompsList
         |> List.mapi (fun i localNode -> 
             localNode |> List.collect (fun (c,_)->
-                match c=comp with
+                match c.Id=compId with
                 |true -> [i]
                 |false -> []
             )
@@ -261,7 +261,7 @@ let checkCanvasStateForErrors (comps,conns) =
     let checkNoParallelVS = 
         vs
         |> List.collect (fun comp ->
-            let pair = findNodesOfComp nodeLst comp
+            let pair = findNodesOfComp nodeLst comp.Id
             let vsOfPair =
                 findComponentsBetweenNodes pair nodeLst        
                 |> List.map (fst)

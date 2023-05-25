@@ -72,17 +72,19 @@ let safeSolveMatrixVec flattenedMatrix vec =
         |> Array.map (fun c -> {c with Im = 0.})
         |> flattenedToMatrix
     let det = Maths.det(matrix)
-
-    match det = 0.0 with
-    |true -> failwithf "det is 0, cannot invert"
-    |false ->
+    
+    if int det = 0 then
+        None
+        //failwithf "det is 0, cannot invert"
+    else
         let dim = flattenedMatrix |> Array.length |> float |> sqrt |> int
+        printfn "det is %f" det
         let invM = Maths.inv(matrix)
         match dim = Array.length vec with
         |false -> failwithf "Cannot perform multiplication -> sizes do not match"
         |true -> 
             let res = Maths.multiply (invM,ResizeArray(vec))
-            res.ToArray() |> Array.map (Maths.re)
+            res.ToArray() |> Array.map (Maths.re) |> Some
 
 
 let safeInvComplexMatrix (flattenedMatrix:ComplexC array) =

@@ -7,6 +7,10 @@ open System
 open CanvasStateAnalyser
 
 
+//////////////////  SIMULATION CONSTANTS  ////////////////
+
+let diodeConstant = 0.7
+
 //////////////////  SIMULATION HELPERS   /////////////////
 
 let combineGrounds (comps,conns) =
@@ -57,6 +61,8 @@ let shortInductorsForDC (comps,conns) =
 let findAllVoltageSources comps =
     comps |> List.filter (fun c->match c.Type with |VoltageSource _ ->true |_->false)
 
+let findAllDiodes comps =
+    comps |> List.filter (fun c-> c.Type = Diode)
    
 
 
@@ -316,7 +322,7 @@ let findComponentCurrents results nodesNo nodeLst comps conns =
 
     let resistorCurrents= 
         allResistors
-        |> List.map (findNodesOfComp nodeLst)
+        |> List.map (fun c-> findNodesOfComp nodeLst c.Id)
         |> List.mapi (fun i (n1,n2)->
             let n1',n2' = topLeftToBottomRight n1 n2 allResistors[i]
             let v1 = if n1'=0 then 0. else results[n1'-1]
@@ -347,7 +353,7 @@ let rec modifiedNodalAnalysisDC (comps,conns) =
         (comps,conns)
         |> combineGrounds
         |> shortInductorsForDC 
-        |> transformSingleDiode
+        |> transformAllDiodes
 
     
     /////// required information ////////
@@ -388,12 +394,13 @@ let rec modifiedNodalAnalysisDC (comps,conns) =
     ////////// solve ///////////
 
     let mul = safeSolveMatrixVec flattenedMatrix vecB
+    match mul with
+    |Some res -> 
+        let result = res |> Array.map (fun x->System.Math.Round (x,6))
+        let componentCurrents = findComponentCurrents result (List.length nodeLst-1) nodeLst comps' conns'
+        result, componentCurrents, nodeLst 
 
-    let result = mul |> Array.map (fun x->System.Math.Round (x,6))
-    
-    let componentCurrents = findComponentCurrents result (List.length nodeLst-1) nodeLst comps' conns'
-
-    result, componentCurrents, nodeLst 
+    |None -> Array.empty, Map.empty, nodeLst
 
 and transformSingleDiode (comps,conns) =
     let whichComp = List.tryFind (fun c->c.Type=Diode) comps
@@ -403,7 +410,7 @@ and transformSingleDiode (comps,conns) =
             comps
             |> List.map (fun (c:Component)->
                 if c.Id = diode.Id then
-                    {c with Type=(VoltageSource (DC 0.7))}
+                    {c with Type=(VoltageSource (DC diodeConstant))}
                 else c        
             )
 
@@ -424,6 +431,112 @@ and transformSingleDiode (comps,conns) =
             (comps1,conns)
         else (comps2,conns)
     |None -> (comps,conns)
+   
+and transformAllDiodes (comps,conns) = 
+    let transformOneDiode comp mode =
+        match mode with
+        |true -> {comp with Type = (VoltageSource (DC diodeConstant))}
+        |false -> {comp with Type=(CurrentSource (0.,"0"))}
+    
+
+    let runTransformation (diodeModeMap:Map<string,bool>) comps =
+        comps
+        |> List.map (fun c -> if c.Type = Diode then transformOneDiode c diodeModeMap[c.Id] else c)
+    
+    let nextModes (diodeModes:bool list) =
+        let diodesNo = List.length diodeModes
+        let asStr = ("",diodeModes) ||> List.fold (fun s v -> if v then s+"1" else s+"0")
+        let asInt = Convert.ToInt32(asStr, 2);
+        if asInt = 0 then //initial modes
+            diodeModes |> List.map (fun _ -> true)
+        else 
+            let nextAsStr = Convert.ToString(asInt-1, 2);
+            let extraZeros = 
+                if String.length nextAsStr = diodesNo then
+                    ""
+                else
+                    Array.create (diodesNo - String.length nextAsStr) '0' |> Array.toSeq |> string
+            let wholeStr = extraZeros + nextAsStr 
+            printfn "whole %s" wholeStr
+            wholeStr |> Seq.toList |> List.collect (fun ch -> if ch = '0' then [false] else if ch='1' then [true] else [])
+        
+    let checkSingleDiodeCondition comps' (res:float array) nodeLst diodeId mode =
+        match res with
+        |[||]->
+            false
+        |_->
+            match mode with
+            |true ->
+                let allVoltageSources = findAllVoltageSources comps'
+                let indexOfDiode = allVoltageSources |> List.findIndex (fun c->c.Id=diodeId)
+                let nodesNo = List.length nodeLst-1
+                if res[nodesNo+indexOfDiode] >= 0. then        
+                    true
+                else
+                    false
+            |false ->
+                let i1,i2 = findNodesOfComp nodeLst diodeId 
+                let i1',i2' = if List.exists (fun (c:Component,pNo) -> c.Id = diodeId && pNo = Some 0) nodeLst[i1] then i1,i2 else i2,i1  
+                if abs (res[i1'-1] - res[i2'-1]) <= diodeConstant then
+                    true
+                else 
+                    false 
+
+    let createDiodeModesList diodesNo =
+        [((pown 2 diodesNo)-1)..0]
+        |> List.map (fun i ->
+            let asStr = Convert.ToString(i, 2);
+            printfn "asStr %i %s" i asStr
+            let extraZeros = 
+                if String.length asStr = diodesNo then
+                    ""
+                else
+                    Array.create (diodesNo - String.length asStr) '0' |> Array.toSeq |> string
+            let wholeStr = extraZeros + asStr
+            wholeStr |> Seq.map (fun ch -> if ch = '0' then false else true) |> Seq.toList
+        )
+        
+    let diodes = findAllDiodes comps |> List.map (fun c->c.Id)
+    let diodesNo = List.length diodes
+    
+    match diodesNo <> 0 with
+    |true ->
+        let mutable diodeModes = Array.create diodesNo false |> Array.toList
+    
+        //let allDiodeModes = createDiodeModesList diodesNo
+
+        let mutable allConditions = false
+        let mutable iter = pown 2 diodesNo
+        while (not allConditions) do    
+            let next = nextModes diodeModes
+            diodeModes <- next
+            printfn "here %A" next
+            let diodeModeMap = List.zip diodes diodeModes |> Map.ofList
+            let comps' = runTransformation diodeModeMap comps
+            let res,_,nodeLst = modifiedNodalAnalysisDC (comps',conns)
+        
+            let conditionList = 
+                diodeModeMap 
+                |> Map.map (fun dId mode -> (checkSingleDiodeCondition comps' res nodeLst dId mode))
+                |> Map.values
+                |> Seq.toList
+
+            allConditions <- (true,conditionList) ||> List.fold (fun s v -> s&&v)
+            iter <- iter - 1
+            
+            if not ((false,diodeModes) ||> List.fold (fun s v -> s||v)) then
+                allConditions <- true
+            
+            if iter = 0 then
+                allConditions <- true
+
+        
+        let diodeModeMap = List.zip diodes diodeModes |> Map.ofList
+        let compsFinal = runTransformation diodeModeMap comps
+        (compsFinal,conns)
+    |false ->
+        (comps,conns)
+
 
 
 let acAnalysis matrix nodeLst comps vecB wmega outputNode =    
@@ -612,7 +725,7 @@ let transientAnalysis (comps,conns) inputNode outputNode =
         match CL with
         |None -> failwithf "No Capacitor/Inductor present in the circuit"
         |Some cl ->
-            let (node1,node2) = findNodesOfComp (createNodetoCompsList (comps',conns')) cl
+            let (node1,node2) = findNodesOfComp (createNodetoCompsList (comps',conns')) cl.Id
             let Rth = findTheveninR node1 node2
             match cl.Type with
             |Capacitor (c,_) -> Rth*c
