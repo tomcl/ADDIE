@@ -974,6 +974,8 @@ let viewTopMenu model dispatch =
 
                                         let buttonAction =
                                             fun _ ->
+                                                dispatch ForceStopSim
+                                                dispatch ClearSimulationResults
                                                 dispatch (StartUICmd DeleteSheet)
                                                 dispatch <| ExecFuncInMessage(removeFileInProject name project,dispatch)
                                                 dispatch ClosePopup
@@ -1045,6 +1047,8 @@ let viewTopMenu model dispatch =
                       ([ Navbar.Item.a [ Navbar.Item.Props 
                             [ OnClick(fun _ -> 
                                 dispatch (StartUICmd AddSheet)
+                                dispatch ForceStopSim
+                                dispatch ClearSimulationResults
                                 addFileToProject model dispatch) ] ]
                                  [ str "New Sheet" ]
                          Navbar.divider [] [] ]

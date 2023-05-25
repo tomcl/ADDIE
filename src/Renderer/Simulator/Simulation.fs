@@ -16,7 +16,7 @@ let diodeConstant = 0.7
 let combineGrounds (comps,conns) =
     let allGrounds = comps |> List.filter (fun c->c.Type = Ground)
     match List.isEmpty allGrounds with
-    |true -> failwithf "There is no ground in the circuit"
+    |true -> (comps,conns)
     |false -> 
         let mainGround,mainPort = allGrounds[0], allGrounds[0].IOPorts[0]
         let otherGrounds = List.removeAt 0 allGrounds
@@ -431,20 +431,32 @@ and transformSingleDiode (comps,conns) =
             (comps1,conns)
         else (comps2,conns)
     |None -> (comps,conns)
-   
-and transformAllDiodes (comps,conns) = 
-    let transformOneDiode comp mode =
-        match mode with
-        |true -> {comp with Type = (VoltageSource (DC diodeConstant))}
-        |false -> {comp with Type=(CurrentSource (0.,"0"))}
-    
 
+
+/// This function takes place before modified nodal analysis
+/// and transforms all diodes to either 0.7 V Voltage Sources
+/// or 0 A current sources. It explores all posible combinations
+/// (conducting, non-conducting mode) accordiong to the number of diodes 
+/// and returns the combination that satisfies all the conditions
+and transformAllDiodes (comps,conns) = 
+    
+    /// transforms CanvasState components according to the selected modes
     let runTransformation (diodeModeMap:Map<string,bool>) comps =
         comps
-        |> List.map (fun c -> if c.Type = Diode then transformOneDiode c diodeModeMap[c.Id] else c)
+        |> List.map (fun c -> 
+            if c.Type = Diode then 
+                match diodeModeMap[c.Id] with
+                |true -> {c with Type = (VoltageSource (DC diodeConstant))}
+                |false -> {c with Type=(CurrentSource (0.,"0"))} 
+            else c)
     
+    /// Finds the next diode modes to be checked
+    /// Starts from all true -> conducting
+    /// Ends with all false -> non-conducting
+    /// process: bool list -> string -> int -> -1 -> string -> bool list
     let nextModes (diodeModes:bool list) =
         let diodesNo = List.length diodeModes
+
         let asStr = ("",diodeModes) ||> List.fold (fun s v -> if v then s+"1" else s+"0")
         let asInt = Convert.ToInt32(asStr, 2);
         if asInt = 0 then //initial modes
@@ -457,16 +469,16 @@ and transformAllDiodes (comps,conns) =
                 else
                     Array.create (diodesNo - String.length nextAsStr) '0' |> Array.toSeq |> string
             let wholeStr = extraZeros + nextAsStr 
-            printfn "whole %s" wholeStr
+            //printfn "whole %s" wholeStr
             wholeStr |> Seq.toList |> List.collect (fun ch -> if ch = '0' then [false] else if ch='1' then [true] else [])
         
     let checkSingleDiodeCondition comps' (res:float array) nodeLst diodeId mode =
         match res with
-        |[||]->
+        |[||]-> //simulation didn't produce any results -> conditions not met
             false
         |_->
             match mode with
-            |true ->
+            |true -> //assumed conducting mode
                 let allVoltageSources = findAllVoltageSources comps'
                 let indexOfDiode = allVoltageSources |> List.findIndex (fun c->c.Id=diodeId)
                 let nodesNo = List.length nodeLst-1
@@ -474,67 +486,63 @@ and transformAllDiodes (comps,conns) =
                     true
                 else
                     false
-            |false ->
+            |false -> //assumed non-conducting mode
                 let i1,i2 = findNodesOfComp nodeLst diodeId 
                 let i1',i2' = if List.exists (fun (c:Component,pNo) -> c.Id = diodeId && pNo = Some 0) nodeLst[i1] then i1,i2 else i2,i1  
                 if abs (res[i1'-1] - res[i2'-1]) <= diodeConstant then
                     true
                 else 
                     false 
-
-    let createDiodeModesList diodesNo =
-        [((pown 2 diodesNo)-1)..0]
-        |> List.map (fun i ->
-            let asStr = Convert.ToString(i, 2);
-            printfn "asStr %i %s" i asStr
-            let extraZeros = 
-                if String.length asStr = diodesNo then
-                    ""
-                else
-                    Array.create (diodesNo - String.length asStr) '0' |> Array.toSeq |> string
-            let wholeStr = extraZeros + asStr
-            wholeStr |> Seq.map (fun ch -> if ch = '0' then false else true) |> Seq.toList
-        )
         
+    ///////////// FUNCTION BODY  //////////////
+
     let diodes = findAllDiodes comps |> List.map (fun c->c.Id)
     let diodesNo = List.length diodes
-    
     match diodesNo <> 0 with
     |true ->
-        let mutable diodeModes = Array.create diodesNo false |> Array.toList
-    
-        //let allDiodeModes = createDiodeModesList diodesNo
 
+        // in diodeModes: false-> non-conducting , true -> conducting
+        let mutable diodeModes = Array.create diodesNo false |> Array.toList
+        
+        // is true when all conditions are satisfied
+        // used to stop the loop
         let mutable allConditions = false
+
+        // used to force stop the loop in case no solution was found
         let mutable iter = pown 2 diodesNo
+        
+
         while (not allConditions) do    
             let next = nextModes diodeModes
             diodeModes <- next
-            printfn "here %A" next
+            
             let diodeModeMap = List.zip diodes diodeModes |> Map.ofList
             let comps' = runTransformation diodeModeMap comps
             let res,_,nodeLst = modifiedNodalAnalysisDC (comps',conns)
         
+            // holds (per diode) whether the condition is satisfied
             let conditionList = 
                 diodeModeMap 
                 |> Map.map (fun dId mode -> (checkSingleDiodeCondition comps' res nodeLst dId mode))
                 |> Map.values
                 |> Seq.toList
 
+            // update allColditions
             allConditions <- (true,conditionList) ||> List.fold (fun s v -> s&&v)
             iter <- iter - 1
             
-            if not ((false,diodeModes) ||> List.fold (fun s v -> s||v)) then
-                allConditions <- true
-            
+            //force stop
             if iter = 0 then
                 allConditions <- true
 
         
+        // extract updated CanvasState and return it
         let diodeModeMap = List.zip diodes diodeModes |> Map.ofList
         let compsFinal = runTransformation diodeModeMap comps
         (compsFinal,conns)
+    
     |false ->
+        // if no diodes are present in the circuit -> do nothing
         (comps,conns)
 
 

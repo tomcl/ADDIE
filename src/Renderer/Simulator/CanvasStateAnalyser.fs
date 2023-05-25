@@ -115,11 +115,8 @@ let findOtherEndPort (port:Port) (comps: Component List) : Port option =
 /// that "touch" that node along with the portNumber that touches it (for VS/CS direction). 
 let createNodetoCompsList(comps:Component list,conns: Connection list) =
     
-    let ground = 
-        match (List.tryFind (fun (c:Component) -> c.Type = Ground) (comps:Component list)) with
-        |Some c -> c
-        |None -> failwithf "No ground present in the circuit"
-   
+    let ground = (List.tryFind (fun (c:Component) -> c.Type = Ground) (comps:Component list))
+        
     /// Function to find the PortNumber of a port which comes from Source/Target of a connection
     let findPortNo (port:Port) (comps:Component list) =
         let comp = comps |> List.find(fun c-> c.Id = port.HostId)
@@ -182,7 +179,9 @@ let createNodetoCompsList(comps:Component list,conns: Connection list) =
             searchCurrentCanvasState visited' toVisit' nodeToCompList'
 
 
-    searchCurrentCanvasState [] [ground.IOPorts[0]] [[]]
+    match ground with
+    |Some g -> searchCurrentCanvasState [] [g.IOPorts[0]] [[]]
+    |None -> []
 
 //////////////////////////////////////////////////////////
 
