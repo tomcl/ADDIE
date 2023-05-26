@@ -460,7 +460,7 @@ and transformAllDiodes (comps,conns) =
         let asStr = ("",diodeModes) ||> List.fold (fun s v -> if v then s+"1" else s+"0")
         let asInt = Convert.ToInt32(asStr, 2);
         if asInt = 0 then //initial modes
-            diodeModes |> List.map (fun _ -> true)
+            diodeModes |> List.mapi (fun i _ -> if i%2=1 then false else true)
         else 
             let nextAsStr = Convert.ToString(asInt-1, 2);
             let extraZeros = 
@@ -473,6 +473,10 @@ and transformAllDiodes (comps,conns) =
             wholeStr |> Seq.toList |> List.collect (fun ch -> if ch = '0' then [false] else if ch='1' then [true] else [])
         
     let checkSingleDiodeCondition comps' (res:float array) nodeLst diodeId mode =
+        let findLabelFromId id =
+            let c = comps' |> List.find (fun (c:Component)->c.Id=id)
+            c.Label
+        
         match res with
         |[||]-> //simulation didn't produce any results -> conditions not met
             false
@@ -488,8 +492,12 @@ and transformAllDiodes (comps,conns) =
                     false
             |false -> //assumed non-conducting mode
                 let i1,i2 = findNodesOfComp nodeLst diodeId 
-                let i1',i2' = if List.exists (fun (c:Component,pNo) -> c.Id = diodeId && pNo = Some 0) nodeLst[i1] then i1,i2 else i2,i1  
-                if abs (res[i1'-1] - res[i2'-1]) <= diodeConstant then
+                let i1',i2' = if List.exists (fun (c:Component,pNo) -> c.Id = diodeId && pNo = Some 1) nodeLst[i1] then i1,i2 else i2,i1  
+                //printfn "here for %s, i2 = %i, i1 = %i" (findLabelFromId diodeId) i2' i1'
+                let res1 = if i1' = 0 then 0. else res[i1'-1]
+                let res2 = if i2' = 0 then 0. else res[i2'-1]
+                if (res2 - res1) <= diodeConstant then
+                    //printfn "here for %s, i2 = %i, i1 = %i" (findLabelFromId diodeId) i2' i1'
                     true
                 else 
                     false 

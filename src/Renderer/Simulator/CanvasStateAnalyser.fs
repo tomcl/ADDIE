@@ -326,7 +326,6 @@ let checkCanvasStateForErrors (comps,conns) =
                     ComponentsAffected = [] 
                     ConnectionsAffected = [ConnectionId conn.Id]
                     }]    
-        
         )
  
     checkGroundExistance

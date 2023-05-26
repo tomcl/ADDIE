@@ -73,12 +73,11 @@ let safeSolveMatrixVec flattenedMatrix vec =
         |> flattenedToMatrix
     let det = Maths.det(matrix)
     
-    if int det = 0 then
+    if string det = "0" then
         None
         //failwithf "det is 0, cannot invert"
     else
         let dim = flattenedMatrix |> Array.length |> float |> sqrt |> int
-        printfn "det is %f" det
         let invM = Maths.inv(matrix)
         match dim = Array.length vec with
         |false -> failwithf "Cannot perform multiplication -> sizes do not match"
