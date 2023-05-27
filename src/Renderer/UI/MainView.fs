@@ -143,7 +143,8 @@ let runSimulation (model:Model) dispatch =
                             UpdateDCSim {MNA=res;ComponentCurrents=componentCurrents;NodeList=nodeLst} |> dispatch
                         |ACsim -> 
                             let outputNode = model.SimulationData.ACOutput |> Option.defaultValue "1" |> int
-                            let res = (frequencyResponse canvasState outputNode)
+                            let inputSource = model.SimulationData.ACSource |> Option.defaultValue ""
+                            let res = (frequencyResponse canvasState inputSource outputNode)
                             UpdateACSim res |> dispatch
                         |TimeSim ->
                             let inputNode = model.SimulationData.TimeInput |> Option.defaultValue "VS1" |> findInputNodeFromComp nodeLst

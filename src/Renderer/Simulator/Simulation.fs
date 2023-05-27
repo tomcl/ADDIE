@@ -64,8 +64,9 @@ let findAllVoltageSources comps =
 let findAllDiodes comps =
     comps |> List.filter (fun c-> c.Type = Diode)
    
-
-
+let findCompFromId comps id =
+    comps |> List.find (fun (c:Component)->c.Id=id)
+            
 let findInputAtTime vs t =
         match vs with
         |None -> failwithf "No Voltage Source present in the circuit"
@@ -100,17 +101,6 @@ let calcVectorBElement row comps (nodeToCompsList:(Component*int option) list li
         )
 
     let allVoltageSources = findAllVoltageSources comps
-        //nodeToCompsList
-        //|> List.removeAt 0
-        //|> List.collect (fun nodeComps ->
-        //    nodeComps
-        //    |> List.collect (fun (comp,_) ->
-        //        match comp.Type with
-        //        |VoltageSource (_) -> [comp]
-        //        |_ -> []
-        //    )
-        //)
-        //|> List.distinctBy (fun c->c.Id)
     
     let vsNo = List.length allVoltageSources
 
@@ -472,11 +462,7 @@ and transformAllDiodes (comps,conns) =
             //printfn "whole %s" wholeStr
             wholeStr |> Seq.toList |> List.collect (fun ch -> if ch = '0' then [false] else if ch='1' then [true] else [])
         
-    let checkSingleDiodeCondition comps' (res:float array) nodeLst diodeId mode =
-        let findLabelFromId id =
-            let c = comps' |> List.find (fun (c:Component)->c.Id=id)
-            c.Label
-        
+    let checkSingleDiodeCondition comps' (res:float array) nodeLst diodeId mode =      
         match res with
         |[||]-> //simulation didn't produce any results -> conditions not met
             false
@@ -571,10 +557,24 @@ let acAnalysis matrix nodeLst comps vecB wmega outputNode =
 
      
 
-let frequencyResponse (comps,conns) outputNode  =
+let frequencyResponse (comps,conns) inputSource outputNode  =
 
+    let convertInputToDC1VS (comps,conns:Connection list) =
+        let inputComp = findCompFromId comps inputSource
+        let updatedComp = {inputComp with Type = VoltageSource (DC 1)}
+        let comps' =
+            comps
+            |> List.collect (fun c->
+                match c.Id = inputSource with
+                |true -> [updatedComp]
+                |false -> [c])        
+        (comps',conns) 
+    
     // transform canvas state for DC Analysis  
-    let comps',conns' = combineGrounds (comps,conns)
+    let comps',conns' = 
+        (comps,conns)
+        |> combineGrounds
+        |> convertInputToDC1VS
 
     let nodeLst = createNodetoCompsList (comps',conns')
 
@@ -745,7 +745,7 @@ let transientAnalysis (comps,conns) inputNode outputNode =
             let Rth = findTheveninR node1 node2
             match cl.Type with
             |Capacitor (c,_) -> Rth*c
-            |Inductor (l,_) -> Rth/l
+            |Inductor (l,_) -> l/Rth
             |_ -> failwithf "No Capacitor/Inductor present in the circuit"
 
     let findDCGain nodeX nodeY =
