@@ -5,6 +5,7 @@ open Fable.React.Props
 open Simulation
 open CommonTypes
 open NumberHelpers
+open CanvasStateAnalyser
 open Fulma
 
 
@@ -85,3 +86,106 @@ let getDCTable (simDC:DCSimulationResults) simRunning canvasState  =
         table [] []
 
 
+
+
+let getDCEquations comps (nodeLst: (Component*int option) list list) (res:float array) =
+    // voltage sources
+    let allDCVoltageSources = findAllVoltageSources comps
+    let vsEquations =
+        allDCVoltageSources
+        |> List.map (fun c->
+            match c.Type with
+            |VoltageSource (DC v) ->
+                let i1,i2 = findNodesOfComp nodeLst c.Id
+                if i1=0 then
+                    sprintf "V(Node %i) = %fV" i2 v
+                elif i2=0 then
+                    sprintf "V(Node %i) = %fV" i1 v
+                else
+                    sprintf "V(Node %i) = V(Node %i) + %fV" i1 i2 v
+            |VoltageSource (Sine (a,v,f)) -> "" //PENDING DC OFFSET 
+            |_ -> failwithf "Impossible"
+        )
+    
+    // inductors
+    let allInductors = findAllInductors comps
+    let inductorEquations =
+        allInductors
+        |> List.map (fun c->
+            let i1,i2 = findNodesOfComp nodeLst c.Id
+            if i1=0 then
+                    sprintf "V(Node %i) = 0V" i2
+            elif i2=0 then
+                sprintf "V(Node %i) = 0V" i1
+            else
+                sprintf "V(Node %i) = V(Node %i)" i1 i2        
+        )
+
+
+    let isResistorType tp =
+        match tp with
+        |Resistor _ -> true
+        |_ -> false
+
+    let findNodeVoltage n =
+        if n=0 then 0.
+        else res[n-1]
+
+    //potential dividers
+    let nodes = List.length nodeLst
+    
+    let voltageDividerEquations =
+        List.allPairs [0..nodes-1] [0..nodes-1]
+        |> List.collect (fun (p1',p2')->
+            let p1,p2 = if p1'<p2' then p1',p2' else p2',p1'
+            match p1=p2 with
+            |true -> []
+            |false ->  
+                match findComponentsBetweenNodes (p1,p2) nodeLst with
+                |[(c,_)] when isResistorType c.Type ->
+                    let p3 = 
+                        printfn "p1 p2 %i %i" p1 p2
+                        [0..nodes-1] 
+                        |> List.removeAt p2
+                        |> List.removeAt p1
+                        |> List.tryFind (fun i -> 
+                        match findComponentsBetweenNodes (p1, i) nodeLst with
+                        |[(res,_)] when isResistorType res.Type -> true
+                        |_ ->
+                            match findComponentsBetweenNodes (p2, i) nodeLst with
+                            |[(res,_)] when isResistorType res.Type -> true
+                            |_ -> false                            
+                        )
+                    match p3 with
+                    |Some node3 ->
+                        [p1; p2; node3]
+                        |> List.map (fun n -> ((findNodeVoltage n), n))
+                        |> List.sortDescending
+                        |> (fun x ->
+                            match x with
+                            |[(_,n1);(_,n2);(_,n3)] -> [(n1,n2,n3)]
+                            |_ -> [])
+                    |None -> []
+                |_ -> []
+            )
+        |> List.distinct
+        |> List.map (fun (n1,n2,n3)->
+            let r1Label,r1Value = 
+                (findComponentsBetweenNodes (n1,n2) nodeLst) 
+                |> List.head 
+                |> (fun (c,_) -> printfn "comp: %A" c; c.Label,c.Type) 
+                |> (fun (l,tp) -> match tp with |Resistor (v,_) -> l,v |_ -> failwithf "Impossible")
+            let r2Label,r2Value = 
+                (findComponentsBetweenNodes (n2,n3) nodeLst) 
+                |> List.head 
+                |> (fun (c,_) -> printfn "comp: %A" c; c.Label,c.Type) 
+                |> (fun (l,tp) -> match tp with |Resistor (v,_) -> l,v |_ -> failwithf "Impossible")
+            
+            let frac = r2Value/(r1Value+r2Value)
+            sprintf "V(Node %i) = (%s/(%s+%s))*V(Node %i) = %f*V(Node %i)" n2 r2Label r1Label r2Label n1 frac n1        
+        )
+
+    printfn "equations: %A" (vsEquations @ inductorEquations @ voltageDividerEquations)
+    //(vsEquations @ inductorEquations @ voltageDividerEquations)
+    
+    

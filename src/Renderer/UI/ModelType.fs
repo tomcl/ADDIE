@@ -216,6 +216,7 @@ type Msg =
     | HideCurrents
     | ClearSimulationResults
     | UpdateCanvasStateSizes of int*int
+    | UpdateDiodeModes of bool list
 
 
 //================================//
@@ -312,6 +313,7 @@ type Model = {
     showGraphArea: bool
     SimulationData: SimData
     PrevCanvasStateSizes: int*int
+    PreviousDiodeModes: bool list
 } 
 
     

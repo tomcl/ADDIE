@@ -110,6 +110,7 @@ let init() = {
         TimeOutput=None
     }
     PrevCanvasStateSizes = (0,0)
+    PreviousDiodeModes = []
 }
 
 
@@ -140,6 +141,7 @@ let runSimulation (model:Model) dispatch =
                         UpdateCurrents componentCurrents |> dispatch
                         match model.SimSubTabVisible with
                         |DCsim ->
+                            getDCEquations (fst CS) nodeLst res
                             UpdateDCSim {MNA=res;ComponentCurrents=componentCurrents;NodeList=nodeLst} |> dispatch
                         |ACsim -> 
                             let outputNode = model.SimulationData.ACOutput |> Option.defaultValue "1" |> int
@@ -332,8 +334,7 @@ let viewSimSubTab canvasState model dispatch =
                 br []
                 Heading.h5 [] [str "DC Results"]
                 div [] [
-                getDCTable model.Sheet.DCSim (model.Sheet.SimulationRunning && model.Sheet.CanRunSimulation) canvasState
-                    
+                getDCTable model.Sheet.DCSim (model.Sheet.SimulationRunning && model.Sheet.CanRunSimulation) canvasState 
                 //hack to avoid hidden results
                 div [Style [Height "100px"]] []
                 ]

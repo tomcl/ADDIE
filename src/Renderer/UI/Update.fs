@@ -417,6 +417,8 @@ let update (msg : Msg) oldModel =
         {model with Sheet = {model.Sheet with CanRunSimulation=true}}, Cmd.none
     | UpdateCanvasStateSizes (compsNo,connsNo) ->
         {model with PrevCanvasStateSizes = (compsNo,connsNo)}, Cmd.ofMsg RunSim
+    | UpdateDiodeModes newModes ->
+        {model with PreviousDiodeModes = newModes}, Cmd.none
     | ShowNodesOrVoltages ->
         let newState =
             match model.Sheet.ShowNodesOrVoltages with

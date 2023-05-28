@@ -60,6 +60,9 @@ let shortInductorsForDC (comps,conns) =
 
 let findAllVoltageSources comps =
     comps |> List.filter (fun c->match c.Type with |VoltageSource _ ->true |_->false)
+    
+let findAllInductors comps =
+    comps |> List.filter (fun c->match c.Type with |Inductor _ ->true |_->false)
 
 let findAllDiodes comps =
     comps |> List.filter (fun c-> c.Type = Diode)
@@ -168,17 +171,6 @@ let calcMatrixElementValue row col (nodeToCompsList:(Component*int option) list 
     let nodesNo = List.length nodeToCompsList
     
     let allVoltageSources = findAllVoltageSources comps
-        //nodeToCompsList
-        //|> List.removeAt 0
-        //|> List.collect (fun nodeComps ->
-        //    nodeComps
-        //    |> List.collect (fun (comp,_) ->
-        //        match comp.Type with
-        //        |VoltageSource (_) -> [comp]
-        //        |_ -> []
-        //    )
-        //)
-        //|> List.distinctBy (fun c->c.Id)
     
     let allOpamps = 
         nodeToCompsList
@@ -562,19 +554,25 @@ let frequencyResponse (comps,conns) inputSource outputNode  =
     let convertInputToDC1VS (comps,conns:Connection list) =
         let inputComp = findCompFromId comps inputSource
         let updatedComp = {inputComp with Type = VoltageSource (DC 1)}
-        let comps' =
-            comps
-            |> List.collect (fun c->
-                match c.Id = inputSource with
-                |true -> [updatedComp]
-                |false -> [c])        
-        (comps',conns) 
-    
+        comps
+        |> List.map (fun c->
+            if c.Id = inputSource
+                then updatedComp
+            else c),conns
+
+    let convertDiodeToConductingMode (comps,conns) =
+        comps 
+        |> List.map (fun c-> 
+            if c.Type = Diode 
+                then {c with Type = (VoltageSource (DC diodeConstant))} 
+            else c),conns
+         
     // transform canvas state for DC Analysis  
     let comps',conns' = 
         (comps,conns)
         |> combineGrounds
         |> convertInputToDC1VS
+        |> convertDiodeToConductingMode
 
     let nodeLst = createNodetoCompsList (comps',conns')
 
