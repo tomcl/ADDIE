@@ -136,7 +136,7 @@ let runSimulation (model:Model) dispatch =
                         ClosePropertiesNotification |> dispatch
                         CircuitHasNoErrors |> dispatch
                         SimulationUpdated |> dispatch
-                        let res,componentCurrents,nodeLst = Simulation.modifiedNodalAnalysisDC canvasState
+                        let res,componentCurrents,nodeLst,_ = Simulation.modifiedNodalAnalysisDC canvasState []
                         UpdateVoltages (Array.toList res) |> dispatch
                         UpdateCurrents componentCurrents |> dispatch
                         match model.SimSubTabVisible with
@@ -144,15 +144,19 @@ let runSimulation (model:Model) dispatch =
                             getDCEquations (fst CS) nodeLst res
                             UpdateDCSim {MNA=res;ComponentCurrents=componentCurrents;NodeList=nodeLst} |> dispatch
                         |ACsim -> 
-                            let outputNode = model.SimulationData.ACOutput |> Option.defaultValue "1" |> int
-                            let inputSource = model.SimulationData.ACSource |> Option.defaultValue ""
-                            let res = (frequencyResponse canvasState inputSource outputNode)
-                            UpdateACSim res |> dispatch
+                            if model.showGraphArea then
+                                let outputNode = model.SimulationData.ACOutput |> Option.defaultValue "1" |> int
+                                let inputSource = model.SimulationData.ACSource |> Option.defaultValue ""
+                                let res = (frequencyResponse canvasState inputSource outputNode)
+                                UpdateACSim res |> dispatch
+                            else ()
                         |TimeSim ->
-                            let inputNode = model.SimulationData.TimeInput |> Option.defaultValue "VS1" |> findInputNodeFromComp nodeLst
-                            let outputNode = model.SimulationData.TimeOutput |> Option.defaultValue "1" |> int
-                            let t,ytr,yss = (transientAnalysis canvasState inputNode outputNode)
-                            UpdateTimeSim {TimeSteps=t;Transient=ytr;SteadyState=yss} |> dispatch
+                            if model.showGraphArea then
+                                let inputNode = model.SimulationData.TimeInput |> Option.defaultValue "VS1" |> findInputNodeFromComp nodeLst
+                                let outputNode = model.SimulationData.TimeOutput |> Option.defaultValue "1" |> int
+                                let t,ytr,yss = (transientAnalysis canvasState inputNode outputNode)
+                                UpdateTimeSim {TimeSteps=t;Transient=ytr;SteadyState=yss} |> dispatch
+                            else ()
                     |err ->
                         dispatch ForceStopSim
                         dispatch CircuitHasErrors
@@ -376,11 +380,11 @@ let private  viewRightTab canvasState model dispatch =
 
                     (Tabs.tab // truth table tab to display truth table for combinational logic
                     [ Tabs.Tab.IsActive (model.SimSubTabVisible = ACsim) ]
-                    [ a [  OnClick (fun _ -> dispatch <| ChangeSimSubTab ACsim) ] [str "Frequency Response"] ])
+                    [ a [  OnClick (fun _ -> dispatch <| ChangeSimSubTab ACsim; dispatch <| ShowNodesOrVoltagesExplicitState Nodes) ] [str "Frequency Response"] ])
 
                     (Tabs.tab // wavesim tab
                     [ Tabs.Tab.IsActive (model.SimSubTabVisible = TimeSim) ]
-                    [ a [  OnClick (fun _ -> dispatch <| ChangeSimSubTab TimeSim) ] [str "Time Analysis"] ])
+                    [ a [  OnClick (fun _ -> dispatch <| ChangeSimSubTab TimeSim; dispatch <| ShowNodesOrVoltagesExplicitState Nodes) ] [str "Time Analysis"] ])
                     ]
         div [ HTMLAttr.Id "RightSelection"; Style [Height "100%"]] 
             [

@@ -76,8 +76,8 @@ let findInputAtTime vs t =
         |Some v ->
             match v.Type with
             |VoltageSource (DC x) -> x
-            |VoltageSource (Sine (a,o,f)) ->
-                a*sin(2.*System.Math.PI*f*t+o)
+            |VoltageSource (Sine (a,dc,f,p)) ->
+                a*sin(2.*System.Math.PI*f*t+p)+dc
             |VoltageSource (Pulse (v1,v2,f))->
                 let md = t % f
                 if md < f/2. then v1
@@ -115,7 +115,7 @@ let calcVectorBElement row comps (nodeToCompsList:(Component*int option) list li
         |> (fun c -> 
             match c.Type with
             |VoltageSource (DC v) -> {Re=v;Im=0.}
-            |VoltageSource (Sine (a,o,f)) -> {Re=1;Im=0.}
+            |VoltageSource (Sine (_,dc,_,_)) -> {Re=dc;Im=0.}
             |_ -> failwithf "Impossible"
         )
     else    //opamp rows
@@ -328,14 +328,14 @@ let findComponentCurrents results nodesNo nodeLst comps conns =
 /// Performs MNA on the current canvas state. 
 /// Returns: (i) result of MNA (node Voltages, vs/opamp currents)
 /// (ii) component Currents, (iii) nodeToCompsList
-let rec modifiedNodalAnalysisDC (comps,conns) =
+let rec modifiedNodalAnalysisDC (comps,conns) cachedDiodeModes =
     
     // transform canvas state for DC Analysis  
-    let comps',conns' = 
+    let comps',conns',localDiodeModes= 
         (comps,conns)
         |> combineGrounds
         |> shortInductorsForDC 
-        |> transformAllDiodes
+        |> (fun cs -> transformAllDiodes cs cachedDiodeModes)
 
     
     /////// required information ////////
@@ -380,9 +380,9 @@ let rec modifiedNodalAnalysisDC (comps,conns) =
     |Some res -> 
         let result = res |> Array.map (fun x->System.Math.Round (x,6))
         let componentCurrents = findComponentCurrents result (List.length nodeLst-1) nodeLst comps' conns'
-        result, componentCurrents, nodeLst 
+        result, componentCurrents, nodeLst, localDiodeModes 
 
-    |None -> Array.empty, Map.empty, nodeLst
+    |None -> Array.empty, Map.empty, nodeLst, []
 
 and transformSingleDiode (comps,conns) =
     let whichComp = List.tryFind (fun c->c.Type=Diode) comps
@@ -404,7 +404,7 @@ and transformSingleDiode (comps,conns) =
                 else c        
             )
 
-        let res,_,nodeLst = modifiedNodalAnalysisDC (comps1,conns)
+        let res,_,nodeLst,_ = modifiedNodalAnalysisDC (comps1,conns) []
 
         let allVoltageSources = findAllVoltageSources comps1
         let indexOfDiode = allVoltageSources |> List.findIndex (fun c->c.Id=diode.Id)
@@ -420,7 +420,7 @@ and transformSingleDiode (comps,conns) =
 /// or 0 A current sources. It explores all posible combinations
 /// (conducting, non-conducting mode) accordiong to the number of diodes 
 /// and returns the combination that satisfies all the conditions
-and transformAllDiodes (comps,conns) = 
+and transformAllDiodes (comps,conns) cachedDiodeModes : Component list * Connection list * bool list = 
     
     /// transforms CanvasState components according to the selected modes
     let runTransformation (diodeModeMap:Map<string,bool>) comps =
@@ -451,7 +451,6 @@ and transformAllDiodes (comps,conns) =
                 else
                     Array.create (diodesNo - String.length nextAsStr) '0' |> Array.toSeq |> string
             let wholeStr = extraZeros + nextAsStr 
-            //printfn "whole %s" wholeStr
             wholeStr |> Seq.toList |> List.collect (fun ch -> if ch = '0' then [false] else if ch='1' then [true] else [])
         
     let checkSingleDiodeCondition comps' (res:float array) nodeLst diodeId mode =      
@@ -471,11 +470,9 @@ and transformAllDiodes (comps,conns) =
             |false -> //assumed non-conducting mode
                 let i1,i2 = findNodesOfComp nodeLst diodeId 
                 let i1',i2' = if List.exists (fun (c:Component,pNo) -> c.Id = diodeId && pNo = Some 1) nodeLst[i1] then i1,i2 else i2,i1  
-                //printfn "here for %s, i2 = %i, i1 = %i" (findLabelFromId diodeId) i2' i1'
                 let res1 = if i1' = 0 then 0. else res[i1'-1]
                 let res2 = if i2' = 0 then 0. else res[i2'-1]
                 if (res2 - res1) <= diodeConstant then
-                    //printfn "here for %s, i2 = %i, i1 = %i" (findLabelFromId diodeId) i2' i1'
                     true
                 else 
                     false 
@@ -488,7 +485,13 @@ and transformAllDiodes (comps,conns) =
     |true ->
 
         // in diodeModes: false-> non-conducting , true -> conducting
-        let mutable diodeModes = Array.create diodesNo false |> Array.toList
+        let mutable diodeModes = 
+            match cachedDiodeModes with
+            |[] -> Array.create diodesNo true |> Array.toList
+            |_ -> cachedDiodeModes
+        
+        // used to store the modes once all conditions are satisfied
+        let mutable correctDiodeModes = []
         
         // is true when all conditions are satisfied
         // used to stop the loop
@@ -499,12 +502,10 @@ and transformAllDiodes (comps,conns) =
         
 
         while (not allConditions) do    
-            let next = nextModes diodeModes
-            diodeModes <- next
             
             let diodeModeMap = List.zip diodes diodeModes |> Map.ofList
             let comps' = runTransformation diodeModeMap comps
-            let res,_,nodeLst = modifiedNodalAnalysisDC (comps',conns)
+            let res,_,nodeLst,_ = modifiedNodalAnalysisDC (comps',conns) []
         
             // holds (per diode) whether the condition is satisfied
             let conditionList = 
@@ -521,15 +522,25 @@ and transformAllDiodes (comps,conns) =
             if iter = 0 then
                 allConditions <- true
 
+            // if all conditions are met, save the current diode modes to return them
+            if allConditions then
+                correctDiodeModes <- diodeModes
+            
+            // find next diode modes to be checked
+            let next = nextModes diodeModes
+            diodeModes <- next
+
+
+
         
         // extract updated CanvasState and return it
-        let diodeModeMap = List.zip diodes diodeModes |> Map.ofList
+        let diodeModeMap = List.zip diodes correctDiodeModes |> Map.ofList
         let compsFinal = runTransformation diodeModeMap comps
-        (compsFinal,conns)
+        (compsFinal,conns,correctDiodeModes) 
     
     |false ->
         // if no diodes are present in the circuit -> do nothing
-        (comps,conns)
+        (comps,conns,[])
 
 
 
@@ -690,15 +701,17 @@ let DCTimeAnalysis (comps,conns) inputNode outputNode =
     match vsIndex with
     |Some i ->
         let vs = comps[i]
-        let f = match vs.Type with |VoltageSource (Sine (_,_,f)) -> f |_ -> 0.
+        let f = match vs.Type with |VoltageSource (Sine (_,_,f,_)) -> f |_ -> 0.
         let dts = if f=0. then [0.0..(1./100.)..10.] else [0.0..(1./(100.*f))..5./f]
 
+        let mutable prevDiodeModes = []
         dts
         |> List.map (fun t->
             let vIn = findInputAtTime (Some vs) t 
             let comps' = List.updateAt i {vs with Type = VoltageSource (DC vIn)} comps
             let y_tr = 0.
-            let res,_,_ = modifiedNodalAnalysisDC (comps',conns)
+            let res,_,_,dm = modifiedNodalAnalysisDC (comps',conns) prevDiodeModes
+            prevDiodeModes <- dm
             (t,y_tr,res[outputNode-1])
         )
         |> List.unzip3
@@ -712,15 +725,15 @@ let transientAnalysis (comps,conns) inputNode outputNode =
     let comps',conns' = combineGrounds (comps,conns)
     
     let findTheveninR node1 node2 =
-        let result1,_,_ =
+        let result1,_,_,_ =
             (comps',conns')
             |> replaceCLWithCS 1.
-            |> modifiedNodalAnalysisDC
+            |> (fun cs -> modifiedNodalAnalysisDC cs [])
         
-        let result2,_,_ =
+        let result2,_,_,_ =
             (comps',conns')
             |> replaceCLWithCS 2.
-            |> modifiedNodalAnalysisDC
+            |> (fun cs -> modifiedNodalAnalysisDC cs [])
 
         let v1 =
             if node1=0 then result1[node2-1]
@@ -747,13 +760,13 @@ let transientAnalysis (comps,conns) inputNode outputNode =
             |_ -> failwithf "No Capacitor/Inductor present in the circuit"
 
     let findDCGain nodeX nodeY =
-        let result,_,_ = modifiedNodalAnalysisDC (comps',conns')
+        let result,_,_,_ = modifiedNodalAnalysisDC (comps',conns') []
         result[nodeY-1]/result[nodeX-1]
     
     
     let findHFGain nodeX nodeY =
         let comps',conns' = (comps',conns') |> replaceCLWithTinyR //replaceCLWithWire
-        let result,_,_ = modifiedNodalAnalysisDC (comps',conns')
+        let result,_,_,_ = modifiedNodalAnalysisDC (comps',conns') []
         result[nodeY-1]/result[nodeX-1]
     
 
@@ -769,9 +782,9 @@ let transientAnalysis (comps,conns) inputNode outputNode =
             |Some comp ->
                 match comp.Type with
                 |VoltageSource (DC v) ->
-                    let res,_,_ = modifiedNodalAnalysisDC (comps',conns')
+                    let res,_,_,_ = modifiedNodalAnalysisDC (comps',conns') []
                     {comp with Type = VoltageSource (DC res[outputNode-1])}
-                |VoltageSource (Sine (a,o,f)) -> 
+                |VoltageSource (Sine (a,o,f,p)) -> 
                     let nodeLst = createNodetoCompsList (comps',conns')
 
                     let vs = 
@@ -789,7 +802,7 @@ let transientAnalysis (comps,conns) inputNode outputNode =
                         |> Array.mapi (fun i v -> (calcVectorBElement (i+1) comps' nodeLst))
                     let res = acAnalysis matrix nodeLst comps' vecB (2.*System.Math.PI*f) outputNode |> complexCToP
                     printfn "res = %A" res
-                    {comp with Type = VoltageSource (Sine (a*res.Mag,o+res.Phase,f))}
+                    {comp with Type = VoltageSource (Sine (a*res.Mag,o,f,p+res.Phase))}
 
 
                 |_ -> failwithf "Impossible"
@@ -799,7 +812,7 @@ let transientAnalysis (comps,conns) inputNode outputNode =
         let HFGain = findHFGain inputNode outputNode
 
         let tau = findTau ()
-        let f = match yssAsVS.Type with |VoltageSource (Sine (_,_,f)) -> f |_ -> 0.
+        let f = match yssAsVS.Type with |VoltageSource (Sine (_,_,f,_)) -> f |_ -> 0.
 
         let alpha = HFGain * findInputAtTime vs 0. - findInputAtTime (Some yssAsVS) 0.
     

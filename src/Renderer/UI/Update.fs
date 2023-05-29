@@ -424,6 +424,8 @@ let update (msg : Msg) oldModel =
             match model.Sheet.ShowNodesOrVoltages with
             |Neither -> Nodes |Nodes -> Voltages |Voltages -> Neither
         {model with Sheet = {model.Sheet with ShowNodesOrVoltages=newState}}, Cmd.none
+    | ShowNodesOrVoltagesExplicitState state ->
+        {model with Sheet = {model.Sheet with ShowNodesOrVoltages = state}}, Cmd.none
     | ShowOrHideCurrents ->
         {model with Sheet = {model.Sheet with ShowCurrents = (not model.Sheet.ShowCurrents)}}, Cmd.none
     | HideCurrents ->

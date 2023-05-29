@@ -326,7 +326,7 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
         |Resistor (v,s) -> if s<>"" then (s + omegaString) else string v + omegaString
         |CurrentSource (v,s) -> if s<>"" then (s + "A") else string v + "A"
         |VoltageSource (DC v) -> string v + "V"
-        |VoltageSource (Sine (a,o,f))  -> "Sine("+string a+"V,"+NumberHelpers.floatValueToText f+"Hz)"
+        |VoltageSource (Sine (a,dc,f,p))  -> "Sine("+string a+"V,"+NumberHelpers.floatValueToText f+"Hz, " + string dc + "DC)"
         |VoltageSource(Pulse (v,_,_)) -> string v + "V"
         |_ -> ""
    

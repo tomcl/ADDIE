@@ -182,7 +182,7 @@ module CommonTypes
     type VoltageSourceType =
         |DC of Voltage:float
         |ACAnalysis of Amplitude:float * Phase:float
-        |Sine of Amplitude:float * Offset:float * Frequency:float
+        |Sine of Amplitude:float * DCOffset:float * Frequency:float * PhaseOffset:float
         |Pulse of V1:float * V2:float * Frequency:float
     
     // Types instantiating objects in the Digital extension.

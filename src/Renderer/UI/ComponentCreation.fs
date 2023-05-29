@@ -75,7 +75,7 @@ let createVSPopup (model:Model) (compType:ComponentType) dispatch =
             
             let newComp =
                 match dialogData.VSType with
-                |Some "Sine" -> VoltageSource (Sine (value1,value2,value3))
+                |Some "Sine" -> VoltageSource (Sine (value1,value2,value3,0.))
                 |Some "Pulse" -> VoltageSource (Pulse (value1,value2,value3))
                 |_-> VoltageSource (DC value1)
                 

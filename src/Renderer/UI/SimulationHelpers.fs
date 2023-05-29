@@ -95,7 +95,8 @@ let getDCEquations comps (nodeLst: (Component*int option) list list) (res:float 
         allDCVoltageSources
         |> List.map (fun c->
             match c.Type with
-            |VoltageSource (DC v) ->
+            |VoltageSource (DC v) 
+            |VoltageSource (Sine (_,v,_,_)) ->
                 let i1,i2 = findNodesOfComp nodeLst c.Id
                 if i1=0 then
                     sprintf "V(Node %i) = %fV" i2 v
@@ -103,7 +104,7 @@ let getDCEquations comps (nodeLst: (Component*int option) list list) (res:float 
                     sprintf "V(Node %i) = %fV" i1 v
                 else
                     sprintf "V(Node %i) = V(Node %i) + %fV" i1 i2 v
-            |VoltageSource (Sine (a,v,f)) -> "" //PENDING DC OFFSET 
+            //PENDING DC OFFSET 
             |_ -> failwithf "Impossible"
         )
     

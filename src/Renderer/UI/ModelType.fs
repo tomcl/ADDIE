@@ -205,6 +205,7 @@ type Msg =
     | UpdateACSim of ComplexP list
     | UpdateTimeSim of TimeSimulationResults
     | ShowNodesOrVoltages
+    | ShowNodesOrVoltagesExplicitState of DCNodesOrVoltagesOrNone
     | HideNodesOrVoltages
     | SimulationUpdated
     | RunSim
