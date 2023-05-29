@@ -136,9 +136,10 @@ let runSimulation (model:Model) dispatch =
                         ClosePropertiesNotification |> dispatch
                         CircuitHasNoErrors |> dispatch
                         SimulationUpdated |> dispatch
-                        let res,componentCurrents,nodeLst,_ = Simulation.modifiedNodalAnalysisDC canvasState []
+                        let res,componentCurrents,nodeLst,dm = Simulation.modifiedNodalAnalysisDC canvasState model.PreviousDiodeModes
                         UpdateVoltages (Array.toList res) |> dispatch
                         UpdateCurrents componentCurrents |> dispatch
+                        UpdateDiodeModes dm |> dispatch
                         match model.SimSubTabVisible with
                         |DCsim ->
                             getDCEquations (fst CS) nodeLst res
