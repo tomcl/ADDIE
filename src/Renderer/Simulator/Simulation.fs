@@ -10,6 +10,10 @@ open CanvasStateAnalyser
 //////////////////  SIMULATION CONSTANTS  ////////////////
 
 let diodeConstant = 0.7
+let roundingDecimalPoints = 6
+let startACFreq = 0. //(exponent -> here: 10^0)
+let endACFreq = 7. //(exponent -> here: 10^7)
+let ACFreqStepsPerDecade = 20.
 
 //////////////////  SIMULATION HELPERS   /////////////////
 
@@ -305,17 +309,20 @@ let findComponentCurrents results nodesNo nodeLst comps conns =
     let resistorCurrents= 
         allResistors
         |> List.map (fun c-> findNodesOfComp nodeLst c.Id)
-        |> List.mapi (fun i (n1,n2)->
-            let n1',n2' = topLeftToBottomRight n1 n2 allResistors[i]
-            let v1 = if n1'=0 then 0. else results[n1'-1]
-            let v2 = if n2'=0 then 0. else results[n2'-1]
-            let resistance = 
-                match allResistors[i].Type with 
-                |Resistor (v,_) -> v 
-                |_ -> failwithf "Attempting to find Resistance of a non-Resistor comp"
-            (ComponentId allResistors[i].Id,(v2-v1)/resistance)
+        |> List.mapi (fun i pair->
+            match pair with
+            |Some (n1,n2) ->
+                let n1',n2' = topLeftToBottomRight n1 n2 allResistors[i]
+                let v1 = if n1'=0 then 0. else results[n1'-1]
+                let v2 = if n2'=0 then 0. else results[n2'-1]
+                let resistance = 
+                    match allResistors[i].Type with 
+                    |Resistor (v,_) -> v 
+                    |_ -> failwithf "Attempting to find Resistance of a non-Resistor comp"
+                (ComponentId allResistors[i].Id,(v2-v1)/resistance)
+            |None -> (ComponentId allResistors[i].Id,0.)
         )
-        |> List.map (fun (r,v)->(r, System.Math.Round (v,6)))
+        |> List.map (fun (r,v)->(r, System.Math.Round (v,roundingDecimalPoints)))
         
     vsAndOpampCurrents
     |> List.append resistorCurrents
@@ -369,16 +376,14 @@ let rec modifiedNodalAnalysisDC (comps,conns) cachedDiodeModes =
             )
         )
         |> Array.collect (id)
-        
-    //printfn "flattened matrix = %A" flattenedMatrix
-    ////////////////////////////////
+     
 
     ////////// solve ///////////
 
     let mul = safeSolveMatrixVec flattenedMatrix vecB
     match mul with
     |Some res -> 
-        let result = res |> Array.map (fun x->System.Math.Round (x,6))
+        let result = res |> Array.map (fun x->System.Math.Round (x,roundingDecimalPoints))
         let componentCurrents = findComponentCurrents result (List.length nodeLst-1) nodeLst comps' conns'
         result, componentCurrents, nodeLst, localDiodeModes 
 
@@ -468,14 +473,17 @@ and transformAllDiodes (comps,conns) cachedDiodeModes : Component list * Connect
                 else
                     false
             |false -> //assumed non-conducting mode
-                let i1,i2 = findNodesOfComp nodeLst diodeId 
-                let i1',i2' = if List.exists (fun (c:Component,pNo) -> c.Id = diodeId && pNo = Some 1) nodeLst[i1] then i1,i2 else i2,i1  
-                let res1 = if i1' = 0 then 0. else res[i1'-1]
-                let res2 = if i2' = 0 then 0. else res[i2'-1]
-                if (res2 - res1) <= diodeConstant then
-                    true
-                else 
-                    false 
+                let pair = findNodesOfComp nodeLst diodeId
+                match pair with
+                |Some (i1,i2) ->
+                    let i1',i2' = if List.exists (fun (c:Component,pNo) -> c.Id = diodeId && pNo = Some 1) nodeLst[i1] then i1,i2 else i2,i1  
+                    let res1 = if i1' = 0 then 0. else res[i1'-1]
+                    let res2 = if i2' = 0 then 0. else res[i2'-1]
+                    if (res2 - res1) <= diodeConstant then
+                        true
+                    else 
+                        false 
+                |None -> false
         
     ///////////// FUNCTION BODY  //////////////
 
@@ -604,7 +612,7 @@ let frequencyResponse (comps,conns) inputSource outputNode  =
         |> Array.mapi (fun i v -> (calcVectorBElement (i+1) comps' nodeLst))
     
 
-    let frequencies = [0.0..0.05..7.0] |> List.map (fun x -> 10.**x)
+    let frequencies = [startACFreq..(1./ACFreqStepsPerDecade)..endACFreq] |> List.map (fun x -> 10.**x)
     
     frequencies
     |> List.map (fun wmega->
@@ -752,12 +760,15 @@ let transientAnalysis (comps,conns) inputNode outputNode =
         match CL with
         |None -> failwithf "No Capacitor/Inductor present in the circuit"
         |Some cl ->
-            let (node1,node2) = findNodesOfComp (createNodetoCompsList (comps',conns')) cl.Id
-            let Rth = findTheveninR node1 node2
-            match cl.Type with
-            |Capacitor (c,_) -> Rth*c
-            |Inductor (l,_) -> l/Rth
-            |_ -> failwithf "No Capacitor/Inductor present in the circuit"
+            let pair = findNodesOfComp (createNodetoCompsList (comps',conns')) cl.Id
+            match pair with
+            |Some (node1,node2) ->
+                let Rth = findTheveninR node1 node2
+                match cl.Type with
+                |Capacitor (c,_) -> Rth*c
+                |Inductor (l,_) -> l/Rth
+                |_ -> failwithf "No Capacitor/Inductor present in the circuit"
+            |None -> 0.
 
     let findDCGain nodeX nodeY =
         let result,_,_,_ = modifiedNodalAnalysisDC (comps',conns') []

@@ -27,8 +27,8 @@ let findNodesOfComp (nodeToCompsList:(Component*int option) list list) compId =
         |> List.collect id
 
     match List.length pair with
-    |2 when pair[0] <> pair[1] -> (pair[0],pair[1])
-    |_ -> failwithf "Wrong parsing of circuit, cannot identify two nodes between a component"
+    |2 when pair[0] <> pair[1] -> Some (pair[0],pair[1])
+    |_ -> None
 
 let findConnectionsOnNode (nodeToCompsList:(Component*int option) list list) (index:int) (conns:Connection list) =
     
@@ -261,19 +261,22 @@ let checkCanvasStateForErrors (comps,conns) =
         vs
         |> List.collect (fun comp ->
             let pair = findNodesOfComp nodeLst comp.Id
-            let vsOfPair =
-                findComponentsBetweenNodes pair nodeLst        
-                |> List.map (fst)
-                |> extractVS
+            match pair with
+            |Some (p1,p2)->
+                let vsOfPair =
+                    findComponentsBetweenNodes (p1,p2) nodeLst        
+                    |> List.map (fst)
+                    |> extractVS
     
-            match List.length vsOfPair with 
-            |0 |1 -> []
-            |_ ->
-                [{
-                Msg = sprintf "Voltage sources are connected in parallel between nodes %i and %i" (fst pair) (snd pair)
-                ComponentsAffected = vsOfPair |> List.map (fun c->ComponentId c.Id)
-                ConnectionsAffected = []
-                }]  
+                match List.length vsOfPair with 
+                |0 |1 -> []
+                |_ ->
+                    [{
+                    Msg = sprintf "Voltage sources are connected in parallel between nodes %i and %i" p1 p2
+                    ComponentsAffected = vsOfPair |> List.map (fun c->ComponentId c.Id)
+                    ConnectionsAffected = []
+                    }]  
+            |None -> [] //error catched later
             )
     
     let checkNoSeriesCS = 
@@ -327,14 +330,31 @@ let checkCanvasStateForErrors (comps,conns) =
                     ConnectionsAffected = [ConnectionId conn.Id]
                     }]    
         )
+
+    let checkNoShortCircuits =
+        comps
+        |> List.collect (fun comp ->
+            match comp.Type with
+            |Ground -> []
+            |_ ->
+                let pair = findNodesOfComp nodeLst comp.Id
+                match pair with 
+                |Some _ -> []
+                |None ->
+                    [{
+                    Msg = sprintf "Short circuit around %s. Cannot identify two nodes connected to the component." (findLabelFromId comp.Id) 
+                    ComponentsAffected = [ComponentId comp.Id] 
+                    ConnectionsAffected = []
+                    }] 
+        )
  
-    checkGroundExistance
+    checkNoLoopConns
+    |> List.append checkNoDoubleConnections
+    |> List.append checkNoShortCircuits
+    |> List.append checkNoSeriesCS
+    |> List.append checkNoParallelVS
     |> List.append checkAllCompsConnected
     |> List.append checkAllPortsConnected
-    |> List.append checkNoParallelVS
-    |> List.append checkNoSeriesCS
-    |> List.append checkNoDoubleConnections
-    |> List.append checkNoLoopConns
-    
+    |> List.append checkGroundExistance
 
 /////////////////////////////////////////////////////////////

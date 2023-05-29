@@ -512,16 +512,8 @@ let init () =
         ShowNodesOrVoltages = Neither
         ShowCurrents = false
         ACSim = []
-        DCSim = {
-            MNA=[||]
-            ComponentCurrents = Map.empty
-            NodeList= []
-        }
-        TimeSim = {
-            TimeSteps=[]
-            Transient=[]
-            SteadyState=[]
-        }
+        DCSim = emptyDCResults
+        TimeSim = emptyTimeResults
     }, Cmd.none
 
 

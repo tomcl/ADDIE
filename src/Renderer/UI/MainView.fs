@@ -137,13 +137,13 @@ let runSimulation (model:Model) dispatch =
                         CircuitHasNoErrors |> dispatch
                         SimulationUpdated |> dispatch
                         let res,componentCurrents,nodeLst,dm = Simulation.modifiedNodalAnalysisDC canvasState model.PreviousDiodeModes
+                        let equations = getDCEquations model.Sheet.DCSim (fst CS)
                         UpdateVoltages (Array.toList res) |> dispatch
                         UpdateCurrents componentCurrents |> dispatch
                         UpdateDiodeModes dm |> dispatch
                         match model.SimSubTabVisible with
                         |DCsim ->
-                            getDCEquations (fst CS) nodeLst res
-                            UpdateDCSim {MNA=res;ComponentCurrents=componentCurrents;NodeList=nodeLst} |> dispatch
+                            UpdateDCSim {MNA=res;ComponentCurrents=componentCurrents;NodeList=nodeLst;Equations=equations} |> dispatch
                         |ACsim -> 
                             if model.showGraphArea then
                                 let outputNode = model.SimulationData.ACOutput |> Option.defaultValue "1" |> int
@@ -175,6 +175,23 @@ let makeSelectionChangeMsg (model:Model) (dispatch: Msg -> Unit) (ev: 'a) =
 
 // -- Create View
 
+let startStopSimDiv model dispatch = 
+    let startStopState,startStopStr,startStopMsg = if model.Sheet.SimulationRunning then IsDanger,"Stop",ForceStopSim else if model.Sheet.CanRunSimulation then IsPrimary,"Start",SafeStartSim else IsWarning,"Restart"+CommonTypes.restartSymbol,SafeStartSim
+    div [] [
+        Heading.h4 [] [str "Start/Stop Simulation"]
+        Button.button [
+            Button.Color startStopState
+            Button.OnClick (fun _-> 
+                dispatch startStopMsg
+                dispatch <| SetGraphVisibility false
+                dispatch <| UpdateNodes
+                dispatch <| ShowNodesOrVoltages
+                )
+        ] [str startStopStr]
+        br []
+        br []
+    ]        
+
 let createACSimSubTab model comps dispatch =
     let sourceOptions =
         comps
@@ -202,8 +219,10 @@ let createACSimSubTab model comps dispatch =
 
     div [Style [Margin "20px"]] 
         [ 
-            Heading.h4 [] [str "Setup AC Simulation"]
-            div [] [
+            startStopSimDiv model dispatch
+
+            div [Hidden (not model.Sheet.SimulationRunning)] [
+            Heading.h5 [] [str "Setup AC Simulation"]
             div [Style [Width "50%"; Float FloatOptions.Left]] [
                 Label.label [] [ str "Input" ]
                 Label.label [ ]
@@ -234,7 +253,7 @@ let createACSimSubTab model comps dispatch =
                     ]
                 ]
 
-            div [] [str "h"]
+            div [Style [Color "White"]] [str "f"]
             br []
 
             Button.button 
@@ -270,11 +289,13 @@ let createTimeSimSubTab model comps dispatch =
 
     let magButtonText = if model.SimulationData.ACMagInDB then "dB" else "Normal"
     let freqButtonText = if model.SimulationData.ACFreqInHz then "Hz" else "rads/s"
-
+    let startStopState,startStopStr,startStopMsg = if model.Sheet.SimulationRunning then IsDanger,"Stop",ForceStopSim else if model.Sheet.CanRunSimulation then IsPrimary,"Start",SafeStartSim else IsWarning,"Restart"+CommonTypes.restartSymbol,SafeStartSim
+        
     div [Style [Margin "20px"]] 
         [ 
-            Heading.h4 [] [str "Setup AC Simulation"]
-            div [] [
+            startStopSimDiv model dispatch
+            div [Hidden (not model.Sheet.SimulationRunning)] [
+                Heading.h4 [] [str "Setup Time Simulation"]
                 Label.label [] [ str "Input" ]
                 Label.label [ ]
                     [Select.select []
@@ -289,16 +310,16 @@ let createTimeSimSubTab model comps dispatch =
                         ([option [Value ("sel")] [str ("Select")]] @ outputOptions)
                         ]
                     ]
+                br []
+                br []
+                Button.button 
+                    [   Button.OnClick (fun _ -> 
+                            RunSim |> dispatch
+                            SetGraphVisibility true |> dispatch); 
+                            Button.Color IsPrimary;
+                            Button.Disabled isDisabled] 
+                    [str "Show"]
             ]
-            br []
-            br []
-            Button.button 
-                [   Button.OnClick (fun _ -> 
-                        RunSim |> dispatch
-                        SetGraphVisibility true |> dispatch); 
-                        Button.Color IsPrimary;
-                        Button.Disabled isDisabled] 
-                [str "Show"]
 
         ]
 
@@ -312,37 +333,40 @@ let viewSimSubTab canvasState model dispatch =
     | DCsim -> 
         let nodesVoltagesState = match model.Sheet.ShowNodesOrVoltages with |Neither -> IsDanger |Nodes -> IsWarning |Voltages -> IsPrimary
         let currentsState = if model.Sheet.ShowCurrents then IsPrimary else IsDanger
-        let startStopState,startStopStr,startStopMsg = if model.Sheet.SimulationRunning then IsDanger,"Stop",ForceStopSim else if model.Sheet.CanRunSimulation then IsPrimary,"Start",SafeStartSim else IsWarning,"Restart"+CommonTypes.restartSymbol,SafeStartSim
         div [Style [Margin "20px"]] 
             [ 
-                //button [Style [Width "50px"; Height "50px"]] [
-                //  svg [ViewBox "0 0 24 24"] [ 
-                //      path [D "M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"] []
-                //      //path [D "M0 0h24v24H0z";] []
-                //  ]
-                //]
-
-                //div [] []
-                Heading.h5 [] [str "Start/Stop Simulation"]
-                Button.button [Button.Color startStopState; Button.OnClick (fun _-> dispatch startStopMsg)] [str startStopStr]
+                let startStopState,startStopStr,startStopMsg = if model.Sheet.SimulationRunning then IsDanger,"Stop",ForceStopSim else if model.Sheet.CanRunSimulation then IsPrimary,"Start",SafeStartSim else IsWarning,"Restart"+CommonTypes.restartSymbol,SafeStartSim
+                Heading.h4 [] [str "Start/Stop Simulation"]
+                Button.button [
+                Button.Color startStopState
+                Button.OnClick (fun _-> 
+                    dispatch startStopMsg
+                    dispatch <| RunSim
+                    dispatch <| SetGraphVisibility false
+                        )
+                ] [str startStopStr]
                 br []
                 br []
-                Heading.h5 [] [str "Adjust on-Canvas Elements"]
-                Button.button [Button.OnClick(fun _ -> ShowOrHideCurrents |> dispatch); Button.Color currentsState] [ str "Currents" ]
-                span [Style [Width "20px";Color "White"]] [str "asd"]
-                Button.button [ 
-                Button.OnClick(fun _ -> 
-                UpdateNodes |> dispatch
-                ShowNodesOrVoltages |> dispatch); Button.Color nodesVoltagesState] [ str "Nodes/Voltages" ]
+                div [Hidden <| not model.Sheet.SimulationRunning] [
+                    Heading.h5 [] [str "Adjust on-Canvas Elements"]
+                    Button.button [Button.OnClick(fun _ -> ShowOrHideCurrents |> dispatch); Button.Color currentsState] [ str "Currents" ]
+                    span [Style [Width "20px";Color "White"]] [str "asd"]
+                    Button.button [ 
+                    Button.OnClick(fun _ -> 
+                    UpdateNodes |> dispatch
+                    ShowNodesOrVoltages |> dispatch); Button.Color nodesVoltagesState] [ str "Nodes/Voltages" ]
                                   
-                br []
-                br []
-                Heading.h5 [] [str "DC Results"]
-                div [] [
-                getDCTable model.Sheet.DCSim (model.Sheet.SimulationRunning && model.Sheet.CanRunSimulation) canvasState 
-                //hack to avoid hidden results
-                div [Style [Height "100px"]] []
-                ]
+                    br []
+                    br []
+                    Heading.h5 [] [str "DC Results"]
+                    div [] [
+                    getDCTable model.Sheet.DCSim (model.Sheet.SimulationRunning && model.Sheet.CanRunSimulation) canvasState 
+                
+                    getDCEquationsTable model.Sheet.DCSim.Equations
+
+                    //hack to avoid hidden results
+                    div [Style [Height "100px"]] []
+                ]]
             ]
 
 

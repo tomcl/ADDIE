@@ -526,9 +526,10 @@ module CommonTypes
         MNA: float array
         ComponentCurrents: Map<ComponentId,float>
         NodeList: (Component*int option) list list
+        Equations: string list
         }
 
-    let emptyDCResults = {MNA=[||];ComponentCurrents=Map.empty;NodeList=[]}
+    let emptyDCResults = {MNA=[||];ComponentCurrents=Map.empty;NodeList=[];Equations=[]}
 
     type TimeSimulationResults = {
         TimeSteps: float list
