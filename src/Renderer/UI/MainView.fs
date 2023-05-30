@@ -131,7 +131,7 @@ let runSimulation (model:Model) dispatch =
             match model.Sheet.UpdateSim && model.Sheet.SimulationRunning with
             |false -> ()
             |true -> 
-                match checkCanvasStateForErrors canvasState with
+                match checkCanvasStateForErrors canvasState (model.SimSubTabVisible=TimeSim) with
                     |[] ->
                         ClosePropertiesNotification |> dispatch
                         CircuitHasNoErrors |> dispatch
@@ -164,9 +164,10 @@ let runSimulation (model:Model) dispatch =
                                 dispatch UpdateNodes
                                 dispatch <| ShowNodesOrVoltagesExplicitState Nodes
                                 if model.showGraphArea then
-                                    let inputNode = model.SimulationData.TimeInput |> Option.defaultValue "VS1" |> findInputNodeFromComp nodeLst
+                                    let inputSource = model.SimulationData.TimeInput |> Option.defaultValue "VS1" 
+                                    let inputNode = inputSource |> findInputNodeFromComp nodeLst
                                     let outputNode = model.SimulationData.TimeOutput |> Option.defaultValue "1" |> int
-                                    let t,ytr,yss = (transientAnalysis canvasState inputNode outputNode)
+                                    let t,ytr,yss = (transientAnalysis canvasState inputSource inputNode outputNode)
                                     UpdateTimeSim {TimeSteps=t;Transient=ytr;SteadyState=yss} |> dispatch
                                 else ()
                     |err ->
@@ -196,6 +197,7 @@ let startStopSimDiv model dispatch =
                 dispatch startStopMsg
                 dispatch <| SetGraphVisibility false
                 dispatch <| UpdateNodes
+                
                 )
         ] [str startStopStr]
         br []
@@ -294,8 +296,13 @@ let createTimeSimSubTab model comps dispatch =
 
     let isDisabled = 
         match model.SimulationData.TimeInput,model.SimulationData.TimeOutput with
-        |Some x,Some y when x<>"sel" && y<>"sel" -> false
+        |Some x,Some y when x<>"sel" && y<>"sel" -> 
+            match checkTimeSimConditions comps with
+            |[] -> false
+            |err ->
+                true
         |_ -> true
+
 
     let magButtonText = if model.SimulationData.ACMagInDB then "dB" else "Normal"
     let freqButtonText = if model.SimulationData.ACFreqInHz then "Hz" else "rads/s"
@@ -422,11 +429,11 @@ let private  viewRightTab canvasState model dispatch =
 
                     (Tabs.tab // truth table tab to display truth table for combinational logic
                     [ Tabs.Tab.IsActive (model.SimSubTabVisible = ACsim) ]
-                    [ a [  OnClick (fun _ -> dispatch <| ChangeSimSubTab ACsim; dispatch <| ShowNodesOrVoltagesExplicitState Nodes) ] [str "Frequency Response"] ])
+                    [ a [  OnClick (fun _ -> dispatch <| ChangeSimSubTab ACsim; dispatch <| ShowNodesOrVoltagesExplicitState Nodes; dispatch <|SetGraphVisibility false) ] [str "Frequency Response"] ])
 
                     (Tabs.tab // wavesim tab
                     [ Tabs.Tab.IsActive (model.SimSubTabVisible = TimeSim) ]
-                    [ a [  OnClick (fun _ -> dispatch <| ChangeSimSubTab TimeSim; dispatch <| ShowNodesOrVoltagesExplicitState Nodes) ] [str "Time Analysis"] ])
+                    [ a [  OnClick (fun _ -> dispatch <| ChangeSimSubTab TimeSim; dispatch <| ShowNodesOrVoltagesExplicitState Nodes; dispatch <|SetGraphVisibility false) ] [str "Time Analysis"] ])
                     ]
         div [ HTMLAttr.Id "RightSelection"; Style [Height "100%"]] 
             [

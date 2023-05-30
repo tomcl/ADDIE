@@ -407,7 +407,7 @@ let update (msg : Msg) oldModel =
     | RunSim ->
         {model with Sheet = {model.Sheet with UpdateSim=true}}, Cmd.none
     | ForceStopSim ->
-        let cmd' = [HideCurrents;HideNodesOrVoltages] |> List.map Cmd.ofMsg
+        let cmd' = [HideCurrents;HideNodesOrVoltages;SetGraphVisibility false] |> List.map Cmd.ofMsg
         {model with Sheet = {model.Sheet with SimulationRunning=false}}, Cmd.batch cmd'
     | SafeStartSim ->
         {model with Sheet = {model.Sheet with SimulationRunning=true}}, Cmd.ofMsg RunSim

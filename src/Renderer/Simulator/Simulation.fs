@@ -88,7 +88,16 @@ let findInputAtTime vs t =
                 else v2
             |_ -> failwithf "Impossible"
 
-
+let convertACInputToDC1VS (comps,conns:Connection list) inputSource =
+    let inputComp = findCompFromId comps inputSource
+    let updatedComp = {inputComp with Type = VoltageSource (DC 1)}
+    comps
+    |> List.map (fun c->
+        if c.Id = inputSource
+            then 
+                //printfn "successful conversion "
+                updatedComp
+        else c),conns
 
 
 /// Calculates the elements of the vector B of MNA
@@ -563,21 +572,12 @@ let acAnalysis matrix nodeLst comps vecB wmega outputNode =
         )
         |> Array.collect (id)
     let result = safeSolveMatrixVecComplex flattenedMatrix vecB
-    printfn "result %A" result
+    //printfn "result %A" result
     result[outputNode-1]        
 
      
 
 let frequencyResponse (comps,conns) inputSource outputNode  =
-
-    let convertInputToDC1VS (comps,conns:Connection list) =
-        let inputComp = findCompFromId comps inputSource
-        let updatedComp = {inputComp with Type = VoltageSource (DC 1)}
-        comps
-        |> List.map (fun c->
-            if c.Id = inputSource
-                then updatedComp
-            else c),conns
 
     let convertDiodeToConductingMode (comps,conns) =
         comps 
@@ -590,8 +590,8 @@ let frequencyResponse (comps,conns) inputSource outputNode  =
     let comps',conns' = 
         (comps,conns)
         |> combineGrounds
-        |> convertInputToDC1VS
         |> convertDiodeToConductingMode
+        |> (fun CS -> convertACInputToDC1VS CS inputSource)
 
     let nodeLst = createNodetoCompsList (comps',conns')
 
@@ -728,8 +728,9 @@ let DCTimeAnalysis (comps,conns) inputNode outputNode =
 
 
 
-let transientAnalysis (comps,conns) inputNode outputNode =
-         
+let transientAnalysis (comps,conns) inputSource inputNode outputNode =
+    
+    printfn "inputSource: %s" inputSource
     let comps',conns' = combineGrounds (comps,conns)
     
     let findTheveninR node1 node2 =
@@ -778,8 +779,10 @@ let transientAnalysis (comps,conns) inputNode outputNode =
     let findHFGain nodeX nodeY =
         let comps',conns' = (comps',conns') |> replaceCLWithTinyR //replaceCLWithWire
         let result,_,_,_ = modifiedNodalAnalysisDC (comps',conns') []
-        result[nodeY-1]/result[nodeX-1]
-    
+        
+        if result[nodeX-1] <> 0 //DC source or Sine with DC offset
+            then result[nodeY-1]/result[nodeX-1]
+        else result[nodeY-1]
 
     match List.exists (fun c->match c.Type with |Capacitor _ |Inductor _ -> true |_ -> false) comps' with
     |true ->
@@ -796,23 +799,24 @@ let transientAnalysis (comps,conns) inputNode outputNode =
                     let res,_,_,_ = modifiedNodalAnalysisDC (comps',conns') []
                     {comp with Type = VoltageSource (DC res[outputNode-1])}
                 |VoltageSource (Sine (a,o,f,p)) -> 
-                    let nodeLst = createNodetoCompsList (comps',conns')
+                    let comps'',_ = convertACInputToDC1VS (comps',conns') inputSource
+                    let nodeLst = createNodetoCompsList (comps'',conns')
 
                     let vs = 
-                        comps'
+                        comps''
                         |> List.filter (fun c-> match c.Type with |VoltageSource _ -> true |_ -> false)
                         |> List.length
 
-                    let opamps = comps' |> List.filter (fun c-> c.Type=Opamp) |> List.length
+                    let opamps = comps'' |> List.filter (fun c-> c.Type=Opamp) |> List.length
 
                     let n = List.length nodeLst - 1 + vs + opamps
                     let arr = Array.create n 0.0
                     let matrix = Array.create n arr
                     let vecB =
                         Array.create n {Re=0.0;Im=0.0}
-                        |> Array.mapi (fun i v -> (calcVectorBElement (i+1) comps' nodeLst))
-                    let res = acAnalysis matrix nodeLst comps' vecB (2.*System.Math.PI*f) outputNode |> complexCToP
-                    printfn "res = %A" res
+                        |> Array.mapi (fun i v -> (calcVectorBElement (i+1) comps'' nodeLst))
+                    let res = acAnalysis matrix nodeLst comps'' vecB (2.*System.Math.PI*f) outputNode |> complexCToP
+                    //printfn "res = %A" res
                     {comp with Type = VoltageSource (Sine (a*res.Mag,o,f,p+res.Phase))}
 
 
@@ -828,7 +832,6 @@ let transientAnalysis (comps,conns) inputNode outputNode =
         let alpha = HFGain * findInputAtTime vs 0. - findInputAtTime (Some yssAsVS) 0.
     
         let dts = if f=0. then [0.0..(tau/10.)..tau*10.] else [0.0..(1./(100.*f))..5./f]
-
         dts
         |> List.map (fun t->
             let y_tr = alpha*exp(-t/tau)

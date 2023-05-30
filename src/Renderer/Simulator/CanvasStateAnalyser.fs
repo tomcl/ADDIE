@@ -187,7 +187,7 @@ let createNodetoCompsList(comps:Component list,conns: Connection list) =
 
 
 ///////////// CANVAS STATE ANALYSER - ERROR CHECKER ////////////////////////
-let checkCanvasStateForErrors (comps,conns) =
+let checkCanvasStateForErrors (comps,conns) timeSubTab =
     let nodeLst = createNodetoCompsList (comps,conns)
     let allCompsOfNodeLst = nodeLst |> List.collect (id) |> List.distinctBy (fun (c,pn) -> c.Id)
 
@@ -347,8 +347,44 @@ let checkCanvasStateForErrors (comps,conns) =
                     ConnectionsAffected = []
                     }] 
         )
+
+    let checkOnlyOneSource =
+        match timeSubTab with
+        |true ->
+            comps
+            |> List.filter (fun c -> match c.Type with |VoltageSource _ -> true |_ ->false)
+            |> List.length
+            |> (fun count->
+                match count with
+                |1 -> []
+                |_ -> 
+                    [{
+                    Msg = "Time analysis currently supports only 1 Voltage Source"
+                    ComponentsAffected = []; ConnectionsAffected = []
+                    }] 
+            )
+        |_ -> []
+
+    let checkOnlyOneCL =
+        match timeSubTab with
+        |true ->
+            comps
+            |> List.filter (fun c-> match c.Type with |Capacitor _ |Inductor _ -> true |_ -> false)
+            |> List.length
+            |> (fun count ->
+                match count with
+                |0 |1 -> []
+                |_ -> 
+                    [{
+                    Msg = "Time Analysis currently supports only 1 Capacitor (C) or Inductor (L)"
+                    ComponentsAffected = [] ;ConnectionsAffected = []
+                    }] 
+            )
+        |_ -> []
  
-    checkNoLoopConns
+    checkOnlyOneCL
+    |> List.append checkOnlyOneSource
+    |> List.append checkNoLoopConns
     |> List.append checkNoDoubleConnections
     |> List.append checkNoShortCircuits
     |> List.append checkNoSeriesCS
@@ -358,3 +394,26 @@ let checkCanvasStateForErrors (comps,conns) =
     |> List.append checkGroundExistance
 
 /////////////////////////////////////////////////////////////
+
+let checkTimeSimConditions (comps) =
+    let checkOnlyOneSource =
+        comps
+        |> List.filter (fun c -> match c.Type with |VoltageSource _ -> true |_ ->false)
+        |> List.length
+        |> (fun count->
+            match count with
+            |1 -> []
+            |_ -> ["Time analysis currently supports only 1 Voltage Source"]
+        )
+
+    let checkOnlyOneCL =
+        comps
+        |> List.filter (fun c-> match c.Type with |Capacitor _ |Inductor _ -> true |_ -> false)
+        |> List.length
+        |> (fun count ->
+            match count with
+            |0 |1 -> []
+            |_ -> ["Time Analysis currently supports only 1 Capacitor or Inductor"]
+        )
+        
+    checkOnlyOneSource @ checkOnlyOneCL
