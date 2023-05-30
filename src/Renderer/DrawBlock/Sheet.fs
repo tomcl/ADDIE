@@ -1007,7 +1007,12 @@ let view
             if model.ShowNodesOrVoltages = Nodes then
                 (string (i+1))
             else
-                string model.NodeVoltages[i]+"V"
+                match List.tryItem i model.NodeVoltages with
+                |Some v ->
+                    string v+"V"
+                |None ->
+                    "err"
+
         
         if model.SimulationRunning && model.ShowNodesOrVoltages <> Neither then
             model.NodeLocations

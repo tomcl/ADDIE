@@ -74,14 +74,6 @@ let getDCTable (simDC:DCSimulationResults) simRunning canvasState  =
     let tableChildren = List.append tableFormat (voltageLines@currentLines)
     if List.length voltageLines <> 0 && simRunning then 
         Table.table []
-            //[Style 
-            //    [ 
-            //    FontSize "16px"; 
-            //    TableLayout "Fixed"; 
-            //    Width "100%";
-            //    BorderRight "groove";
-            //    BorderLeft "groove"]
-            //    ]
             tableChildren
     else
         table [] []
@@ -112,99 +104,101 @@ let getDCEquations dcSim comps =
         |> (fun final -> ("",final) ||> Seq.fold (fun s v -> s+string v))
         |> string
     
-    // voltage sources
-    let allDCVoltageSources = findAllVoltageSources comps
-    let vsEquations =
-        allDCVoltageSources
-        |> List.map (fun c->
-            match c.Type with
-            |VoltageSource (DC v) 
-            |VoltageSource (Sine (_,v,_,_)) ->
+    match dcSim.MNA with 
+    |[||] -> []
+    |_ ->
+        // voltage sources
+        let allDCVoltageSources = findAllVoltageSources comps
+        let vsEquations =
+            allDCVoltageSources
+            |> List.map (fun c->
+                match c.Type with
+                |VoltageSource (DC v) 
+                |VoltageSource (Sine (_,v,_,_)) ->
+                    let pair = findNodesOfComp dcSim.NodeList c.Id
+                    match pair with
+                    |Some (i1,i2) ->
+                        if i1=0 then
+                            sprintf "V(%i) = %sV" i2 (string v)
+                        elif i2=0 then
+                            sprintf "V(%i) = %sV" i1 (string v)
+                        else
+                            sprintf "V(%i) = V(%i) + %sV" i1 i2 (string v)
+                    |None -> ""
+                |_ -> failwithf "Impossible"
+            )
+    
+        // inductors
+        let allInductors = findAllInductors comps
+        let inductorEquations =
+            allInductors
+            |> List.map (fun c->
                 let pair = findNodesOfComp dcSim.NodeList c.Id
                 match pair with
                 |Some (i1,i2) ->
                     if i1=0 then
-                        sprintf "V(%i) = %sV" i2 (string v)
+                            sprintf "V(%i) = 0V" i2
                     elif i2=0 then
-                        sprintf "V(%i) = %sV" i1 (string v)
+                        sprintf "V(%i) = 0V" i1
                     else
-                        sprintf "V(%i) = V(%i) + %sV" i1 i2 (string v)
+                        sprintf "V(%i) = V(%i)" i1 i2        
                 |None -> ""
-            |_ -> failwithf "Impossible"
-        )
-    
-    // inductors
-    let allInductors = findAllInductors comps
-    let inductorEquations =
-        allInductors
-        |> List.map (fun c->
-            let pair = findNodesOfComp dcSim.NodeList c.Id
-            match pair with
-            |Some (i1,i2) ->
-                if i1=0 then
-                        sprintf "V(%i) = 0V" i2
-                elif i2=0 then
-                    sprintf "V(%i) = 0V" i1
-                else
-                    sprintf "V(%i) = V(%i)" i1 i2        
-            |None -> ""
-        )
-
-    //potential dividers
-    let nodes = List.length dcSim.NodeList
-    
-    let voltageDividerEquations =
-        List.allPairs [0..nodes-1] [0..nodes-1]
-        |> List.collect (fun (p1',p2')->
-            let p1,p2 = if p1'<p2' then p1',p2' else p2',p1'
-            match p1=p2 with
-            |true -> []
-            |false ->  
-                match findComponentsBetweenNodes (p1,p2) dcSim.NodeList with
-                |[(c,_)] when isResistorType c.Type ->
-                    let p3 = 
-                        [0..nodes-1] 
-                        |> List.removeAt p2
-                        |> List.removeAt p1
-                        |> List.tryFind (fun i -> 
-                        match findComponentsBetweenNodes (p1, i) dcSim.NodeList with
-                        |[(res,_)] when isResistorType res.Type -> true
-                        |_ ->
-                            match findComponentsBetweenNodes (p2, i) dcSim.NodeList with
-                            |[(res,_)] when isResistorType res.Type -> true
-                            |_ -> false                            
-                        )
-                    match p3 with
-                    |Some node3 ->
-                        [p1; p2; node3]
-                        |> List.map (fun n -> ((findNodeVoltage n), n))
-                        |> List.sortDescending
-                        |> (fun x ->
-                            match x with
-                            |[(_,n1);(_,n2);(_,n3)] -> [(n1,n2,n3)]
-                            |_ -> [])
-                    |None -> []
-                |_ -> []
             )
-        |> List.distinct
-        |> List.map (fun (n1,n2,n3)->
-            let r1Label,r1Value = 
-                (findComponentsBetweenNodes (n1,n2) dcSim.NodeList) 
-                |> List.head 
-                |> (fun (c,_) -> c.Label,c.Type) 
-                |> (fun (l,tp) -> match tp with |Resistor (v,_) -> l,v |_ -> failwithf "Impossible")
-            let r2Label,r2Value = 
-                (findComponentsBetweenNodes (n2,n3) dcSim.NodeList) 
-                |> List.head 
-                |> (fun (c,_) -> c.Label,c.Type) 
-                |> (fun (l,tp) -> match tp with |Resistor (v,_) -> l,v |_ -> failwithf "Impossible")
-            
-            let frac = removeZeros (r2Value/(r1Value+r2Value))
-            sprintf "V(%i) = (%s/(%s+%s))*V(%i) = %s*V(%i)" n2 r2Label r1Label r2Label n1 frac n1        
-        )
 
-    (vsEquations @ inductorEquations @ voltageDividerEquations)
+        //potential dividers
+        let nodes = List.length dcSim.NodeList
     
+        let voltageDividerEquations =
+            List.allPairs [0..nodes-1] [0..nodes-1]
+            |> List.collect (fun (p1',p2')->
+                let p1,p2 = if p1'<p2' then p1',p2' else p2',p1'
+                match p1=p2 with
+                |true -> []
+                |false ->  
+                    match findComponentsBetweenNodes (p1,p2) dcSim.NodeList with
+                    |[(c,_)] when isResistorType c.Type ->
+                        let p3 = 
+                            [0..nodes-1] 
+                            |> List.removeAt p2
+                            |> List.removeAt p1
+                            |> List.tryFind (fun i -> 
+                            match findComponentsBetweenNodes (p1, i) dcSim.NodeList with
+                            |[(res,_)] when isResistorType res.Type -> true
+                            |_ ->
+                                match findComponentsBetweenNodes (p2, i) dcSim.NodeList with
+                                |[(res,_)] when isResistorType res.Type -> true
+                                |_ -> false                            
+                            )
+                        match p3 with
+                        |Some node3 ->
+                            [p1; p2; node3]
+                            |> List.map (fun n -> ((findNodeVoltage n), n))
+                            |> List.sortDescending
+                            |> (fun x ->
+                                match x with
+                                |[(_,n1);(_,n2);(_,n3)] -> [(n1,n2,n3)]
+                                |_ -> [])
+                        |None -> []
+                    |_ -> []
+                )
+            |> List.distinct
+            |> List.map (fun (n1,n2,n3)->
+                let r1Label,r1Value = 
+                    (findComponentsBetweenNodes (n1,n2) dcSim.NodeList) 
+                    |> List.head 
+                    |> (fun (c,_) -> c.Label,c.Type) 
+                    |> (fun (l,tp) -> match tp with |Resistor (v,_) -> l,v |_ -> failwithf "Impossible")
+                let r2Label,r2Value = 
+                    (findComponentsBetweenNodes (n2,n3) dcSim.NodeList) 
+                    |> List.head 
+                    |> (fun (c,_) -> c.Label,c.Type) 
+                    |> (fun (l,tp) -> match tp with |Resistor (v,_) -> l,v |_ -> failwithf "Impossible")
+            
+                let frac = removeZeros (r2Value/(r1Value+r2Value))
+                sprintf "V(%i) = (%s/(%s+%s))*V(%i) = %s*V(%i)" n2 r2Label r1Label r2Label n1 frac n1        
+            )
+
+        (vsEquations @ inductorEquations @ voltageDividerEquations)
 
 
 let getDCEquationsTable equations =

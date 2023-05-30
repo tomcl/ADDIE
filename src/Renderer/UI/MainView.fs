@@ -141,23 +141,34 @@ let runSimulation (model:Model) dispatch =
                         UpdateVoltages (Array.toList res) |> dispatch
                         UpdateCurrents componentCurrents |> dispatch
                         UpdateDiodeModes dm |> dispatch
-                        match model.SimSubTabVisible with
-                        |DCsim ->
-                            UpdateDCSim {MNA=res;ComponentCurrents=componentCurrents;NodeList=nodeLst;Equations=equations} |> dispatch
-                        |ACsim -> 
-                            if model.showGraphArea then
-                                let outputNode = model.SimulationData.ACOutput |> Option.defaultValue "1" |> int
-                                let inputSource = model.SimulationData.ACSource |> Option.defaultValue ""
-                                let res = (frequencyResponse canvasState inputSource outputNode)
-                                UpdateACSim res |> dispatch
-                            else ()
-                        |TimeSim ->
-                            if model.showGraphArea then
-                                let inputNode = model.SimulationData.TimeInput |> Option.defaultValue "VS1" |> findInputNodeFromComp nodeLst
-                                let outputNode = model.SimulationData.TimeOutput |> Option.defaultValue "1" |> int
-                                let t,ytr,yss = (transientAnalysis canvasState inputNode outputNode)
-                                UpdateTimeSim {TimeSteps=t;Transient=ytr;SteadyState=yss} |> dispatch
-                            else ()
+                        UpdateDCSim {MNA=res;ComponentCurrents=componentCurrents;NodeList=nodeLst;Equations=equations} |> dispatch
+                        
+                        match res with
+                        |[||] -> 
+                            dispatch ForceStopSim
+                            dispatch CircuitHasErrors
+                            dispatch (SetPropertiesNotification (Notifications.errorPropsNotification "Unknown error in Circuit. Cannot run Simulation")) 
+                        |_ ->
+                            match model.SimSubTabVisible with
+                            |DCsim -> ()
+                            |ACsim -> 
+                                dispatch UpdateNodes
+                                dispatch <| ShowNodesOrVoltagesExplicitState Nodes
+                                if model.showGraphArea then
+                                    let outputNode = model.SimulationData.ACOutput |> Option.defaultValue "1" |> int
+                                    let inputSource = model.SimulationData.ACSource |> Option.defaultValue ""
+                                    let res = (frequencyResponse canvasState inputSource outputNode)
+                                    UpdateACSim res |> dispatch
+                                else ()
+                            |TimeSim ->
+                                dispatch UpdateNodes
+                                dispatch <| ShowNodesOrVoltagesExplicitState Nodes
+                                if model.showGraphArea then
+                                    let inputNode = model.SimulationData.TimeInput |> Option.defaultValue "VS1" |> findInputNodeFromComp nodeLst
+                                    let outputNode = model.SimulationData.TimeOutput |> Option.defaultValue "1" |> int
+                                    let t,ytr,yss = (transientAnalysis canvasState inputNode outputNode)
+                                    UpdateTimeSim {TimeSteps=t;Transient=ytr;SteadyState=yss} |> dispatch
+                                else ()
                     |err ->
                         dispatch ForceStopSim
                         dispatch CircuitHasErrors
@@ -185,7 +196,6 @@ let startStopSimDiv model dispatch =
                 dispatch startStopMsg
                 dispatch <| SetGraphVisibility false
                 dispatch <| UpdateNodes
-                dispatch <| ShowNodesOrVoltages
                 )
         ] [str startStopStr]
         br []
@@ -362,7 +372,14 @@ let viewSimSubTab canvasState model dispatch =
                     div [] [
                     getDCTable model.Sheet.DCSim (model.Sheet.SimulationRunning && model.Sheet.CanRunSimulation) canvasState 
                 
-                    getDCEquationsTable model.Sheet.DCSim.Equations
+                    Menu.menu [Props [Class "py-1";]]  [
+                    // TODO
+                        details [Open false;OnClick (fun _ -> dispatch RunSim)] [
+                            summary [menuLabelStyle] [ str "Equations" ]
+                            Menu.list [] [(getDCEquationsTable model.Sheet.DCSim.Equations)]
+                        ]
+                    ]
+                    
 
                     //hack to avoid hidden results
                     div [Style [Height "100px"]] []

@@ -254,7 +254,7 @@ let private constantValueMessage w (cVal:int64) =
 
 
 let private makeMenuGroup title menuList =
-    details [Open false] [
+    details [Open false;] [
         summary [menuLabelStyle] [ str title ]
         Menu.list [] menuList
     ]

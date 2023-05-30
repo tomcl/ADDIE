@@ -120,3 +120,4 @@ let safeSolveMatrixVecComplex flattenedMatrix vec =
             let res = Maths.multiply (invM,jsVec)
             res.ToArray() 
             |> Array.map (toComplexF)
+            
