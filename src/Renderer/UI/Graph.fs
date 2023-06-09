@@ -99,14 +99,19 @@ let viewGraph (model:Model) dispatch =
             let comps = SymbolUpdate.extractComponents model.Sheet.Wire.Symbol
             let extractTimeSimResults res =
                 (res.TimeSteps,res.Transient,res.SteadyState)
+            let extractTimeSimParameters res =
+                (res.Tau,res.Alpha,res.HFGain,res.DCGain)
             //let canvasState = comps,conns  
             //let inputNode = "2" |> int // model.PopupDialogData.TimeInput |> Option.defaultValue "1" |> int
             //let outputNode = model.PopupDialogData.TimeOutput |> Option.defaultValue "1" |> int
             let t,ytr,yss = extractTimeSimResults model.Sheet.TimeSim
+            let tau,alpha,hf,dc = extractTimeSimParameters model.Sheet.TimeSim
             match t,ytr,yss with
             |[],[],[] -> [div [] []]
             |_ ->
-                let y = [0.;0.] @ List.map2 (fun x y -> x+y) ytr yss
+                let y = 
+                    if ytr = [] then [0.;0.] @ yss
+                    else [0.;0.] @ List.map2 (fun x y -> x+y) ytr yss
                 let t_y = [-t[(List.length t/5)|> int]]@[0.0]@t
                 let vs = comps |> List.find (fun c->match c.Type with |VoltageSource _ -> true |_ -> false)
                 let x = [0.;0.] @ List.map (Simulation.findInputAtTime (Some vs)) t
@@ -173,7 +178,19 @@ let viewGraph (model:Model) dispatch =
                             Table.table [] [
                                 tr [] [
                                     td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str "tau"]
-                                    td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str "alpha"]
+                                    td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str (string tau)]
+                                ]
+                                tr [] [
+                                    td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str "Transient Amplitude"]
+                                    td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str (string alpha)]
+                                ]
+                                tr [] [
+                                        td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str "HFGain"]
+                                        td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str (string hf)]
+                                ]
+                                tr [] [
+                                        td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str "DCGain"]
+                                        td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str (string dc)]
                                 ]
                             
                             ]
@@ -182,4 +199,4 @@ let viewGraph (model:Model) dispatch =
                 ]
         |_ -> 
             SetGraphVisibility false |> dispatch
-            [div [] []]
+            [div [] []] 

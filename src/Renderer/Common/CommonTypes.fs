@@ -535,9 +535,13 @@ module CommonTypes
         TimeSteps: float list
         Transient: float list
         SteadyState: float list
+        Tau: float
+        Alpha: float
+        HFGain: float
+        DCGain: float
         }
 
-    let emptyTimeResults = {TimeSteps=[];Transient=[];SteadyState=[]}
+    let emptyTimeResults = {TimeSteps=[];Transient=[];SteadyState=[];Tau=0;Alpha=0;HFGain=0;DCGain=0}
 
     type DCNodesOrVoltagesOrNone = 
         |Nodes

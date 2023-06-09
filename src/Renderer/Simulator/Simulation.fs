@@ -713,16 +713,17 @@ let DCTimeAnalysis (comps,conns) inputNode outputNode =
         let dts = if f=0. then [0.0..(1./100.)..10.] else [0.0..(1./(100.*f))..5./f]
 
         let mutable prevDiodeModes = []
-        dts
-        |> List.map (fun t->
-            let vIn = findInputAtTime (Some vs) t 
-            let comps' = List.updateAt i {vs with Type = VoltageSource (DC vIn)} comps
-            let y_tr = 0.
-            let res,_,_,dm = modifiedNodalAnalysisDC (comps',conns) prevDiodeModes
-            prevDiodeModes <- dm
-            (t,y_tr,res[outputNode-1])
-        )
-        |> List.unzip3
+        let y =
+            dts
+            |> List.map (fun t->
+                let vIn = findInputAtTime (Some vs) t 
+                let comps' = List.updateAt i {vs with Type = VoltageSource (DC vIn)} comps
+                let res,_,_,dm = modifiedNodalAnalysisDC (comps',conns) prevDiodeModes
+                prevDiodeModes <- dm
+                res[outputNode-1]
+            )
+        {TimeSteps=dts;Transient=[];SteadyState=y;Tau=0;Alpha=0;HFGain=0;DCGain=0}
+        
     |_ -> failwithf "No voltage Source present in the circuit"
 
 
@@ -832,13 +833,17 @@ let transientAnalysis (comps,conns) inputSource inputNode outputNode =
         let alpha = HFGain * findInputAtTime vs 0. - findInputAtTime (Some yssAsVS) 0.
     
         let dts = if f=0. then [0.0..(tau/20.)..tau*10.] else [0.0..(1./(40.*f))..5./f]
-        dts
-        |> List.map (fun t->
-            let y_tr = alpha*exp(-t/tau)
-            let yss = findInputAtTime (Some yssAsVS) t
-            (t,y_tr,yss)
-        )
-        |> List.unzip3
+        let ytr,yss =
+            dts
+            |> List.map (fun t->
+                let y_tr = alpha*exp(-t/tau)
+                let y_ss = findInputAtTime (Some yssAsVS) t
+                (y_tr,y_ss)
+            )
+            |> List.unzip
+        {TimeSteps=dts;Transient=ytr;SteadyState=yss;Tau=tau;Alpha=alpha;HFGain=HFGain;DCGain=0}
+
+
     |_ -> DCTimeAnalysis (comps',conns') inputNode outputNode
      
     

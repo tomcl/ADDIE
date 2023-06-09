@@ -72,8 +72,9 @@ let safeSolveMatrixVec flattenedMatrix vec =
         |> Array.map (fun c -> {c with Im = 0.})
         |> flattenedToMatrix
     let det = Maths.det(matrix)
-    
+    printfn "det is %f" det 
     if string det = "0" then
+        printfn "matrix %A" matrix
         None
         //failwithf "det is 0, cannot invert"
     else

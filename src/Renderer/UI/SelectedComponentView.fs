@@ -335,60 +335,18 @@ let private makeValueField model (comp:Component) text dispatch =
 
 let private makeDescription (comp:Component) model dispatch =
     match comp.Type with
-    | IO -> str "IO"
-    | IOLabel -> div [] [
-        str "Label on Wire or Bus. Labels with the same name connect wires. Each label has input on left and output on right. \
-            No output connection is required from a set of labels. Since a set represents one wire of bus, exactly one input connection is required. \
-            Labels can be used:"  
-        br [] ;
-        str "To name wires and document designs."; br []
-        str "To join inputs and outputs without wires."; br []
-        str "To prevent an unused output from giving an error."
-        ]
-    |Resistor _ |Capacitor _ |Inductor _ |CurrentSource _ |VoltageSource _|Diode |Ground |Opamp ->
-        div [] [ str "PENDING"]
-    | Custom custom ->
-        let styledSpan styles txt = span [Style styles] [str <| txt]
-        let boldSpan txt = styledSpan [FontWeight "bold"] txt
-        let italicSpan txt = styledSpan [FontStyle "italic"] txt
-
-        let toHTMLList =
-            List.map (fun label -> li [] [str <| sprintf "%s" label])
-        
-        let symbolExplanation = ": user defined (custom) component."
-            //TODO: remaining
-
-        //let origLdc =
-        //    match model.CurrentProj with
-        //    |Some p -> p.LoadedComponents |> List.find (fun ldc -> ldc.Name = custom.Name)
-        //    |None -> failwithf "What? current project cannot be None at this point in finding custom component description"
-        let sheetDescription = 
-            match custom.Description with
-            |Some sheetDescription-> 
-                div [] [
-                    p [] [str "----------------"]
-                    p [] [str sheetDescription]
-                    p [] [str "----------------"]
-                ]
-            |None -> 
-                br []
-        let portOrderExplanation = $"Input or Output ports are displayed on the '{custom.Name}' symbol sorted by the \
-                    vertical position on the design sheet of the Input or Output components at the time the symbol is added."
-            //TODO: remaining
-
-        div [] [
-            boldSpan $"{custom.Name}"
-            span [] [str <| symbolExplanation]
-            sheetDescription
-            br []
-            p [  Style [ FontStyle "italic"; FontSize "12px"; LineHeight "1.1"]] [
-                str <| portOrderExplanation]
-            br []
-            span [Style [FontWeight "bold"; FontSize "15px"]] [str <| "Inputs"]
-            ul [] (toHTMLList custom.IOLabels)
-            br []
-            makeScaleAdjustmentField model comp dispatch
-        ]
+    | IO 
+    | Custom _
+    | IOLabel -> div [] []
+    | Resistor _ -> div [] [str "Ideal Resistor"]
+    | Capacitor _ -> div [] [str "Ideal Capacitor"]
+    | Inductor _ -> div [] [str "Ideal Inductor"]
+    | VoltageSource (DC _) -> div [] [str "DC Voltage Source"]
+    | VoltageSource (Sine _) -> div [] [str "Sinusoidal Voltage Source"]
+    | CurrentSource _ -> div [] [str "DC Current Source"]
+    | Diode -> div [] [str "Linearized Diode"]
+    | Opamp -> div [] [str "Ideal Operational Amplifier"]
+    | Ground -> div [] [str "Ground"]
         
 
 let private makeExtraInfo model (comp:Component) text dispatch : ReactElement =

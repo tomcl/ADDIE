@@ -167,8 +167,8 @@ let runSimulation (model:Model) dispatch =
                                     let inputSource = model.SimulationData.TimeInput |> Option.defaultValue "VS1" 
                                     let inputNode = inputSource |> findInputNodeFromComp nodeLst
                                     let outputNode = model.SimulationData.TimeOutput |> Option.defaultValue "1" |> int
-                                    let t,ytr,yss = (transientAnalysis canvasState inputSource inputNode outputNode)
-                                    UpdateTimeSim {TimeSteps=t;Transient=ytr;SteadyState=yss} |> dispatch
+                                    let timeSim = (transientAnalysis canvasState inputSource inputNode outputNode)
+                                    UpdateTimeSim timeSim |> dispatch
                                 else ()
                     |err ->
                         dispatch ForceStopSim
