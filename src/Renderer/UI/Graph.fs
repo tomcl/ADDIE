@@ -10,11 +10,12 @@ open System
 open ModelType
 open CommonTypes
 open Simulation
+open Fulma
 
 
 let viewGraph (model:Model) dispatch =
     match model.CurrentProj,model.showGraphArea with
-    | None,_ |Some _,false -> div [] []
+    | None,_ |Some _,false -> [div [] []]
     | Some p,true ->
         match model.SimSubTabVisible with
         |ACsim -> 
@@ -29,8 +30,9 @@ let viewGraph (model:Model) dispatch =
             let ACMag = model.Sheet.ACSim |> List.map (dBOrNot)
             let ACPhase = model.Sheet.ACSim |> List.map (fun x -> x.Phase*180./Math.PI)
             let freqs = [0.0..0.05..7.0] |> List.map (fun x -> 10.**x) |> List.map (HzOrOmega)
-    
-            div [Style [Width "90%"; Float FloatOptions.Left]] [
+            let graphTitle = sprintf "Magnitude and Phase (Node %s/%s)" (Option.defaultValue "" model.SimulationData.ACOutput) (CanvasStateAnalyser.findLabelFromId (SymbolUpdate.extractComponents model.Sheet.Wire.Symbol) (Option.defaultValue "" model.SimulationData.ACSource))
+            [
+                div [Style [Width "80%"; Float FloatOptions.Left]] [
                         Plotly.plot [
                             plot.traces [
                                 traces.scatter [
@@ -48,6 +50,7 @@ let viewGraph (model:Model) dispatch =
                                         line.width 1
                                         //line.color "blue"
                                     ]
+                                    //scatter.visible.legendonly 
                                 ]
                             ]
                             plot.layout [
@@ -61,7 +64,7 @@ let viewGraph (model:Model) dispatch =
                                     ]
                                 ]
                                 layout.title [
-                                    title.text "Magnitude and Phase"
+                                    title.text graphTitle
                                 ]
                                 layout.yaxis [
                                     yaxis.title [
@@ -88,6 +91,8 @@ let viewGraph (model:Model) dispatch =
                         ]
                         ]
                         ]
+                div [Style [Width "20%"; Float FloatOptions.Left; Padding "20px"]] [Delete.delete [ Delete.Size IsMedium; Delete.OnClick(fun _ -> SetGraphVisibility false |> dispatch) ] [ ]]
+            ]
         
         |TimeSim ->
             //let conns = BusWire.extractConnections model.Sheet.Wire
@@ -99,13 +104,14 @@ let viewGraph (model:Model) dispatch =
             //let outputNode = model.PopupDialogData.TimeOutput |> Option.defaultValue "1" |> int
             let t,ytr,yss = extractTimeSimResults model.Sheet.TimeSim
             match t,ytr,yss with
-            |[],[],[] -> div [] []
+            |[],[],[] -> [div [] []]
             |_ ->
                 let y = [0.;0.] @ List.map2 (fun x y -> x+y) ytr yss
                 let t_y = [-t[(List.length t/5)|> int]]@[0.0]@t
                 let vs = comps |> List.find (fun c->match c.Type with |VoltageSource _ -> true |_ -> false)
                 let x = [0.;0.] @ List.map (Simulation.findInputAtTime (Some vs)) t
-                div [Style [Width "90%"; Float FloatOptions.Left]] [
+                [
+                    div [Style [Width "80%"; Float FloatOptions.Left]] [
                             Plotly.plot [
                                 plot.traces [
                                     traces.scatter [
@@ -158,6 +164,22 @@ let viewGraph (model:Model) dispatch =
                             ]
                             ]
                             ]
+                    div [Style [Width "20%"; Float FloatOptions.Left; Padding "20px"]] 
+                        [   
+                            div [Style [MarginLeft "auto"; MarginRight "0"; Float FloatOptions.Right]] [ 
+                                Delete.delete  [Delete.Size IsMedium; Delete.OnClick(fun _ -> SetGraphVisibility false |> dispatch) ] [ ]
+                            ]
+                            Heading.h5 [] [str "Transient Parameters"]
+                            Table.table [] [
+                                tr [] [
+                                    td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str "tau"]
+                                    td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str "alpha"]
+                                ]
+                            
+                            ]
+                        ]//[Button.button [Button.OnClick(fun _ -> SetGraphVisibility false |> dispatch)] [str "X"]]
+                
+                ]
         |_ -> 
             SetGraphVisibility false |> dispatch
-            div [] []
+            [div [] []]

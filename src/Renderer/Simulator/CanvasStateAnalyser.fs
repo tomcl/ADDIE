@@ -15,6 +15,8 @@ let findComponentsBetweenNodes (node1:int, node2:int) (nodeToCompsList:(Componen
     |> List.filter (fun (c1,no) -> (List.exists (fun (c2:Component,no) -> c1.Id = c2.Id) comps2))
 
 let findNodesOfComp (nodeToCompsList:(Component*int option) list list) compId =
+    let isOpamp = nodeToCompsList |> List.exists (List.exists (fun (c:Component,_)->c.Id = compId && c.Type = Opamp))
+
     let pair =
         nodeToCompsList
         |> List.mapi (fun i localNode -> 
@@ -28,6 +30,7 @@ let findNodesOfComp (nodeToCompsList:(Component*int option) list list) compId =
 
     match List.length pair with
     |2 when pair[0] <> pair[1] -> Some (pair[0],pair[1])
+    |3 when isOpamp -> Some (pair[0],pair[1])  //only used for short circuit check in CanvasStateAnalyzer
     |_ -> None
 
 let findConnectionsOnNode (nodeToCompsList:(Component*int option) list list) (index:int) (conns:Connection list) =
@@ -45,6 +48,11 @@ let findConnectionsOnNode (nodeToCompsList:(Component*int option) list list) (in
             |Some portNumber -> c.Id=conn.Target.HostId && c.IOPorts[portNumber].Id=conn.Target.Id
             |_ -> c.Id=conn.Target.HostId) nodeComps 
     )
+
+
+let findLabelFromId comps id =
+    let c = comps |> List.find (fun (c:Component)->c.Id=id)
+    c.Label
 
 
 let findNodeLocation (connsOnNode: Connection list) =
@@ -191,10 +199,6 @@ let checkCanvasStateForErrors (comps,conns) timeSubTab =
     let nodeLst = createNodetoCompsList (comps,conns)
     let allCompsOfNodeLst = nodeLst |> List.collect (id) |> List.distinctBy (fun (c,pn) -> c.Id)
 
-    let findLabelFromId id =
-        let c = comps |> List.find (fun c->c.Id=id)
-        c.Label
-
     let extractVS comps =
         comps 
         |> List.filter (fun c -> 
@@ -306,7 +310,7 @@ let checkCanvasStateForErrors (comps,conns) timeSubTab =
                 || (c1.Source.Id = c2.Target.Id && c1.Target.Id = c2.Source.Id))
                 && c1.Id <> c2.Id then
                     [{
-                    Msg = sprintf "Duplicate connection between %s and %s" (findLabelFromId c1.Source.HostId) (findLabelFromId c1.Target.HostId) 
+                    Msg = sprintf "Duplicate connection between %s and %s" (findLabelFromId comps c1.Source.HostId) (findLabelFromId comps c1.Target.HostId) 
                     ComponentsAffected = [] 
                     ConnectionsAffected = [ConnectionId c1.Id; ConnectionId c2.Id]
                     }]  
@@ -325,7 +329,7 @@ let checkCanvasStateForErrors (comps,conns) timeSubTab =
                 |Opamp -> []
                 |_ ->
                     [{
-                    Msg = sprintf "Loop connection on %s" (findLabelFromId conn.Source.HostId) 
+                    Msg = sprintf "Loop connection on %s" (findLabelFromId comps conn.Source.HostId) 
                     ComponentsAffected = [] 
                     ConnectionsAffected = [ConnectionId conn.Id]
                     }]    
@@ -342,7 +346,7 @@ let checkCanvasStateForErrors (comps,conns) timeSubTab =
                 |Some _ -> []
                 |None ->
                     [{
-                    Msg = sprintf "Short circuit around %s. Cannot identify two nodes connected to the component." (findLabelFromId comp.Id) 
+                    Msg = sprintf "Short circuit around %s. Cannot identify two nodes connected to the component." (comp.Label) 
                     ComponentsAffected = [ComponentId comp.Id] 
                     ConnectionsAffected = []
                     }] 
