@@ -831,7 +831,7 @@ let transientAnalysis (comps,conns) inputSource inputNode outputNode =
 
         let alpha = HFGain * findInputAtTime vs 0. - findInputAtTime (Some yssAsVS) 0.
     
-        let dts = if f=0. then [0.0..(tau/10.)..tau*10.] else [0.0..(1./(100.*f))..5./f]
+        let dts = if f=0. then [0.0..(tau/20.)..tau*10.] else [0.0..(1./(40.*f))..5./f]
         dts
         |> List.map (fun t->
             let y_tr = alpha*exp(-t/tau)
