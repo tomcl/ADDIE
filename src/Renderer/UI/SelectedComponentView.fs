@@ -302,6 +302,7 @@ let private makeSliderField model (comp:Component) text dispatch =
             Slider.Max max
             Slider.Step step
             ]
+        div [] [str "Use the slider to change the component's value and see how it affects the circuit"]
     
     ]
 

@@ -69,7 +69,7 @@ let init() = {
     CurrentSelected = [],[]
     SelectedComponent = None
     LastUsedDialogWidth = 1
-    RightPaneTabVisible = Catalogue
+    RightPaneTabVisible = Properties
     SimSubTabVisible = DCsim
     CurrentProj = None
     Hilighted = ([], []), []
@@ -137,11 +137,11 @@ let runSimulation (model:Model) dispatch =
                         CircuitHasNoErrors |> dispatch
                         SimulationUpdated |> dispatch
                         let res,componentCurrents,nodeLst,dm = Simulation.modifiedNodalAnalysisDC canvasState model.PreviousDiodeModes
-                        let equations = getDCEquations model.Sheet.DCSim (fst CS)
+                        //let equations = getDCEquations model.Sheet.DCSim (fst CS)
                         UpdateVoltages (Array.toList res) |> dispatch
                         UpdateCurrents componentCurrents |> dispatch
                         UpdateDiodeModes dm |> dispatch
-                        UpdateDCSim {MNA=res;ComponentCurrents=componentCurrents;NodeList=nodeLst;Equations=equations} |> dispatch
+                        UpdateDCSim {MNA=res;ComponentCurrents=componentCurrents;NodeList=nodeLst;Equations=[]} |> dispatch
                         
                         match res with
                         |[||] -> 
@@ -233,6 +233,8 @@ let createACSimSubTab model comps dispatch =
         [ 
             startStopSimDiv model dispatch
 
+            div [Hidden (model.Sheet.SimulationRunning)] [str "AC Simulation explores how the circuit behaves over a wide range of frequencies. The plots produced by the AC Simulation represent the magnitude and the phase of the ratio outputNode/inputSource"]
+            
             div [Hidden (not model.Sheet.SimulationRunning)] [
             Heading.h5 [] [str "Setup AC Simulation"]
             div [Style [Width "50%"; Float FloatOptions.Left]] [
@@ -303,11 +305,7 @@ let createTimeSimSubTab model comps dispatch =
                 true
         |_ -> true
 
-
-    let magButtonText = if model.SimulationData.ACMagInDB then "dB" else "Normal"
-    let freqButtonText = if model.SimulationData.ACFreqInHz then "Hz" else "rads/s"
-    let startStopState,startStopStr,startStopMsg = if model.Sheet.SimulationRunning then IsDanger,"Stop",ForceStopSim else if model.Sheet.CanRunSimulation then IsPrimary,"Start",SafeStartSim else IsWarning,"Restart"+CommonTypes.restartSymbol,SafeStartSim
-        
+    
     div [Style [Margin "20px"]] 
         [ 
             startStopSimDiv model dispatch
@@ -636,10 +634,6 @@ let displayView model dispatch =
                 viewRightTabs canvasState model dispatch ] 
          
         div [HTMLAttr.Id "BottomSection"; bottomSectionStyle model; Hidden (not model.showGraphArea)]
-            [ 
-                Graph.viewGraph model dispatch  
-                div [Style [Width "10%"; Float FloatOptions.Left; Padding "20px"]] [Delete.delete [ Delete.Size IsMedium; Delete.OnClick(fun _ -> SetGraphVisibility false |> dispatch) ] [ ]]//[Button.button [Button.OnClick(fun _ -> SetGraphVisibility false |> dispatch)] [str "X"]]
-                
-            ]
+                (Graph.viewGraph model dispatch)  
             ]
 
