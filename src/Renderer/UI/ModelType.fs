@@ -61,6 +61,7 @@ type SimData = {
     ACFreqInHz: bool
     TimeInput: string option
     TimeOutput: string option
+    TheveninComp: string option
 }
 
 let acSource_ = Lens.create (fun a -> a.ACSource) (fun s a -> {a with ACSource= s})
@@ -69,6 +70,7 @@ let timeSource_ = Lens.create (fun a -> a.TimeInput) (fun s a -> {a with TimeInp
 let timeOutput_ = Lens.create (fun a -> a.TimeOutput) (fun s a -> {a with TimeOutput= s})
 let acMag_ = Lens.create (fun a -> a.ACMagInDB) (fun s a -> {a with ACMagInDB = s})
 let acFreq_ = Lens.create (fun a -> a.ACFreqInHz) (fun s a -> {a with ACFreqInHz= s})
+let theveninComp_ = Lens.create (fun a -> a.TheveninComp) (fun s a -> {a with TheveninComp= s})
 
 /// Possible fields that may (or may not) be used in a dialog popup.
 type PopupDialogData = {
@@ -165,6 +167,7 @@ type Msg =
     | SetSimulationACOut of string option
     | SetSimulationTimeSource of string option
     | SetSimulationTimeOut of string option
+    | SetSimulationTheveninComp of string option
     | SetSimulationACInDB
     | SetSimulationACInHz
     | SetPopupDialogInt of int option

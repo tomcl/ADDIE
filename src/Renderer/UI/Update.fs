@@ -311,6 +311,8 @@ let update (msg : Msg) oldModel =
         set (simulationData_ >-> timeSource_) tp model, Cmd.none
     | SetSimulationTimeOut tp ->
         set (simulationData_ >-> timeOutput_) tp model, Cmd.none
+    | SetSimulationTheveninComp c ->
+        set (simulationData_ >-> timeOutput_) c model, Cmd.none
     | SetPopupDialogBadLabel isBad ->
         set (popupDialogData_ >-> badLabel_) isBad model, Cmd.none
     | SetPopupDialogInt int ->

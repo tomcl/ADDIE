@@ -637,7 +637,19 @@ let replaceCLWithCS csValue (comps,conns) =
             |_ -> c    
         )
     comps',conns
-    
+
+/// need to make sure that only 1 capacitor/inductor is present in the circuit    
+let transformForHFGain (comps,conns) =
+    let comps' =
+        comps
+        |> List.map (fun c->
+            match c.Type with
+            |Inductor _ -> {c with Type = CurrentSource (0.,"0")}
+            |Capacitor _ -> {c with Type = VoltageSource (DC 0.)}
+            |_ -> c    
+        )
+    (comps',conns)
+
 
 let replaceCLWithWire (comps,conns) =
 
@@ -779,7 +791,7 @@ let transientAnalysis (comps,conns) inputSource inputNode outputNode =
         else 0.
     
     let findHFGain nodeX nodeY =
-        let comps',conns' = (comps',conns') |> replaceCLWithTinyR //replaceCLWithWire
+        let comps',conns' = (comps',conns') |> transformForHFGain //replaceCLWithWire
         let result,_,_,_ = modifiedNodalAnalysisDC (comps',conns') []
         
         if result[nodeX-1] <> 0 //DC source or Sine with DC offset

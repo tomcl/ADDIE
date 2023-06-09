@@ -108,6 +108,7 @@ let init() = {
         ACFreqInHz=true
         TimeInput=None
         TimeOutput=None
+        TheveninComp=None
     }
     PrevCanvasStateSizes = (0,0)
     PreviousDiodeModes = []
@@ -233,8 +234,6 @@ let createACSimSubTab model comps dispatch =
         [ 
             startStopSimDiv model dispatch
 
-            div [Hidden (model.Sheet.SimulationRunning)] [str "AC Simulation explores how the circuit behaves over a wide range of frequencies. The plots produced by the AC Simulation represent the magnitude and the phase of the ratio outputNode/inputSource"]
-            
             div [Hidden (not model.Sheet.SimulationRunning)] [
             Heading.h5 [] [str "Setup AC Simulation"]
             div [Style [Width "50%"; Float FloatOptions.Left]] [
@@ -279,6 +278,9 @@ let createACSimSubTab model comps dispatch =
                 [str "Show"]
 
             ]
+            br []
+            div [] [str "AC Simulation explores how the circuit behaves over a wide range of frequencies. The plots produced by the AC Simulation represent the magnitude and the phase of the ratio (output_node/input_source). During simulation, all other sources are set to 0."]
+            
         ]
 
 let createTimeSimSubTab model comps dispatch =
@@ -335,6 +337,9 @@ let createTimeSimSubTab model comps dispatch =
                             Button.Disabled isDisabled] 
                     [str "Show"]
             ]
+            br []
+            div [] [str "Time Simulation explores how the circuit behaves over time using 200 timesteps. The plots produced represent the input and output voltages, along with the two signals (steady-state and transient) that form the output voltage. Time simulation currently supports a maximum of one Voltage Source and one Capacitor or Inductor."]
+            
 
         ]
 
@@ -375,13 +380,41 @@ let viewSimSubTab canvasState model dispatch =
                     br []
                     Heading.h5 [] [str "DC Results"]
                     div [] [
-                    getDCTable model.Sheet.DCSim (model.Sheet.SimulationRunning && model.Sheet.CanRunSimulation) canvasState 
+
+                    Menu.menu [Props [Class "py-1";]]  [
+                        details [Open true;OnClick (fun _ -> dispatch RunSim)] [
+                            summary [menuLabelStyle] [ str "Table Results" ]
+                            Menu.list [] [getDCTable model.Sheet.DCSim (model.Sheet.SimulationRunning && model.Sheet.CanRunSimulation) canvasState ]
+                        ]
+                    ]
                 
                     Menu.menu [Props [Class "py-1";]]  [
-                    // TODO
                         details [Open false;OnClick (fun _ -> dispatch RunSim)] [
                             summary [menuLabelStyle] [ str "Equations" ]
                             Menu.list [] [(getDCEquationsTable model.Sheet.DCSim.Equations)]
+                        ]
+                    ]
+
+                    Menu.menu [Props [Class "py-1";]]  [
+                        details [Open false;] [
+                            summary [menuLabelStyle] [ str "Thevenin/Norton" ]
+                            Menu.list [] [
+                                str "Select a component from the dropdown below to view the thevenin or norton parameters representing the equivalent circuit seen by the component"
+                                br []
+                                Select.select []
+                                    [ 
+                                    let compOptions = 
+                                        comps' 
+                                        |> List.filter (fun c->match c.Type with |Opamp |Ground -> false |_ -> true)    
+                                        |> List.collect (fun c->[option [Value (c.Id)] [str (c.Label)]])
+
+                                    select 
+                                        [(OnChange(fun option -> SetSimulationTheveninComp (Some option.Value) |> dispatch))]
+                                        ([option [Value ("sel")] [str ("Select")]] @ compOptions)
+                                        ]
+                                Button.button [Button.Color IsPrimary;Button.OnClick(fun _ -> ())] [str "Find"]    
+                            
+                            ]
                         ]
                     ]
                     
