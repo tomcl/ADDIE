@@ -182,15 +182,15 @@ let viewGraph (model:Model) dispatch =
                                 ]
                                 tr [] [
                                     td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str "Transient Amplitude"]
-                                    td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str (string alpha)]
+                                    td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str (string <| Math.Round (alpha,4))]
                                 ]
                                 tr [] [
                                         td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str "HFGain"]
-                                        td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str (string hf)]
+                                        td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str (string <| Math.Round (hf,4))]
                                 ]
                                 tr [] [
                                         td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str "DCGain"]
-                                        td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str (string dc)]
+                                        td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str (string <| Math.Round (dc,4))]
                                 ]
                             
                             ]

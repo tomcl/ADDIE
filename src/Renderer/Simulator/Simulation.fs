@@ -774,8 +774,9 @@ let transientAnalysis (comps,conns) inputSource inputNode outputNode =
 
     let findDCGain nodeX nodeY =
         let result,_,_,_ = modifiedNodalAnalysisDC (comps',conns') []
-        result[nodeY-1]/result[nodeX-1]
-    
+        if result[nodeX-1] <> 0
+            then result[nodeY-1]/result[nodeX-1]
+        else 0.
     
     let findHFGain nodeX nodeY =
         let comps',conns' = (comps',conns') |> replaceCLWithTinyR //replaceCLWithWire
@@ -791,7 +792,7 @@ let transientAnalysis (comps,conns) inputSource inputNode outputNode =
         // find DC/HF gain -> PENDING for inductor
         // take input signal, find A and plot results
         let vs = comps' |> List.tryFind (fun c->match c.Type with |VoltageSource _ -> true |_->false)
-
+        let dcGain = findDCGain inputNode outputNode
         let yssAsVS =
             match vs with
             |Some comp ->
@@ -818,7 +819,7 @@ let transientAnalysis (comps,conns) inputSource inputNode outputNode =
                         |> Array.mapi (fun i v -> (calcVectorBElement (i+1) comps'' nodeLst))
                     let res = acAnalysis matrix nodeLst comps'' vecB (2.*System.Math.PI*f) outputNode |> complexCToP
                     //printfn "res = %A" res
-                    {comp with Type = VoltageSource (Sine (a*res.Mag,o,f,p+res.Phase))}
+                    {comp with Type = VoltageSource (Sine (a*res.Mag,o*dcGain,f,p+res.Phase))}
 
 
                 |_ -> failwithf "Impossible"
@@ -841,7 +842,7 @@ let transientAnalysis (comps,conns) inputSource inputNode outputNode =
                 (y_tr,y_ss)
             )
             |> List.unzip
-        {TimeSteps=dts;Transient=ytr;SteadyState=yss;Tau=tau;Alpha=alpha;HFGain=HFGain;DCGain=0}
+        {TimeSteps=dts;Transient=ytr;SteadyState=yss;Tau=tau;Alpha=alpha;HFGain=HFGain;DCGain=dcGain}
 
 
     |_ -> DCTimeAnalysis (comps',conns') inputNode outputNode
