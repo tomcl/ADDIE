@@ -12,10 +12,12 @@ type MathsJS =
     //abstract multiply : obj*obj -> ResizeArray<float>
     abstract multiply : obj*obj -> ResizeArray<obj>
     abstract divide : obj*obj -> obj
-    abstract det : obj -> float
+    abstract det : obj -> obj
+    abstract isZero : obj -> bool
     abstract re: obj -> float
     abstract im: obj -> float
     abstract rationalize: string -> string
+    abstract numeric : obj -> string
     //abstract atan: float -> float
 
 [<ImportAll("mathjs")>]
@@ -72,20 +74,25 @@ let safeSolveMatrixVec flattenedMatrix vec =
         |> Array.map (fun c -> {c with Im = 0.})
         |> flattenedToMatrix
     let det = Maths.det(matrix)
-    //printfn "det is %f" det 
-    if string det = "0" then
-        printfn "matrix %A" matrix
+    printfn "det %A" (det)
+    printfn "matrix %A" (matrix)
+    if Maths.isZero det then
         None
-        //failwithf "det is 0, cannot invert"
     else
-        let dim = flattenedMatrix |> Array.length |> float |> sqrt |> int
-        let invM = Maths.inv(matrix)
-        //printfn "inv %A" invM
+    let dim = flattenedMatrix |> Array.length |> float |> sqrt |> int
+    let invM = Maths.inv(matrix)
+    match invM = null with
+    |true -> 
+        None
+    |false ->
+    //printfn "inv %A" invM
         match dim = Array.length vec with
         |false -> failwithf "Cannot perform multiplication -> sizes do not match"
         |true -> 
             let res = Maths.multiply (invM,ResizeArray(vec))
             res.ToArray() |> Array.map (Maths.re) |> Some
+
+
 
 
 let safeInvComplexMatrix (flattenedMatrix:ComplexC array) =

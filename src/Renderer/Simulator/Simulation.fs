@@ -88,6 +88,9 @@ let findInputAtTime vs t =
                 else v2
             |_ -> failwithf "Impossible"
 
+
+/// Converts the input Voltage Source into a (DC 1) source so that the ratio 
+/// (Output_Node/Input_Source) is correct. Other sources are converted to (DC 0)
 let convertACInputToDC1VS (comps,conns:Connection list) inputSource =
     let inputComp = findCompFromId comps inputSource
     let updatedComp = {inputComp with Type = VoltageSource (DC 1)}
@@ -95,9 +98,12 @@ let convertACInputToDC1VS (comps,conns:Connection list) inputSource =
     |> List.map (fun c->
         if c.Id = inputSource
             then 
-                //printfn "successful conversion "
                 updatedComp
-        else c),conns
+        else 
+            match c.Type with
+            |VoltageSource _ -> {c with Type = VoltageSource (DC 0)}
+            |_ -> c
+        ),conns
 
 
 /// Calculates the elements of the vector B of MNA
@@ -145,9 +151,9 @@ let calcVectorBElement row comps (nodeToCompsList:(Component*int option) list li
 let calcMatrixElementValue row col (nodeToCompsList:(Component*int option) list list) comps omega vecB = 
     let findMatrixGCompValue (comp,no) omega =
         match comp.Type with
-        |Resistor (v,_) -> {Re= (1./v); Im=0.}
-        |Inductor (v,_) -> {Re = 0.; Im= -(1./(v*omega))}
-        |Capacitor (v,_) -> {Re = 0.; Im= (v*omega)}
+        |Resistor (v,_) -> {Re= (1./v)*1.; Im=0.}
+        |Inductor (v,_) -> {Re = 0.; Im= -(1./(v*omega)*1.)}
+        |Capacitor (v,_) -> {Re = 0.; Im= (v*omega)*1.}
         |CurrentSource _ |VoltageSource _ |Opamp |Diode -> {Re = 0.0; Im=0.0}
         |_ -> failwithf "Not Implemented yet"
     
@@ -345,6 +351,7 @@ let findComponentCurrents results nodesNo nodeLst comps conns =
 /// Returns: (i) result of MNA (node Voltages, vs/opamp currents)
 /// (ii) component Currents, (iii) nodeToCompsList
 let rec modifiedNodalAnalysisDC (comps,conns) cachedDiodeModes =
+    let t1 = TimeHelpers.getTimeMs ()
     
     // transform canvas state for DC Analysis  
     let comps',conns',localDiodeModes= 
@@ -394,6 +401,8 @@ let rec modifiedNodalAnalysisDC (comps,conns) cachedDiodeModes =
     |Some res -> 
         let result = res |> Array.map (fun x->System.Math.Round (x,roundingDecimalPoints))
         let componentCurrents = findComponentCurrents result (List.length nodeLst-1) nodeLst comps' conns'
+        let time = TimeHelpers.getInterval t1
+        printfn "MNA time = %f ms" time 
         result, componentCurrents, nodeLst, localDiodeModes 
 
     |None -> Array.empty, Map.empty, nodeLst, []
@@ -585,13 +594,14 @@ let frequencyResponse (comps,conns) inputSource outputNode  =
             if c.Type = Diode 
                 then {c with Type = (VoltageSource (DC diodeConstant))} 
             else c),conns
-         
+     
+    let t1 = TimeHelpers.getTimeMs () 
     // transform canvas state for DC Analysis  
     let comps',conns' = 
         (comps,conns)
         |> combineGrounds
-        |> convertDiodeToConductingMode
         |> (fun CS -> convertACInputToDC1VS CS inputSource)
+        |> convertDiodeToConductingMode
 
     let nodeLst = createNodetoCompsList (comps',conns')
 
@@ -619,6 +629,10 @@ let frequencyResponse (comps,conns) inputSource outputNode  =
         acAnalysis matrix nodeLst comps' vecB wmega outputNode
     )
     |> List.map complexCToP
+    |> (fun x -> 
+        let time = TimeHelpers.getInterval t1
+        printfn "AC time = %f ms" time 
+        x)
     
 
 
@@ -716,7 +730,7 @@ let replaceCLWithTinyR (comps,conns) =
         
 
 let DCTimeAnalysis (comps,conns) inputNode outputNode =
-
+    let t1 = TimeHelpers.getTimeMs ()
     let vsIndex = comps |> List.tryFindIndex (fun c->match c.Type with |VoltageSource _ -> true |_ -> false)
     match vsIndex with
     |Some i ->
@@ -734,6 +748,8 @@ let DCTimeAnalysis (comps,conns) inputNode outputNode =
                 prevDiodeModes <- dm
                 res[outputNode-1]
             )
+        let time = TimeHelpers.getInterval t1
+        printfn "TimeSim time = %f ms" time 
         {TimeSteps=dts;Transient=[];SteadyState=y;Tau=0;Alpha=0;HFGain=0;DCGain=0}
         
     |_ -> failwithf "No voltage Source present in the circuit"
@@ -744,6 +760,7 @@ let DCTimeAnalysis (comps,conns) inputNode outputNode =
 let transientAnalysis (comps,conns) inputSource inputNode outputNode =
     
     printfn "inputSource: %s" inputSource
+    let t1 = TimeHelpers.getTimeMs ()
     let comps',conns' = combineGrounds (comps,conns)
     
     let findTheveninR node1 node2 =
@@ -854,6 +871,8 @@ let transientAnalysis (comps,conns) inputSource inputNode outputNode =
                 (y_tr,y_ss)
             )
             |> List.unzip
+        let time = TimeHelpers.getInterval t1
+        printfn "TimeSim time = %f ms" time 
         {TimeSteps=dts;Transient=ytr;SteadyState=yss;Tau=tau;Alpha=alpha;HFGain=HFGain;DCGain=dcGain}
 
 
