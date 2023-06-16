@@ -69,7 +69,7 @@ let init() = {
     CurrentSelected = [],[]
     SelectedComponent = None
     LastUsedDialogWidth = 1
-    RightPaneTabVisible = Properties
+    RightPaneTabVisible = Simulation
     SimSubTabVisible = DCsim
     CurrentProj = None
     Hilighted = ([], []), []
@@ -112,6 +112,7 @@ let init() = {
     }
     PrevCanvasStateSizes = (0,0)
     PreviousDiodeModes = []
+    Tests = []
 }
 
 
@@ -279,7 +280,7 @@ let createACSimSubTab model comps dispatch =
 
             ]
             br []
-            div [] [str "AC Simulation explores how the circuit behaves over a wide range of frequencies. The plots produced by the AC Simulation represent the magnitude and the phase of the ratio (output_node/input_source). During simulation, all other sources are set to 0."]
+            div [] [str "AC Simulation explores how the circuit behaves over a wide range of frequencies. The plots produced by the AC Simulation represent the magnitude and the phase of the ratio (output_node/input_source). During simulation, all other sources are set to 0 and diodes are assumed to be in conducting mode."]
             
         ]
 
@@ -472,6 +473,18 @@ let private  viewRightTab canvasState model dispatch =
                 subtabs
                 viewSimSubTab canvasState model dispatch
             ]
+    | Tests ->
+        let temp = [true;true;true;true;true;true;true;true;true;true;]
+        let tdTests = temp |> List.mapi (fun i b -> tr [] [td [] [str (sprintf "Test %i" (i+1))]; td [] [str (if b then "Pass" else "Fail")]])
+        div [ Style [Width "90%"; MarginLeft "5%"; MarginTop "15px" ]] 
+            [
+                Heading.h4 [] [str "Tests"]
+                Button.button [Button.Color IsPrimary; Button.OnClick(fun _->dispatch RunTests)] [str "Run Tests"]
+                br []
+                br []
+                Table.table [] tdTests
+                
+            ]
     
 /// determine whether moving the mouse drags the bar or not
 let inline setDragMode (modeIsOn:bool) (model:Model) dispatch =
@@ -525,6 +538,15 @@ let viewRightTabs canvasState model dispatch =
     let scrollType = 
             OverflowOptions.Auto
 
+    let testTab = 
+        if JSHelpers.debugLevel <> 0 then
+            Tabs.tab // simulation tab to run tests
+                [ Tabs.Tab.IsActive (model.RightPaneTabVisible = Tests)]
+                [ a [  OnClick (fun _ ->    
+                    dispatch <| ChangeRightTab Tests) ] [str "Tests"] ]
+        else
+            null
+            
     
     div [HTMLAttr.Id "RightSelection";Style [ Height "100%"; OverflowY OverflowOptions.Auto]] [
         Tabs.tabs [ 
@@ -549,6 +571,7 @@ let viewRightTabs canvasState model dispatch =
                 [ Tabs.Tab.IsActive (model.RightPaneTabVisible = Simulation) ]
                 [ a [  OnClick (fun _ -> 
                     dispatch <| ChangeRightTab Simulation ) ] [str "Simulations"] ]
+            testTab
         ]
         div [HTMLAttr.Id "TabBody"; belowHeaderStyle "36px"; Style [OverflowY scrollType]] [viewRightTab canvasState model dispatch]
 

@@ -335,9 +335,6 @@ let private makeValueField model (comp:Component) text dispatch =
 
 let private makeDescription (comp:Component) model dispatch =
     match comp.Type with
-    | IO 
-    | Custom _
-    | IOLabel -> div [] []
     | Resistor _ -> div [] [str "Ideal Resistor"]
     | Capacitor _ -> div [] [str "Ideal Capacitor"]
     | Inductor _ -> div [] [str "Ideal Inductor"]
@@ -347,6 +344,7 @@ let private makeDescription (comp:Component) model dispatch =
     | Diode -> div [] [str "Linearized Diode"]
     | Opamp -> div [] [str "Ideal Operational Amplifier"]
     | Ground -> div [] [str "Ground"]
+    |_ -> div [] []
         
 
 let private makeExtraInfo model (comp:Component) text dispatch : ReactElement =

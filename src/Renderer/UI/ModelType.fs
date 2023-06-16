@@ -43,16 +43,6 @@ type ComponentGroup =
 
 
 
-type RightTab =
-    | Properties
-    | Catalogue
-    | Simulation
-
-type SimSubTab =
-    | DCsim
-    | ACsim
-    | TimeSim
-
 
 type SimData = {
     ACSource: string option
@@ -221,6 +211,7 @@ type Msg =
     | ClearSimulationResults
     | UpdateCanvasStateSizes of int*int
     | UpdateDiodeModes of bool list
+    | RunTests
 
 
 //================================//
@@ -318,6 +309,7 @@ type Model = {
     SimulationData: SimData
     PrevCanvasStateSizes: int*int
     PreviousDiodeModes: bool list
+    Tests: bool list
 } 
 
     
