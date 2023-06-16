@@ -247,11 +247,8 @@ let update (msg : Msg) oldModel =
         let inferMsg = JSDiagramMsg <| InferWidths()
         let editCmds = [inferMsg; ClosePropertiesNotification] |> List.map Cmd.ofMsg
         firstTip <- true
-        { model with RightPaneTabVisible = newTab }, 
-        match newTab with 
-        | Properties -> Cmd.batch <| editCmds
-        | Catalogue -> Cmd.batch  <| editCmds
-        | Simulation -> Cmd.batch <| editCmds
+        { model with RightPaneTabVisible = newTab }, Cmd.batch <| editCmds
+
         //| TruthTable -> Cmd.batch <| editCmds
     | ChangeSimSubTab subTab ->
         let inferMsg = JSDiagramMsg <| InferWidths()
@@ -417,6 +414,9 @@ let update (msg : Msg) oldModel =
         {model with Sheet = {model.Sheet with CanRunSimulation=false}}, Cmd.none
     | CircuitHasNoErrors ->
         {model with Sheet = {model.Sheet with CanRunSimulation=true}}, Cmd.none
+    | RunTests ->
+        let tests = Test.runTestCases ()
+        {model with Tests = tests}, Cmd.none
     | UpdateCanvasStateSizes (compsNo,connsNo) ->
         {model with PrevCanvasStateSizes = (compsNo,connsNo)}, Cmd.ofMsg RunSim
     | UpdateDiodeModes newModes ->

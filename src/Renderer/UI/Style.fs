@@ -1,6 +1,7 @@
 module DiagramStyle
 
 open ModelType
+open CommonTypes
 open Fable.React.Props
 open Browser.Dom
 
@@ -25,10 +26,10 @@ let getHeaderHeight =
     
 let rightSectionWidth (model:Model) =
     match model.RightPaneTabVisible with
-    | RightTab.Properties | RightTab.Catalogue  -> rightSectionWidthS
     | RightTab.Simulation -> 
         match model.SimSubTabVisible with
         | SimSubTab.DCsim | SimSubTab.ACsim | SimSubTab.TimeSim -> rightSectionWidthS
+    |_  -> rightSectionWidthS
 
 let leftSectionWidth model = Style [
     Width (sprintf "calc(100%s - %s - 10px)" "%" (rightSectionWidth model))

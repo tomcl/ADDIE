@@ -547,3 +547,14 @@ module CommonTypes
         |Nodes
         |Voltages
         |Neither
+
+    type RightTab =
+    | Properties
+    | Catalogue
+    | Simulation
+    | Tests
+
+    type SimSubTab =
+        | DCsim
+        | ACsim
+        | TimeSim
