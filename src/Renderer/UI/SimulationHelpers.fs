@@ -54,11 +54,15 @@ let getDCTable (simDC:DCSimulationResults) simRunning canvasState  =
             match lst with
             |[] -> [div [] []]
             |_ -> 
-                lst
-                |> List.removeManyAt (nodesNo) (Array.length simDC.MNA-nodesNo)
-                |> List.indexed
-                |> List.collect (fun (i,v) -> [getDCTableLine i (floatValueToText v)]))
-        
+                if nodesNo = List.length lst then
+                    lst
+                    |> List.indexed
+                    |> List.collect (fun (i,v) -> [getDCTableLine i (floatValueToText v)])
+                else
+                    lst
+                    |> List.removeManyAt (nodesNo) (Array.length simDC.MNA-nodesNo)
+                    |> List.indexed
+                    |> List.collect (fun (i,v) -> [getDCTableLine i (floatValueToText v)]))
     let currentLines = 
         simDC.ComponentCurrents
         |> Map.toList
