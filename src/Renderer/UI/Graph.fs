@@ -12,6 +12,12 @@ open CommonTypes
 open Simulation
 open Fulma
 
+let formTransientParameters notTrans (tau:float,alpha:float,hf:float,dc:float) =
+    if notTrans then
+        "N/A","N/A","N/A","N/A"
+    else
+        (string <| Math.Round (tau,4)), (string <| Math.Round (alpha,4)), (string <| Math.Round (hf,4)),(string <| Math.Round (dc,4))
+
 
 let viewGraph (model:Model) dispatch =
     match model.CurrentProj,model.showGraphArea with
@@ -105,7 +111,9 @@ let viewGraph (model:Model) dispatch =
             //let inputNode = "2" |> int // model.PopupDialogData.TimeInput |> Option.defaultValue "1" |> int
             //let outputNode = model.PopupDialogData.TimeOutput |> Option.defaultValue "1" |> int
             let t,ytr,yss = extractTimeSimResults model.Sheet.TimeSim
-            let tau,alpha,hf,dc = extractTimeSimParameters model.Sheet.TimeSim
+            let tau,alpha,hf,dc = 
+                extractTimeSimParameters model.Sheet.TimeSim
+                |> formTransientParameters (ytr=[])
             match t,ytr,yss with
             |[],[],[] -> [div [] []]
             |_ ->
@@ -178,20 +186,19 @@ let viewGraph (model:Model) dispatch =
                             Table.table [] [
                                 tr [] [
                                     td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str "tau"]
-                                    td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str (string tau)]
+                                    td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str tau]
                                 ]
                                 tr [] [
                                     td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str "Transient Amplitude"]
-                                    td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str (string <| Math.Round (alpha,4))]
+                                    td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str alpha]
                                 ]
                                 tr [] [
                                         td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str "HF Gain"]
-                                        td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str (string <| Math.Round (hf,4))]
+                                        td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str hf]
                                 ]
                                 tr [] [
                                         td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str "DC Gain"]
-                                        td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str (string <| Math.Round (dc,4))]
-                                ]
+                                        td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str dc]                                ]
                             
                             ]
                         ]//[Button.button [Button.OnClick(fun _ -> SetGraphVisibility false |> dispatch)] [str "X"]]
