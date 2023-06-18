@@ -565,7 +565,7 @@ let mUpUpdate (model: Model) (mMsg: MouseT) : Model * Cmd<Msg> = // mMsg is curr
                         Cmd.ofMsg UpdateNodes]
     | ConnectingIO portId ->
         let cmd, undoList ,redoList =
-            if model.TargetPortId <> "" // If a target has been found, connect a wire
+            if model.TargetPortId <> "" && PortId model.TargetPortId <> portId // If a target has been found, and its not the same port, connect a wire
             then wireCmd (BusWireT.AddWire (portId, (PortId model.TargetPortId))),
                            appendUndoList model.UndoList newModel, []
             else Cmd.none , model.UndoList , model.RedoList
