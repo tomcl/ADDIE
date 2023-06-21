@@ -76,9 +76,9 @@ let safeSolveMatrixVec flattenedMatrix vec =
     let det = Maths.det(matrix)
     printfn "det %A" (det)
     printfn "matrix %A" (matrix)
-    if Maths.isZero det then
-        None
-    else
+    //if Maths.isZero det then
+    //    None
+    //else
     let dim = flattenedMatrix |> Array.length |> float |> sqrt |> int
     let invM = Maths.inv(matrix)
     match invM = null with

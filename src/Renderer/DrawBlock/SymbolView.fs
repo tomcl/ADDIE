@@ -217,7 +217,7 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
     let outlineColour, strokeWidth =
         match comp.Type with
         | IOLabel -> outlineColor colour, "4.0"
-        |Resistor _  -> "darkblue", "2.5"
+        |Resistor _  -> "black", "2.5"
         | _ -> "black", "1.0"
 
 

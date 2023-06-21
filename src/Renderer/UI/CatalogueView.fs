@@ -311,31 +311,35 @@ let viewCatalogue model dispatch =
             Menu.menu [Props [Class "py-1"; Style styles]]  [
                 // TODO
                     makeMenuGroup
-                        "Input / Output / Wire"
+                        "Ground"
                         [ 
-                          catTip1 "Ground"  (fun _ -> createCompStdLabel Ground model dispatch) "Ground"
-                          catTip1 "Output" (fun _ -> createIOPopup true "output" IO model dispatch) "Output connection from current sheet: one or more bits"
-                          catTip1 "Wire Label" (fun _ -> createIOPopup false "label" IOLabel model dispatch) "Labels with the same name connect \
-                                                                                                                         together wires or busses"]
+                          catTip1 "Ground"  (fun _ -> createCompStdLabel Ground model dispatch) "Ground"]
                     makeMenuGroup
-                        "Linear Items"
+                        "Voltage / Current Sources"
                         [ 
-                          catTip1 "Resistor"  (fun _ -> createRCLIPopup model (Resistor (0,"0")) dispatch) "Resistor: PENDING"
-                          catTip1 "Capacitor"  (fun _ -> createCompStdLabel (Capacitor (0,"0")) model dispatch) "Capacitor: PENDING"
-                          catTip1 "Inductor"  (fun _ -> createCompStdLabel (Inductor (0,"0")) model dispatch) "Inductor: PENDING"
-                          catTip1 "Operational Amplifier"  (fun _ -> createCompStdLabel Opamp model dispatch) "Opamp: PENDING"
-                          catTip1 "Current Source"  (fun _ -> createCompStdLabel (CurrentSource (0.,"0")) model dispatch) "Current Source: PENDING"
-                          catTip1 "Voltage Source"  (fun _ -> createVSPopup model (VoltageSource (DC 0)) dispatch) "Voltage Source: PENDING"
-                          catTip1 "Diode"  (fun _ -> createCompStdLabel Diode model dispatch) "Diode: PENDING"]
-                    makeMenuGroup
-                        "Non-Linear Items"
-                        [ catTip1 "Resistor"  (fun _ -> createRCLIPopup model (Resistor (0,"0")) dispatch) "Resistor: PENDING"]
+                          catTip1 "Voltage Source"  (fun _ -> createVSPopup model (VoltageSource (DC 0)) dispatch) "Voltage Source"
+                          catTip1 "Current Source"  (fun _ -> createRCLIPopup model (CurrentSource (0.,"0")) dispatch) "Current Source"]
 
-                    makeMenuGroupWithTip styles
-                        "This project"
-                        "Every design sheet is available for use in other sheets as a custom component: \
-                        it can be added any number of times, each instance replicating the sheet logic"
-                        (makeCustomList styles model dispatch)
+                    makeMenuGroup
+                        "Passive Elements"
+                        [ 
+                          catTip1 "Resistor"  (fun _ -> createRCLIPopup model (Resistor (0,"0")) dispatch) "Resistor"
+                          catTip1 "Capacitor"  (fun _ -> createRCLIPopup model (Capacitor (0,"0"))dispatch) "Capacitor"
+                          catTip1 "Inductor"  (fun _ -> createRCLIPopup model (Inductor (0,"0")) dispatch) "Inductor"]
+                    
+                    makeMenuGroup
+                        "Amplifier / Diode"
+                        [ 
+                          catTip1 "Operational Amplifier"  (fun _ -> createCompStdLabel Opamp model dispatch) "Operational Amplified"
+                          catTip1 "Linearized Diode"  (fun _ -> createCompStdLabel Diode model dispatch) "Diode: This is a linearized equivalent diode that assumes a 0.7 constant voltage drop on conducting mode"]
+                            
+                    
+                    
+                    //makeMenuGroupWithTip styles
+                    //    "This project"
+                    //    "Every design sheet is available for use in other sheets as a custom component: \
+                    //    it can be added any number of times, each instance replicating the sheet logic"
+                    //    (makeCustomList styles model dispatch)
 
                           
                 ]

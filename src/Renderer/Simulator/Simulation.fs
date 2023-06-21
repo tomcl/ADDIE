@@ -642,12 +642,12 @@ let findCompType compType =
     (fun (x:Component) -> match x.Type with |a when a=compType -> true |_ -> false)
 
 /// need to make sure that only 1 capacitor/inductor is present in the circuit
-let replaceCLWithCS csValue (comps,conns) =
+let replaceCLWithCS csValue compId (comps,conns) =
     let comps' =
         comps
-        |> List.map (fun c->
-            match c.Type with
-            |Capacitor _ |Inductor _ -> {c with Type = CurrentSource (csValue,"0")}
+        |> List.map (fun (c:Component)->
+            match c.Id with
+            |cid when cid=compId -> {c with Type = CurrentSource (csValue,"0")}
             |_ -> c    
         )
     comps',conns
@@ -755,23 +755,15 @@ let DCTimeAnalysis (comps,conns) inputNode outputNode =
     |_ -> failwithf "No voltage Source present in the circuit"
 
 
-
-
-let transientAnalysis (comps,conns) inputSource inputNode outputNode =
-    
-    printfn "inputSource: %s" inputSource
-    let t1 = TimeHelpers.getTimeMs ()
-    let comps',conns' = combineGrounds (comps,conns)
-    
-    let findTheveninR node1 node2 =
+let findTheveninParams (comps,conns) compId node1 node2 =
         let result1,_,_,_ =
-            (comps',conns')
-            |> replaceCLWithCS 1.
+            (comps,conns)
+            |> replaceCLWithCS 1. compId
             |> (fun cs -> modifiedNodalAnalysisDC cs [])
         
         let result2,_,_,_ =
-            (comps',conns')
-            |> replaceCLWithCS 2.
+            (comps,conns)
+            |> replaceCLWithCS 2. compId
             |> (fun cs -> modifiedNodalAnalysisDC cs [])
 
         let v1 =
@@ -784,7 +776,19 @@ let transientAnalysis (comps,conns) inputSource inputNode outputNode =
             else if node2=0 then result2[node1-1]
             else result1[node2-1] - result2[node1-1]
 
-        abs(v2-v1)
+        let rth = abs(v2-v1)
+        let vth = v1 - rth
+        let ino = vth/rth
+        {Resistance=rth;Voltage=vth;Current=ino}
+
+
+let transientAnalysis (comps,conns) inputSource inputNode outputNode =
+    
+    printfn "inputSource: %s" inputSource
+    let t1 = TimeHelpers.getTimeMs ()
+    let comps',conns' = combineGrounds (comps,conns)
+    
+    
 
     let findTau param =
         let CL = comps' |> List.tryFind (fun c-> match c.Type with |Capacitor _ |Inductor _ -> true |_ ->false)
@@ -794,10 +798,10 @@ let transientAnalysis (comps,conns) inputSource inputNode outputNode =
             let pair = findNodesOfComp (createNodetoCompsList (comps',conns')) cl.Id
             match pair with
             |Some (node1,node2) ->
-                let Rth = findTheveninR node1 node2
+                let thevParams = findTheveninParams (comps,conns) cl.Id  node1 node2
                 match cl.Type with
-                |Capacitor (c,_) -> Rth*c
-                |Inductor (l,_) -> l/Rth
+                |Capacitor (c,_) -> thevParams.Resistance*c
+                |Inductor (l,_) -> l/thevParams.Resistance
                 |_ -> failwithf "No Capacitor/Inductor present in the circuit"
             |None -> 0.
 

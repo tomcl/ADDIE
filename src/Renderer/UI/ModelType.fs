@@ -158,6 +158,7 @@ type Msg =
     | SetSimulationTimeSource of string option
     | SetSimulationTimeOut of string option
     | SetSimulationTheveninComp of string option
+    | SetSimulationTheveninParams
     | SetSimulationACInDB
     | SetSimulationACInHz
     | SetPopupDialogInt of int option
@@ -310,6 +311,7 @@ type Model = {
     PrevCanvasStateSizes: int*int
     PreviousDiodeModes: bool list
     Tests: bool list
+    TheveninParams: TheveninParameters option
 } 
 
     

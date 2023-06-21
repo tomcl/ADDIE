@@ -308,8 +308,21 @@ let update (msg : Msg) oldModel =
         set (simulationData_ >-> timeSource_) tp model, Cmd.none
     | SetSimulationTimeOut tp ->
         set (simulationData_ >-> timeOutput_) tp model, Cmd.none
+    | SetSimulationTheveninParams ->
+        let comps,conns = model.Sheet.GetCanvasState() |> Simulation.combineGrounds
+        let nodeLst = CanvasStateAnalyser.createNodetoCompsList (comps,conns)
+        match model.SimulationData.TheveninComp with
+        |Some id when id<>"sel" ->
+            let pair = findNodesOfComp nodeLst id
+            match pair with 
+            |Some (p1,p2) ->
+                let thevP = Simulation.findTheveninParams (comps,conns) id p1 p2
+                {model with TheveninParams = Some thevP}, Cmd.none
+            |_ -> 
+                model, Cmd.ofMsg (SetPropertiesNotification (Notifications.errorPropsNotification "Cannot find Thevenin/Norton parameters"))
+        |_ -> model, Cmd.ofMsg (SetPropertiesNotification (Notifications.errorPropsNotification "Cannot find Thevenin/Norton parameters"))
     | SetSimulationTheveninComp c ->
-        set (simulationData_ >-> timeOutput_) c model, Cmd.none
+        set (simulationData_ >-> theveninComp_) c model, Cmd.none
     | SetPopupDialogBadLabel isBad ->
         set (popupDialogData_ >-> badLabel_) isBad model, Cmd.none
     | SetPopupDialogInt int ->
@@ -398,7 +411,7 @@ let update (msg : Msg) oldModel =
     | UpdateACSim newSim ->
         {model with Sheet = {model.Sheet with ACSim=newSim}}, Cmd.none
     | ClearSimulationResults ->
-        {model with Sheet = {model.Sheet with ACSim=[];DCSim=emptyDCResults;TimeSim=emptyTimeResults}}, Cmd.none
+        {model with TheveninParams = None; Sheet = {model.Sheet with ACSim=[];DCSim=emptyDCResults;TimeSim=emptyTimeResults}}, Cmd.none
     | UpdateTimeSim newSim ->
         {model with Sheet = {model.Sheet with TimeSim=newSim}}, Cmd.none
     | SimulationUpdated ->

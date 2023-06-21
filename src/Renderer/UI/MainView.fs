@@ -113,6 +113,7 @@ let init() = {
     PrevCanvasStateSizes = (0,0)
     PreviousDiodeModes = []
     Tests = []
+    TheveninParams = None
 }
 
 
@@ -397,6 +398,14 @@ let viewSimSubTab canvasState model dispatch =
                     ]
 
                     Menu.menu [Props [Class "py-1";]]  [
+                        let paramsDiv =
+                            match model.TheveninParams with
+                            |None -> null
+                            |Some par ->
+                                let asstr = (string par.Resistance) + ", " + (string par.Voltage) + ", " + (string par.Current)
+                                div [] [str asstr] 
+
+                                
                         details [Open false;] [
                             summary [menuLabelStyle] [ str "Thevenin/Norton" ]
                             Menu.list [] [
@@ -413,8 +422,8 @@ let viewSimSubTab canvasState model dispatch =
                                         [(OnChange(fun option -> SetSimulationTheveninComp (Some option.Value) |> dispatch))]
                                         ([option [Value ("sel")] [str ("Select")]] @ compOptions)
                                         ]
-                                Button.button [Button.Color IsPrimary;Button.OnClick(fun _ -> ())] [str "Find"]    
-                            
+                                Button.button [Button.Color IsPrimary;Button.OnClick(fun _ -> (dispatch SetSimulationTheveninParams))] [str "Find"]    
+                                paramsDiv
                             ]
                         ]
                     ]

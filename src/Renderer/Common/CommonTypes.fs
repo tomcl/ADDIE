@@ -558,3 +558,9 @@ module CommonTypes
         | DCsim
         | ACsim
         | TimeSim
+
+    type TheveninParameters = {
+        Resistance: float
+        Voltage: float
+        Current: float
+    }
