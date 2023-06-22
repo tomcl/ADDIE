@@ -642,7 +642,7 @@ let findCompType compType =
     (fun (x:Component) -> match x.Type with |a when a=compType -> true |_ -> false)
 
 /// need to make sure that only 1 capacitor/inductor is present in the circuit
-let replaceCLWithCS csValue compId (comps,conns) =
+let replaceCompWithCS csValue compId (comps,conns) =
     let comps' =
         comps
         |> List.map (fun (c:Component)->
@@ -758,12 +758,12 @@ let DCTimeAnalysis (comps,conns) inputNode outputNode =
 let findTheveninParams (comps,conns) compId node1 node2 =
         let result1,_,_,_ =
             (comps,conns)
-            |> replaceCLWithCS 1. compId
+            |> replaceCompWithCS 1. compId
             |> (fun cs -> modifiedNodalAnalysisDC cs [])
         
         let result2,_,_,_ =
             (comps,conns)
-            |> replaceCLWithCS 2. compId
+            |> replaceCompWithCS 2. compId
             |> (fun cs -> modifiedNodalAnalysisDC cs [])
 
         let v1 =
@@ -777,7 +777,7 @@ let findTheveninParams (comps,conns) compId node1 node2 =
             else result1[node2-1] - result2[node1-1]
 
         let rth = abs(v2-v1)
-        let vth = v1 - rth
+        let vth = if v2-v1 > 0 then (v1 - rth) else (v1 + rth)
         let ino = vth/rth
         {Resistance=rth;Voltage=vth;Current=ino}
 

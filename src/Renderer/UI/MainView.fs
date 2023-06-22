@@ -403,7 +403,25 @@ let viewSimSubTab canvasState model dispatch =
                             |None -> null
                             |Some par ->
                                 let asstr = (string par.Resistance) + ", " + (string par.Voltage) + ", " + (string par.Current)
-                                div [] [str asstr] 
+                                div [] [
+                                    Table.table [] [
+                                      tr [] [
+                                        td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str "Rth"]
+                                        td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str ((string (System.Math.Round (par.Resistance,6)))+" "+omegaString)]
+                                      ]
+                                      tr [] [
+                                        td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str "Vth"]
+                                        td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str ((string (System.Math.Round (par.Voltage,6)))+" V")]
+                                      ]
+                                      tr [] [
+                                        td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str "Ino"]
+                                        td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str ((string (System.Math.Round (par.Current,6)))+" A")]
+                                      ]
+                                    
+                                    ]
+                                    //str asstr
+                                
+                                ] 
 
                                 
                         details [Open false;] [
