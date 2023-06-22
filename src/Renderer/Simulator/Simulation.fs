@@ -8,12 +8,13 @@ open CanvasStateAnalyser
 
 
 //////////////////  SIMULATION CONSTANTS  ////////////////
-
-let diodeConstant = 0.7
-let roundingDecimalPoints = 6
-let startACFreq = 0. //(exponent -> here: 10^0)
-let endACFreq = 7. //(exponent -> here: 10^7)
-let ACFreqStepsPerDecade = 20.
+module Constants =
+    [<Literal>]
+    let diodeConstant = 0.7
+    let roundingDecimalPoints = 6
+    let startACFreq = 0. //(exponent -> here: 10^0)
+    let endACFreq = 7. //(exponent -> here: 10^7)
+    let ACFreqStepsPerDecade = 20.
 
 //////////////////  SIMULATION HELPERS   /////////////////
 
@@ -43,7 +44,7 @@ let combineGrounds (comps,conns) =
 
 /// Transforms locally the canvas state to replace all
 /// Inductors by 0-Volts DC Sources (short circuit) for
-/// the MNA to work 
+/// the MNA algorithm to work 
 let shortInductorsForDC (comps,conns) =
     
     // necessary for current orientation
@@ -337,7 +338,7 @@ let findComponentCurrents results nodesNo nodeLst comps conns =
                 (ComponentId allResistors[i].Id,(v2-v1)/resistance)
             |None -> (ComponentId allResistors[i].Id,0.)
         )
-        |> List.map (fun (r,v)->(r, System.Math.Round (v,roundingDecimalPoints)))
+        |> List.map (fun (r,v)->(r, System.Math.Round (v,Constants.roundingDecimalPoints)))
         
     vsAndOpampCurrents
     |> List.append resistorCurrents
@@ -399,43 +400,13 @@ let rec modifiedNodalAnalysisDC (comps,conns) cachedDiodeModes =
     let mul = safeSolveMatrixVec flattenedMatrix vecB
     match mul with
     |Some res -> 
-        let result = res |> Array.map (fun x->System.Math.Round (x,roundingDecimalPoints))
+        let result = res |> Array.map (fun x->System.Math.Round (x,Constants.roundingDecimalPoints))
         let componentCurrents = findComponentCurrents result (List.length nodeLst-1) nodeLst comps' conns'
         let time = TimeHelpers.getInterval t1
         printfn "MNA time = %f ms" time 
         result, componentCurrents, nodeLst, localDiodeModes 
 
     |None -> Array.empty, Map.empty, nodeLst, []
-
-and transformSingleDiode (comps,conns) =
-    let whichComp = List.tryFind (fun c->c.Type=Diode) comps
-    match whichComp with
-    |Some diode -> 
-        let comps1 = 
-            comps
-            |> List.map (fun (c:Component)->
-                if c.Id = diode.Id then
-                    {c with Type=(VoltageSource (DC diodeConstant))}
-                else c        
-            )
-
-        let comps2 =
-            comps
-            |> List.map (fun (c:Component)->
-                if c.Id = diode.Id then
-                    {c with Type=(CurrentSource (0.,"0"))}
-                else c        
-            )
-
-        let res,_,nodeLst,_ = modifiedNodalAnalysisDC (comps1,conns) []
-
-        let allVoltageSources = findAllVoltageSources comps1
-        let indexOfDiode = allVoltageSources |> List.findIndex (fun c->c.Id=diode.Id)
-        let nodesNo = List.length nodeLst-1
-        if res[nodesNo+indexOfDiode] >= 0 then        
-            (comps1,conns)
-        else (comps2,conns)
-    |None -> (comps,conns)
 
 
 /// This function takes place before modified nodal analysis
@@ -451,7 +422,7 @@ and transformAllDiodes (comps,conns) cachedDiodeModes : Component list * Connect
         |> List.map (fun c -> 
             if c.Type = Diode then 
                 match diodeModeMap[c.Id] with
-                |true -> {c with Type = (VoltageSource (DC diodeConstant))}
+                |true -> {c with Type = (VoltageSource (DC Constants.diodeConstant))}
                 |false -> {c with Type=(CurrentSource (0.,"0"))} 
             else c)
     
@@ -497,7 +468,7 @@ and transformAllDiodes (comps,conns) cachedDiodeModes : Component list * Connect
                     let i1',i2' = if List.exists (fun (c:Component,pNo) -> c.Id = diodeId && pNo = Some 1) nodeLst[i1] then i1,i2 else i2,i1  
                     let res1 = if i1' = 0 then 0. else res[i1'-1]
                     let res2 = if i2' = 0 then 0. else res[i2'-1]
-                    if (res2 - res1) <= diodeConstant then
+                    if (res2 - res1) <= Constants.diodeConstant then
                         true
                     else 
                         false 
@@ -570,6 +541,7 @@ and transformAllDiodes (comps,conns) cachedDiodeModes : Component list * Connect
 
 
 
+/// Returns magnitude and phase of specific frequency for the specified node 
 let acAnalysis matrix nodeLst comps vecB wmega outputNode =    
     let flattenedMatrix =
         matrix
@@ -585,18 +557,19 @@ let acAnalysis matrix nodeLst comps vecB wmega outputNode =
     result[outputNode-1]        
 
      
-
+/// Main frequency response function
+/// Performs AC Analysis in the circuit for the pre-defined set
+/// of frequencies and returns a list of ComplexP (output/input)
 let frequencyResponse (comps,conns) inputSource outputNode  =
 
     let convertDiodeToConductingMode (comps,conns) =
         comps 
         |> List.map (fun c-> 
             if c.Type = Diode 
-                then {c with Type = (VoltageSource (DC diodeConstant))} 
+                then {c with Type = (VoltageSource (DC Constants.diodeConstant))} 
             else c),conns
      
-    let t1 = TimeHelpers.getTimeMs () 
-    // transform canvas state for DC Analysis  
+    // transform canvas state for AC Analysis  
     let comps',conns' = 
         (comps,conns)
         |> combineGrounds
@@ -612,36 +585,28 @@ let frequencyResponse (comps,conns) inputSource outputNode  =
 
     let opamps = comps' |> List.filter (fun c-> c.Type=Opamp) |> List.length
 
+    // setup matrix and vecB
     let n = List.length nodeLst - 1 + vs + opamps
     let arr = Array.create n 0.0
-    let matrix = Array.create n arr
-          
-    
+    let matrix = Array.create n arr    
     let vecB =
         Array.create n {Re=0.0;Im=0.0}
         |> Array.mapi (fun i v -> (calcVectorBElement (i+1) comps' nodeLst))
     
 
-    let frequencies = [startACFreq..(1./ACFreqStepsPerDecade)..endACFreq] |> List.map (fun x -> 10.**x)
+    // Run Frequency response
+    let frequencies = [Constants.startACFreq..(1./Constants.ACFreqStepsPerDecade)..Constants.endACFreq] |> List.map (fun x -> 10.**x)
     
     frequencies
     |> List.map (fun wmega->
         acAnalysis matrix nodeLst comps' vecB wmega outputNode
     )
     |> List.map complexCToP
-    |> (fun x -> 
-        let time = TimeHelpers.getInterval t1
-        printfn "AC time = %f ms" time 
-        x)
     
 
 
 
-///////////////
-let findCompType compType =
-    (fun (x:Component) -> match x.Type with |a when a=compType -> true |_ -> false)
-
-/// need to make sure that only 1 capacitor/inductor is present in the circuit
+/// helper function used for finding the thevenin parameters
 let replaceCompWithCS csValue compId (comps,conns) =
     let comps' =
         comps
@@ -652,7 +617,8 @@ let replaceCompWithCS csValue compId (comps,conns) =
         )
     comps',conns
 
-/// need to make sure that only 1 capacitor/inductor is present in the circuit    
+/// need to make sure that only 1 capacitor/inductor is present in the circuit 
+/// Currently guaranteed by the error checking function
 let transformForHFGain (comps,conns) =
     let comps' =
         comps
@@ -663,74 +629,10 @@ let transformForHFGain (comps,conns) =
             |_ -> c    
         )
     (comps',conns)
-
-
-let replaceCLWithWire (comps,conns) =
-
-    //does this work??? 
-    let keepRL = List.tryFind (fun c-> match c.Type with |Capacitor _->true |_ ->false ) comps    
-    match keepRL with
-    |None -> (comps,conns)
-    |Some RL ->
-        let comps' =
-            comps
-            |> List.collect (fun c->
-                match c.Type with
-                |Capacitor _ |Inductor _-> []
-                |_ -> [c]
-            )
-
-        let connsPort0 =
-            conns |> List.filter (fun conn -> conn.Target.Id = RL.IOPorts[0].Id || conn.Source.Id = RL.IOPorts[0].Id)
-        
-        let connsPort1 =
-            conns |> List.filter (fun conn -> conn.Target.Id = RL.IOPorts[1].Id || conn.Source.Id = RL.IOPorts[1].Id)
-            
-        let connsWithoutRL = conns |> List.filter (fun conn -> conn.Target.HostId <> RL.Id && conn.Source.HostId <> RL.Id)
-        
-        let baseComp0Port = if connsPort0[0].Target.HostId = RL.Id then connsPort0[0].Source else connsPort0[0].Target
-        let baseComp1Port = if connsPort1[0].Target.HostId = RL.Id then connsPort1[0].Source else connsPort1[0].Target
-
-        let connsPort0'=
-            connsPort0
-            |> List.filter (fun conn -> conn.Source.Id <> baseComp0Port.Id || conn.Target.Id <> baseComp0Port.Id)
-            |> List.map (fun conn ->
-                if conn.Source.Id = RL.IOPorts[0].Id then
-                    {conn with Source=baseComp0Port}
-                else
-                    {conn with Target=baseComp0Port}
-            )
-
-        let connsPort1'=
-            connsPort1
-            |> List.filter (fun conn -> conn.Source.Id <> baseComp1Port.Id || conn.Target.Id <> baseComp1Port.Id)
-            |> List.map (fun conn ->
-                if conn.Source.Id = RL.IOPorts[1].Id then
-                    {conn with Source=baseComp1Port;}
-                else
-                    {conn with Target=baseComp1Port}
-            )
-
-        let basesConnection = {Source=baseComp0Port; Target=baseComp1Port;Vertices=[];Id=JSHelpers.uuid ()}
-
-        let conns' = connsWithoutRL @ connsPort0' @ connsPort1' @ [basesConnection]
-
-        comps',conns'
-
-let replaceCLWithTinyR (comps,conns) =
-    //does this work??? 
-    let comps' =
-            comps
-            |> List.map (fun c->
-                match c.Type with
-                |Capacitor _ |Inductor _ -> {c with Type = Resistor (0.00000001,"0")}
-                |_ -> c    
-            )
-    comps',conns
         
 
+/// Performs time domain analysis on a circuit with no Reactive Components
 let DCTimeAnalysis (comps,conns) inputNode outputNode =
-    let t1 = TimeHelpers.getTimeMs ()
     let vsIndex = comps |> List.tryFindIndex (fun c->match c.Type with |VoltageSource _ -> true |_ -> false)
     match vsIndex with
     |Some i ->
@@ -748,13 +650,16 @@ let DCTimeAnalysis (comps,conns) inputNode outputNode =
                 prevDiodeModes <- dm
                 res[outputNode-1]
             )
-        let time = TimeHelpers.getInterval t1
-        printfn "TimeSim time = %f ms" time 
         {TimeSteps=dts;Transient=[];SteadyState=y;Tau=0;Alpha=0;HFGain=0;DCGain=0}
         
     |_ -> failwithf "No voltage Source present in the circuit"
 
 
+/// Helper function to find the thevenin parameters
+/// Changes the specified component to a 1A and 2A Current Source
+/// from which it obtains v1 and v2. Then finds parameters from the
+/// line that goes through these two points
+/// (same as finding thevenin with nodal analysis)
 let findTheveninParams (comps,conns) compId node1 node2 =
         let result1,_,_,_ =
             (comps,conns)
@@ -781,15 +686,14 @@ let findTheveninParams (comps,conns) compId node1 node2 =
         let ino = vth/rth
         {Resistance=rth;Voltage=vth;Current=ino}
 
-
+/// Main transient analysis function
+/// (i) finds tau from Thevenin Resistance
+// (ii) finds DC/HF gain from circuit 
+// (iii) takes input signal, finds A and returns t,ytr,yss
 let transientAnalysis (comps,conns) inputSource inputNode outputNode =
     
-    printfn "inputSource: %s" inputSource
-    let t1 = TimeHelpers.getTimeMs ()
     let comps',conns' = combineGrounds (comps,conns)
     
-    
-
     let findTau param =
         let CL = comps' |> List.tryFind (fun c-> match c.Type with |Capacitor _ |Inductor _ -> true |_ ->false)
         match CL with
@@ -820,12 +724,12 @@ let transientAnalysis (comps,conns) inputSource inputNode outputNode =
         else result[nodeY-1]
 
     match List.exists (fun c->match c.Type with |Capacitor _ |Inductor _ -> true |_ -> false) comps' with
-    |true ->
-        // find tau from Thevenin Resistance -> DONE
-        // find DC/HF gain -> PENDING for inductor
-        // take input signal, find A and plot results
+    |true -> //one reactive component
         let vs = comps' |> List.tryFind (fun c->match c.Type with |VoltageSource _ -> true |_->false)
         let dcGain = findDCGain inputNode outputNode
+        
+        // represent yss as a Voltage Source to find
+        // its value at each time point
         let yssAsVS =
             match vs with
             |Some comp ->
@@ -844,14 +748,16 @@ let transientAnalysis (comps,conns) inputSource inputNode outputNode =
 
                     let opamps = comps'' |> List.filter (fun c-> c.Type=Opamp) |> List.length
 
+                    // setup MNA matrix and VecB
                     let n = List.length nodeLst - 1 + vs + opamps
                     let arr = Array.create n 0.0
                     let matrix = Array.create n arr
                     let vecB =
                         Array.create n {Re=0.0;Im=0.0}
                         |> Array.mapi (fun i v -> (calcVectorBElement (i+1) comps'' nodeLst))
+
+                    // find magnitude and phase using the source frequency 
                     let res = acAnalysis matrix nodeLst comps'' vecB (2.*System.Math.PI*f) outputNode |> complexCToP
-                    //printfn "res = %A" res
                     {comp with Type = VoltageSource (Sine (a*res.Mag,o*dcGain,f,p+res.Phase))}
 
 
@@ -875,8 +781,6 @@ let transientAnalysis (comps,conns) inputSource inputNode outputNode =
                 (y_tr,y_ss)
             )
             |> List.unzip
-        let time = TimeHelpers.getInterval t1
-        printfn "TimeSim time = %f ms" time 
         {TimeSteps=dts;Transient=ytr;SteadyState=yss;Tau=tau;Alpha=alpha;HFGain=HFGain;DCGain=dcGain}
 
 
