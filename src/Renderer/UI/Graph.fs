@@ -62,6 +62,8 @@ let viewGraph (model:Model) dispatch =
                             plot.layout [
                                 layout.height 350
                                 layout.width 1300
+                                
+                                // X axis -> frequency 
                                 layout.xaxis [
                                     xaxis.type'.log
                                     xaxis.autorange.true'
@@ -72,6 +74,8 @@ let viewGraph (model:Model) dispatch =
                                 layout.title [
                                     title.text graphTitle
                                 ]
+
+                                // Y axis 1 -> Magnitude (LHS axis)
                                 layout.yaxis [
                                     yaxis.title [
                                         title.text (if model.SimulationData.ACMagInDB then "Magnitude (dB)" else "Magnitude")
@@ -79,6 +83,8 @@ let viewGraph (model:Model) dispatch =
                                     yaxis.autorange.true'
                                     yaxis.zeroline false
                                 ]
+
+                                // Y axis 2 -> Phase (RHS axis)
                                 layout.yaxis (2, [
                                     yaxis.title [
                                         title.text ("Phase("+degreesSymbol+")")
@@ -117,11 +123,15 @@ let viewGraph (model:Model) dispatch =
             match t,ytr,yss with
             |[],[],[] -> [div [] []]
             |_ ->
+                // y = yss in DC Time sim
+                // else y = yss+ytr
                 let y = 
                     if ytr = [] then [0.;0.] @ yss
                     else [0.;0.] @ List.map2 (fun x y -> x+y) ytr yss
                 let t_y = [-t[(List.length t/5)|> int]]@[0.0]@t
                 let vs = comps |> List.find (fun c->match c.Type with |VoltageSource _ -> true |_ -> false)
+                
+                // x = input source
                 let x = [0.;0.] @ List.map (Simulation.findInputAtTime (Some vs)) t
                 [
                     div [Style [Width "80%"; Float FloatOptions.Left]] [
@@ -177,6 +187,8 @@ let viewGraph (model:Model) dispatch =
                             ]
                             ]
                             ]
+                   
+                    // transient parameters table
                     div [Style [Width "20%"; Float FloatOptions.Left; Padding "20px"]] 
                         [   
                             div [Style [MarginLeft "auto"; MarginRight "0"; Float FloatOptions.Right]] [ 
@@ -201,7 +213,7 @@ let viewGraph (model:Model) dispatch =
                                         td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str dc]                                ]
                             
                             ]
-                        ]//[Button.button [Button.OnClick(fun _ -> SetGraphVisibility false |> dispatch)] [str "X"]]
+                        ]
                 
                 ]
         |_ -> 

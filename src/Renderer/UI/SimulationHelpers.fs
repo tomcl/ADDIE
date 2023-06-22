@@ -8,7 +8,10 @@ open NumberHelpers
 open CanvasStateAnalyser
 open Fulma
 
-
+/// transforms the DC Simulation results into the DC Table
+/// which appears under the DC Sim Subtab. The order is: 
+/// (i) node voltages as |V(Node i)| V |
+/// (ii) component currents as | I(label) | I |
 let getDCTable (simDC:DCSimulationResults) simRunning canvasState  =
 
 
@@ -46,7 +49,7 @@ let getDCTable (simDC:DCSimulationResults) simRunning canvasState  =
         ]
         ]
 
-    
+    // node voltages lines 
     let voltageLines =
         simDC.MNA
         |> Array.toList
@@ -63,6 +66,8 @@ let getDCTable (simDC:DCSimulationResults) simRunning canvasState  =
                     |> List.removeManyAt (nodesNo) (Array.length simDC.MNA-nodesNo)
                     |> List.indexed
                     |> List.collect (fun (i,v) -> [getDCTableLine i (floatValueToText v)]))
+    
+    // component currents lines
     let currentLines = 
         simDC.ComponentCurrents
         |> Map.toList
@@ -84,7 +89,7 @@ let getDCTable (simDC:DCSimulationResults) simRunning canvasState  =
 
 
 
-
+/// PENDING FIX
 let getDCEquations dcSim comps =
     let isResistorType tp =
         match tp with

@@ -55,6 +55,9 @@ let findLabelFromId comps id =
     c.Label
 
 
+/// finds a node's location of the graph
+/// by finding common points in the connections
+/// that form the node
 let findNodeLocation (connsOnNode: Connection list) =
     let extractX (vertix: (float*float*bool)) =
         vertix |> (fun (x,_,_) -> x)
@@ -121,6 +124,7 @@ let findOtherEndPort (port:Port) (comps: Component List) : Port option =
 /// Creates a (Component*int option) list list where each element of the top list
 /// represents one node and the inner list contains the components
 /// that "touch" that node along with the portNumber that touches it (for VS/CS direction). 
+/// More information on Github wiki
 let createNodetoCompsList(comps:Component list,conns: Connection list) =
     
     let ground = (List.tryFind (fun (c:Component) -> c.Type = Ground) (comps:Component list))
@@ -195,6 +199,9 @@ let createNodetoCompsList(comps:Component list,conns: Connection list) =
 
 
 ///////////// CANVAS STATE ANALYSER - ERROR CHECKER ////////////////////////
+
+/// Runs the given tests 1-by-1 to identify common
+/// errors in the circuit
 let checkCanvasStateForErrors (comps,conns) timeSubTab =
     let nodeLst = createNodetoCompsList (comps,conns)
     let allCompsOfNodeLst = nodeLst |> List.collect (id) |> List.distinctBy (fun (c,pn) -> c.Id)
@@ -399,6 +406,9 @@ let checkCanvasStateForErrors (comps,conns) timeSubTab =
 
 /////////////////////////////////////////////////////////////
 
+
+/// Time sim currently is able to run
+/// with only one source and one capacitor/inductor
 let checkTimeSimConditions (comps) =
     let checkOnlyOneSource =
         comps
