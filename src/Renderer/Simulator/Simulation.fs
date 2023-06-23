@@ -397,7 +397,7 @@ let rec modifiedNodalAnalysisDC (comps,conns) cachedDiodeModes =
 
     ////////// solve ///////////
 
-    let mul = safeSolveMatrixVec flattenedMatrix vecB
+    let mul = safeSolveMatrixVec flattenedMatrix vecB (List.length nodeLst - 1)
     match mul with
     |Some res -> 
         let result = res |> Array.map (fun x->System.Math.Round (x,Constants.roundingDecimalPoints))
@@ -552,9 +552,10 @@ let acAnalysis matrix nodeLst comps vecB wmega outputNode =
             )
         )
         |> Array.collect (id)
-    let result = safeSolveMatrixVecComplex flattenedMatrix vecB
-    //printfn "result %A" result
-    result[outputNode-1]        
+    
+    match safeSolveMatrixVecComplex flattenedMatrix vecB (List.length nodeLst - 1) with
+    |None -> {Re = 0.0; Im=0.0}
+    |Some result -> result[outputNode-1]        
 
      
 /// Main frequency response function

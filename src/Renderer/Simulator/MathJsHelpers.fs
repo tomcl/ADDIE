@@ -25,10 +25,11 @@ let Maths: MathsJS = jsNative
 
 
 
-
+/// ComplexC -> obj (complex in mathJS environment)
 let toComplexJS (a:ComplexC) =
     (a.Re,a.Im) |> Maths.complex
 
+/// obj (complex in mathJS environment) -> ComplexC
 let toComplexF (a:obj) =
     {Re = (Maths.re a);Im = (Maths.im a)}
 
@@ -54,6 +55,8 @@ let complexDiv (a:ComplexC) (b:ComplexC) : ComplexC =
     let div = Maths.divide (a', b')
     {Re= (Maths.re div); Im= Maths.im div}
 
+
+/// Converts the flattened matrix to an nxn matrix in the MathJS environment (obj)
 let flattenedToMatrix flat=
     let flattenedMatrix =
         flat
@@ -68,29 +71,68 @@ let flattenedToMatrix flat=
         let dim = flattenedMatrix |> Array.length |> float |> sqrt |> int
         Maths.reshape (ResizeArray(flattenedMatrix), ResizeArray([|dim; dim|]))
 
-let safeSolveMatrixVec flattenedMatrix vec =
+
+/// Scales the matrix accordingly so that the conductance matrix G
+/// has mean 1. This is used to check whether det is zero since
+/// MathJS det is not completely accurate and can return 0 for a 
+/// small non-zero det
+let transformMatrixToMeanOne (nodesNo:int) (flattenedMatrix:ComplexC array) =
+    let len = Array.length flattenedMatrix
+    let sqrt = len |> float |> sqrt |> int
+    let isInCondMatrix (index:int) =
+        if index < (len/nodesNo) then
+            if index % sqrt < nodesNo then true
+            else false
+        else false
+
+    let indexed = flattenedMatrix |> Array.indexed 
+    let mean=
+        (0.0,indexed)
+        ||> Array.fold (fun s (i,v) -> 
+            let polar = complexCToP v
+            if isInCondMatrix i then s+polar.Mag else s)
+
+    printfn "mean = %f" mean
+    flattenedMatrix
+    |> Array.mapi (fun i v -> 
+        v*(1./mean)
+    )
+
+/// Given MNA matrix and vecB solves the system
+/// by inverting the matrix and multiplying vecB
+/// Returns None if det = 0 -> matrix not invertible
+let safeSolveMatrixVec flattenedMatrix vec nodesNo =
+    
+    let matrixMeanOne =  
+        flattenedMatrix
+        |> transformMatrixToMeanOne nodesNo
+        |> Array.map (fun c -> {c with Im = 0.})
+        |> flattenedToMatrix
+
     let matrix =  
         flattenedMatrix
         |> Array.map (fun c -> {c with Im = 0.})
-        |> flattenedToMatrix
-    let det = Maths.det(matrix)
+        |> flattenedToMatrix 
+
+    let det = Maths.det(matrixMeanOne)
     printfn "det %A" (det)
-    printfn "matrix %A" (matrix)
-    //if Maths.isZero det then
-    //    None
-    //else
-    let dim = flattenedMatrix |> Array.length |> float |> sqrt |> int
-    let invM = Maths.inv(matrix)
-    match invM = null with
-    |true -> 
+
+
+    if Maths.isZero det then
         None
-    |false ->
-    //printfn "inv %A" invM
-        match dim = Array.length vec with
-        |false -> failwithf "Cannot perform multiplication -> sizes do not match"
+    else
+        let dim = flattenedMatrix |> Array.length |> float |> sqrt |> int
+        let invM = Maths.inv(matrix)
+        match invM = null with
         |true -> 
-            let res = Maths.multiply (invM,ResizeArray(vec))
-            res.ToArray() |> Array.map (Maths.re) |> Some
+            None
+        |false ->
+        //printfn "inv %A" invM
+            match dim = Array.length vec with
+            |false -> failwithf "Cannot perform multiplication -> sizes do not match"
+            |true -> 
+                let res = Maths.multiply (invM,ResizeArray(vec))
+                res.ToArray() |> Array.map (Maths.re) |> Some
 
 
 
@@ -99,6 +141,7 @@ let safeInvComplexMatrix (flattenedMatrix:ComplexC array) =
     let matrix = 
         flattenedToMatrix flattenedMatrix
 
+    
     let det = Maths.det(matrix)
 
     match det = 0.0 with
@@ -110,23 +153,24 @@ let safeInvComplexMatrix (flattenedMatrix:ComplexC array) =
         flat.ToArray()
         |> Array.map (toComplexF)
 
-let safeSolveMatrixVecComplex flattenedMatrix vec =
+
+/// Solves Circuit for AC Analysis (matrix and sols are complex)
+/// No need to check for det as it is already checked when starting
+/// the simulation
+let safeSolveMatrixVecComplex flattenedMatrix vec nodesNo =
     let matrix =  
         flattenedMatrix
         |> flattenedToMatrix
-    let det = Maths.det(matrix)
-
+    
+    
     let jsVec = vec |> Array.map(toComplexJS)
 
-    match det = 0.0 with
-    |true -> failwithf "det is 0, cannot invert"
-    |false ->
-        let dim = flattenedMatrix |> Array.length |> float |> sqrt |> int
-        let invM = Maths.inv(matrix)
-        match dim = Array.length vec with
-        |false -> failwithf "Cannot perform multiplication -> sizes do not match"
-        |true -> 
-            let res = Maths.multiply (invM,jsVec)
-            res.ToArray() 
-            |> Array.map (toComplexF)
+    let dim = flattenedMatrix |> Array.length |> float |> sqrt |> int
+    let invM = Maths.inv(matrix)
+    match dim = Array.length vec with
+    |false -> failwithf "Cannot perform multiplication -> sizes do not match"
+    |true -> 
+        let res = Maths.multiply (invM,jsVec)
+        res.ToArray() 
+        |> Array.map (toComplexF)
             
