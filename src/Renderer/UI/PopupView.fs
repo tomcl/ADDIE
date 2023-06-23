@@ -388,7 +388,8 @@ let dialogPopupBodyTextAndInt beforeText placeholder beforeInt intDefault dispat
             ]
         ]
 
-
+// Pulse is not used currently
+// uncomment from select options below to include it again
 let dialogPopupVS dispatch =
     fun (dialogData : PopupDialogData) ->
         let goodLabel =
@@ -451,7 +452,7 @@ let dialogPopupVS dispatch =
                 [ select [(OnChange(fun option -> 
                     printfn "Value is: %s" option.Value
                     SetPopupDialogVSType (Some option.Value) |> dispatch))]
-                    ([option [Value "DC";Selected true] [str ("DC")]] @ [option [Value "Sine"] [str "Sine"] ] @ [option [Value "Pulse"] [str "Pulse"] ])
+                    ([option [Value "DC";Selected true] [str ("DC")]] @ [option [Value "Sine"] [str "Sine"] ])// @ [option [Value "Pulse"] [str "Pulse"] ])
                     ]
                 ]
             before1

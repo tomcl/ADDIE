@@ -81,6 +81,7 @@ let createVSPopup (model:Model) (compType:ComponentType) dispatch =
                 
             createCompStdLabel newComp model dispatch
             dispatch ClosePopup
+            dispatch (SetPopupDialogVSType (Some "DC"))
     let isDisabled =
         fun (dialogData : PopupDialogData) -> 
             match textToFloatValue (getText dialogData) with
