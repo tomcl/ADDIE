@@ -115,10 +115,10 @@ let safeSolveMatrixVec flattenedMatrix vec nodesNo =
         |> flattenedToMatrix 
 
     let det = Maths.det(matrixMeanOne)
-    //printfn "det %A" (det)
+    //printfn "det %s" (string det)
 
 
-    if Maths.isZero det then
+    if Maths.isZero det || (string det) = "NaN" then
         None
     else
         let dim = flattenedMatrix |> Array.length |> float |> sqrt |> int
