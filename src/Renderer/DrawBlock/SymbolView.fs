@@ -215,28 +215,31 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
 
 
     let outlineColour, strokeWidth =
-        match comp.Type with
-        | IOLabel -> outlineColor colour, "4.0"
-        |Resistor _  -> "darkblue", "2.5"
+        match colour,comp.Type with
+        |"Red",Ground |"Red",Diode |"Red",Opamp |"Red",DiodeR -> "black", "1.0"
+        |"Red",_ -> "Red", "2.5"
+        |_,Resistor _  -> "darkblue", "2.5"
         | _ -> "black", "1.0"
 
 
-    let capacitorLine = {defaultLine with StrokeWidth = "2.5px";} 
+    let symbolLine = {defaultLine with Stroke = outlineColour; StrokeWidth = strokeWidth}
+    let symbolCircle = {defaultCircle with Stroke = outlineColour; StrokeWidth = strokeWidth}
+    let capacitorLine = {symbolLine with StrokeWidth = "2.5px";}
     
     let createdSymbol = 
         match comp.Type with
         | CurrentSource _ -> 
             match transform.Rotation with 
-            | Degree0 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 15 30 45 30 defaultLine; makeLine 35 20 45 30 defaultLine; makeLine 35 40 45 30 defaultLine]
-            | Degree90 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 30 45 30 15 defaultLine; makeLine 20 25 30 15 defaultLine; makeLine 40 25 30 15 defaultLine]
-            | Degree180 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 45 30 15 30 defaultLine; makeLine 25 40 15 30 defaultLine; makeLine 25 20 15 30 defaultLine]
-            | Degree270 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 30 15 30 45 defaultLine; makeLine 20 35 30 45 defaultLine; makeLine 40 35 30 45 defaultLine]
+            | Degree0 -> [makeCircle 30 30 {symbolCircle with R=30.0} ; makeLine 15 30 45 30 symbolLine; makeLine 35 20 45 30 symbolLine; makeLine 35 40 45 30 symbolLine]
+            | Degree90 -> [makeCircle 30 30 {symbolCircle with R=30.0} ; makeLine 30 45 30 15 symbolLine; makeLine 20 25 30 15 symbolLine; makeLine 40 25 30 15 symbolLine]
+            | Degree180 -> [makeCircle 30 30 {symbolCircle with R=30.0} ; makeLine 45 30 15 30 symbolLine; makeLine 25 40 15 30 symbolLine; makeLine 25 20 15 30 symbolLine]
+            | Degree270 -> [makeCircle 30 30 {symbolCircle with R=30.0} ; makeLine 30 15 30 45 symbolLine; makeLine 20 35 30 45 symbolLine; makeLine 40 35 30 45 symbolLine]
         | VoltageSource _ -> 
             match transform.Rotation with
-            | Degree0 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 40 30 55 30 defaultLine; makeLine 47.5 37.5 47.5 22.5 defaultLine; makeLine 12.5 37.5 12.5 22.5 defaultLine]
-            | Degree90 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 22.5 50 37.5 50 defaultLine; makeLine 22.5 15 37.5 15 defaultLine; makeLine 30 22.5 30 7.5 defaultLine]
-            | Degree180 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 45 37.5 45 22.5 defaultLine; makeLine 15 37.5 15 22.5 defaultLine; makeLine 7.5 30 22.5 30 defaultLine]
-            | Degree270 -> [makeCircle 30 30 {defaultCircle with R=30.0} ; makeLine 22.5 45 37.5 45 defaultLine; makeLine 30 37.5 30 52.5 defaultLine; makeLine 22.5 15 37.5 15 defaultLine ]
+            | Degree0 -> [makeCircle 30 30 {symbolCircle with R=30.0} ; makeLine 40 30 55 30 symbolLine; makeLine 47.5 37.5 47.5 22.5 symbolLine; makeLine 12.5 37.5 12.5 22.5 symbolLine]
+            | Degree90 -> [makeCircle 30 30 {symbolCircle with R=30.0} ; makeLine 22.5 50 37.5 50 symbolLine; makeLine 22.5 15 37.5 15 symbolLine; makeLine 30 22.5 30 7.5 symbolLine]
+            | Degree180 -> [makeCircle 30 30 {symbolCircle with R=30.0} ; makeLine 45 37.5 45 22.5 symbolLine; makeLine 15 37.5 15 22.5 symbolLine; makeLine 7.5 30 22.5 30 symbolLine]
+            | Degree270 -> [makeCircle 30 30 {symbolCircle with R=30.0} ; makeLine 22.5 45 37.5 45 symbolLine; makeLine 30 37.5 30 52.5 symbolLine; makeLine 22.5 15 37.5 15 symbolLine ]
         |Capacitor _ ->
             match transform.Rotation with
             | Degree0 | Degree180 -> [makeLine 0 15 25 15 capacitorLine; makeLine 25 0 25 30 capacitorLine;makeLine 35 0 35 30 capacitorLine;makeLine 35 15 60 15 capacitorLine]
@@ -250,7 +253,7 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
                 let renderedSegmentList : ReactElement List = 
                     arcs
                     |> String.concat " "
-                    |> (fun attr -> [makeAnyPath startingPoint attr {defaultPath with StrokeWidth = "2.5px"}])
+                    |> (fun attr -> [makeAnyPath startingPoint attr {defaultPath with StrokeWidth = "2.5px"; Stroke = outlineColour}])
                 renderedSegmentList
                 |> List.append [makeLine 0 15 15 15 capacitorLine; makeLine 75 15 90 15 capacitorLine]
             | Degree90 | Degree270 -> 
@@ -260,16 +263,16 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
                 let renderedSegmentList : ReactElement List = 
                     arcs
                     |> String.concat " "
-                    |> (fun attr -> [makeAnyPath startingPoint attr {defaultPath with StrokeWidth = "2.5px"}])
+                    |> (fun attr -> [makeAnyPath startingPoint attr {defaultPath with StrokeWidth = "2.5px"; Stroke = outlineColour}])
                 renderedSegmentList
                 |> List.append [makeLine 15 0 15 15 capacitorLine; makeLine 15 75 15 90 capacitorLine]
         | Opamp ->
             let plusMinus = 
                 match transform.Rotation with
-                | Degree0 -> [makeLine (0.1*W) (2.*H/3.) (0.2*W) (2.*H/3.) defaultLine ; makeLine (0.1*W) (H/3.) (0.2*W) (H/3.) defaultLine ; makeLine (0.15*W) (0.85*H/3.) (0.15*W) (1.15*H/3.) defaultLine ;  ] 
-                | Degree90 -> [makeLine (2.*W/3.) (0.8*H)  (2.*W/3.) (0.9*H) defaultLine ; makeLine (W/3.) (0.8*H) (W/3.) (0.9*H) defaultLine ; makeLine  (0.85*W/3.) (0.85*H) (1.15*W/3.) (0.85*H) defaultLine ;  ] 
-                | Degree180 -> [makeLine (0.8*W) (H/3.) (0.9*W) (H/3.) defaultLine ; makeLine (0.8*W) (2.*H/3.) (0.9*W) (2.*H/3.) defaultLine ; makeLine (0.85*W) (1.85*H/3.) (0.85*W) (2.15*H/3.) defaultLine ;  ] 
-                | Degree270 -> [makeLine (W/3.) (0.1*H)  (W/3.) (0.2*H) defaultLine ; makeLine (2.*W/3.) (0.1*H) (2.*W/3.) (0.2*H) defaultLine ; makeLine  (1.85*W/3.) (0.15*H) (2.15*W/3.) (0.15*H) defaultLine ;  ] 
+                | Degree0 -> [makeLine (0.1*W) (2.*H/3.) (0.2*W) (2.*H/3.) symbolLine ; makeLine (0.1*W) (H/3.) (0.2*W) (H/3.) symbolLine ; makeLine (0.15*W) (0.85*H/3.) (0.15*W) (1.15*H/3.) symbolLine ;  ] 
+                | Degree90 -> [makeLine (2.*W/3.) (0.8*H)  (2.*W/3.) (0.9*H) symbolLine ; makeLine (W/3.) (0.8*H) (W/3.) (0.9*H) symbolLine ; makeLine  (0.85*W/3.) (0.85*H) (1.15*W/3.) (0.85*H) symbolLine ;  ] 
+                | Degree180 -> [makeLine (0.8*W) (H/3.) (0.9*W) (H/3.) symbolLine ; makeLine (0.8*W) (2.*H/3.) (0.9*W) (2.*H/3.) symbolLine ; makeLine (0.85*W) (1.85*H/3.) (0.85*W) (2.15*H/3.) symbolLine ;  ] 
+                | Degree270 -> [makeLine (W/3.) (0.1*H)  (W/3.) (0.2*H) symbolLine ; makeLine (2.*W/3.) (0.1*H) (2.*W/3.) (0.2*H) symbolLine ; makeLine  (1.85*W/3.) (0.15*H) (2.15*W/3.) (0.15*H) symbolLine ;  ] 
             
             plusMinus
             |> List.append (createBiColorPolygon points colour outlineColour opacity strokeWidth comp)

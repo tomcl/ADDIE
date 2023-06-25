@@ -426,7 +426,8 @@ let update (msg : Msg) oldModel =
     | CircuitHasErrors ->
         {model with Sheet = {model.Sheet with CanRunSimulation=false}}, Cmd.none
     | CircuitHasNoErrors ->
-        {model with Sheet = {model.Sheet with CanRunSimulation=true}}, Cmd.none
+        let cmd' = [(Sheet (DrawModelType.SheetT.Msg.Wire (BusWireT.Msg.ErrorWires []) ));(Sheet (DrawModelType.SheetT.Msg.Wire (BusWireT.Msg.Symbol (SymbolT.Msg.ErrorSymbols ([],[],false) ))))]
+        {model with Sheet = {model.Sheet with CanRunSimulation=true}}, cmd' |> List.map Cmd.ofMsg |> Cmd.batch
     | RunTests ->
         let tests = Test.runTestCases ()
         {model with Tests = tests}, Cmd.none

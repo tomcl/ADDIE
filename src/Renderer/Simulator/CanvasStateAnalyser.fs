@@ -396,8 +396,8 @@ let checkCanvasStateForErrors (comps,conns) timeSubTab =
     checkOnlyOneCL
     |> List.append checkOnlyOneSource
     |> List.append checkNoLoopConns
-    |> List.append checkNoDoubleConnections
     |> List.append checkNoShortCircuits
+    |> List.append checkNoDoubleConnections
     |> List.append checkNoSeriesCS
     |> List.append checkNoParallelVS
     |> List.append checkAllCompsConnected

@@ -172,9 +172,11 @@ let inline combineRotation (r1:Rotation) (r2:Rotation) =
     
 let getSymbolColour compType clocked (theme:ThemeType) =
     match theme with
-    | White | Light -> "lightgray"
+    | White | Light -> "#E8D0A9"//"lightgray"
     | Colourful ->
-        "#E8D0A9"  //dark orange: for IO
+        match compType with
+        |DiodeR -> "rgba(255,255,0,0.15)" //lightyellow: for combinational components
+        |_ -> "#E8D0A9"  //dark orange: for IO
         //| _ -> "rgba(255,255,0,0.15)" //lightyellow: for combinational components
 
 

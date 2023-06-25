@@ -177,6 +177,8 @@ let runSimulation (model:Model) dispatch =
                         dispatch ForceStopSim
                         dispatch CircuitHasErrors
                         dispatch (SetPropertiesNotification (Notifications.errorPropsNotification err[0].Msg))
+                        dispatch (Sheet (DrawModelType.SheetT.Msg.Wire (BusWireT.Msg.ErrorWires err[0].ConnectionsAffected) ))
+                        dispatch (Sheet (DrawModelType.SheetT.Msg.Wire (BusWireT.Msg.Symbol (SymbolT.Msg.ErrorSymbols (err[0].ComponentsAffected,err[0].ComponentsAffected,false) ))))
         |false ->
             dispatch <| UpdateCanvasStateSizes (compsNo,connsNo)
             dispatch ForceStopSim

@@ -328,7 +328,7 @@ let viewCatalogue model dispatch =
                           catTip1 "Inductor"  (fun _ -> createRCLIPopup model (Inductor (0,"0")) dispatch) "Inductor"]
                     
                     makeMenuGroup
-                        "Amplifier / Diode"
+                        "Amplifier / Diodes"
                         [ 
                           catTip1 "Operational Amplifier"  (fun _ -> createCompStdLabel Opamp model dispatch) "Operational Amplified"
                           catTip1 "Linearized Diode"  (fun _ -> createCompStdLabel Diode model dispatch) "Diode: This is a linearized equivalent diode that assumes a 0.7 constant voltage drop on conducting mode"
