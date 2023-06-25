@@ -194,7 +194,8 @@ module CommonTypes
         | Inductor of Inductance:float * TextBoxValue:string
         | VoltageSource of VoltageSourceType
         | CurrentSource of Current:float * TextBoxValue:string
-        | Diode
+        | Diode // linearized diode
+        | DiodeR // real diode
         | Ground
         | Opamp
         | Custom of CustomComponentType // schematic sheet used as component

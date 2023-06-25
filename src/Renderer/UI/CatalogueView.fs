@@ -331,7 +331,8 @@ let viewCatalogue model dispatch =
                         "Amplifier / Diode"
                         [ 
                           catTip1 "Operational Amplifier"  (fun _ -> createCompStdLabel Opamp model dispatch) "Operational Amplified"
-                          catTip1 "Linearized Diode"  (fun _ -> createCompStdLabel Diode model dispatch) "Diode: This is a linearized equivalent diode that assumes a 0.7 constant voltage drop on conducting mode"]
+                          catTip1 "Linearized Diode"  (fun _ -> createCompStdLabel Diode model dispatch) "Diode: This is a linearized equivalent diode that assumes a 0.7 constant voltage drop on conducting mode"
+                          catTip1 "Real Diode"  (fun _ -> createCompStdLabel DiodeR model dispatch) "Real Diode"]
                             
                     
                     

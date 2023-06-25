@@ -92,7 +92,7 @@ let transformMatrixToMeanOne (nodesNo:int) (flattenedMatrix:ComplexC array) =
             let polar = complexCToP v
             if isInCondMatrix i then s+polar.Mag else s)
 
-    printfn "mean = %f" mean
+    //printfn "mean = %f" mean
     flattenedMatrix
     |> Array.mapi (fun i v -> 
         v*(1./mean)
@@ -115,7 +115,7 @@ let safeSolveMatrixVec flattenedMatrix vec nodesNo =
         |> flattenedToMatrix 
 
     let det = Maths.det(matrixMeanOne)
-    printfn "det %A" (det)
+    //printfn "det %A" (det)
 
 
     if Maths.isZero det then

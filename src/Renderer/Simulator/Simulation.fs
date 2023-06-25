@@ -15,6 +15,9 @@ module Constants =
     let startACFreq = 0. //(exponent -> here: 10^0)
     let endACFreq = 7. //(exponent -> here: 10^7)
     let ACFreqStepsPerDecade = 20.
+    let I_S = (10.0**(-15.0))  //3.3*(10.0**(-9.0))
+    let V_t =  0.025875 //0.04621
+    let convergence_epsilon = (10.0**(-9.))
 
 //////////////////  SIMULATION HELPERS   /////////////////
 
@@ -107,11 +110,55 @@ let convertACInputToDC1VS (comps,conns:Connection list) inputSource =
         ),conns
 
 
+
+let findVd (nodeList:(Component*int option) list list) compId (prevSolution:float array)  = 
+    let nodePair =
+        nodeList
+        |> List.mapi (fun i localNode -> 
+            localNode |> List.collect (fun (c,pNo)->
+                match c.Id=compId with
+                |true -> [(i,pNo)]
+                |false -> []
+            )
+        )
+        |> List.collect id
+    //printfn "nodepair is: %A" nodePair
+    //printfn "prev solution is: %A" prevSolution
+    match nodePair with
+    |[(n1,p1);(n2,p2)] -> 
+        if p1 = Some 0 then
+            if n1 = 0 then
+                (-prevSolution[n2-1])
+            else if n2 = 0 then
+                prevSolution[n1-1]
+            else
+                prevSolution[n1-1]-prevSolution[n2-1]
+        else if p2 = Some 0 then
+            if n1 = 0 then
+                prevSolution[n2-1]
+            else if n2 = 0 then
+                (-prevSolution[n1-1])
+            else
+                prevSolution[n2-1]-prevSolution[n1-1]
+        else 
+            0.0
+    |_ -> 0.0
+
+
+let getDiodeValues vd =
+    //printfn "vd is %f" vd
+    let geq = {Re= Constants.I_S*(exp(vd/Constants.V_t))/Constants.V_t; Im=0.}
+    let ido = {Re= Constants.I_S*(exp(vd/Constants.V_t)-1.); Im=0.}
+    let ieq = ido - geq*vd
+    //printfn "diode values: %A" [ido;geq;ieq]
+    ido,geq,ieq
+
+
 /// Calculates the elements of the vector B of MNA
 /// which is of the form:
 /// [I1,I2,...,In,Va,Vb,...,Vm,0o] 
 /// n -> number of nodes, m number of Voltage Sources, o number of opamps
-let calcVectorBElement row comps (nodeToCompsList:(Component*int option) list list) =
+let calcVectorBElement row comps (nodeToCompsList:(Component*int option) list list) (prevSolution:float array) =
     let nodesNo = List.length nodeToCompsList
     
     let findNodeTotalCurrent currentNode = 
@@ -120,6 +167,12 @@ let calcVectorBElement row comps (nodeToCompsList:(Component*int option) list li
             match (comp.Type,no) with
             |CurrentSource (v,_),Some 0 -> s+{Re=v;Im=0.}
             |CurrentSource (v,_), Some 1 -> s-{Re=v;Im=0.}
+            |DiodeR, _ -> 
+                let vd = findVd nodeToCompsList comp.Id prevSolution
+                let _,_,ieq = getDiodeValues vd  
+                match no with
+                |Some 0 -> s-ieq  //lhs port
+                |_ -> s+ieq       //rhs port
             |_ -> s
         )
 
@@ -143,19 +196,25 @@ let calcVectorBElement row comps (nodeToCompsList:(Component*int option) list li
 
 
 
+
+
+
 /// Calculates the value of the MNA matrix at the specified
 /// row and column (Count starts from 1)
 /// Matrix consist of submatrices
 /// More info on github
 /// A = [G B]
 ///     [C D]
-let calcMatrixElementValue row col (nodeToCompsList:(Component*int option) list list) comps omega vecB = 
+let calcMatrixElementValue row col (nodeToCompsList:(Component*int option) list list) comps omega prevSolution  = 
     let findMatrixGCompValue (comp,no) omega =
         match comp.Type with
         |Resistor (v,_) -> {Re= (1./v)*1.; Im=0.}
         |Inductor (v,_) -> {Re = 0.; Im= -(1./(v*omega)*1.)}
         |Capacitor (v,_) -> {Re = 0.; Im= (v*omega)*1.}
-        |CurrentSource _ |VoltageSource _ |Opamp |Diode -> {Re = 0.0; Im=0.0}
+        |DiodeR ->
+            let vd = findVd nodeToCompsList comp.Id prevSolution
+            {Re= Constants.I_S*(exp(vd/Constants.V_t))/Constants.V_t; Im=0.}
+        |CurrentSource _ |VoltageSource _ |Opamp  -> {Re = 0.0; Im=0.0}
         |_ -> failwithf "Not Implemented yet"
     
 
@@ -352,8 +411,11 @@ let findComponentCurrents results nodesNo nodeLst comps conns =
 /// Returns: (i) result of MNA (node Voltages, vs/opamp currents)
 /// (ii) component Currents, (iii) nodeToCompsList
 let rec modifiedNodalAnalysisDC (comps,conns) cachedDiodeModes =
-    let t1 = TimeHelpers.getTimeMs ()
     
+    if List.exists (fun c -> c.Type = DiodeR) comps then
+        newtonRaphson (comps,conns)
+    else
+
     // transform canvas state for DC Analysis  
     let comps',conns',localDiodeModes= 
         (comps,conns)
@@ -381,7 +443,7 @@ let rec modifiedNodalAnalysisDC (comps,conns) cachedDiodeModes =
 
     let vecB =
         Array.create n {Re=0.0;Im=0.0}
-        |> Array.mapi (fun i v -> (calcVectorBElement (i+1) comps' nodeLst))
+        |> Array.mapi (fun i v -> (calcVectorBElement (i+1) comps' nodeLst [||]))
         |> Array.map (fun c -> c.Re)
     
     let flattenedMatrix =
@@ -389,7 +451,7 @@ let rec modifiedNodalAnalysisDC (comps,conns) cachedDiodeModes =
         |> Array.mapi (fun i top ->
             top
             |> Array.mapi (fun j v ->
-                calcMatrixElementValue (i+1) (j+1) nodeLst comps' 0. vecB
+                calcMatrixElementValue (i+1) (j+1) nodeLst comps' 0. [||]
             )
         )
         |> Array.collect (id)
@@ -402,8 +464,6 @@ let rec modifiedNodalAnalysisDC (comps,conns) cachedDiodeModes =
     |Some res -> 
         let result = res |> Array.map (fun x->System.Math.Round (x,Constants.roundingDecimalPoints))
         let componentCurrents = findComponentCurrents result (List.length nodeLst-1) nodeLst comps' conns'
-        let time = TimeHelpers.getInterval t1
-        printfn "MNA time = %f ms" time 
         result, componentCurrents, nodeLst, localDiodeModes 
 
     |None -> Array.empty, Map.empty, nodeLst, []
@@ -540,6 +600,74 @@ and transformAllDiodes (comps,conns) cachedDiodeModes : Component list * Connect
         (comps,conns,[])
 
 
+and newtonRaphson (comps,conns) =
+    let hasConverged (prev: float array ) (newSols: float array) =
+        newSols
+        |> Array.mapi (fun i v -> if abs(v-prev[i]) < Constants.convergence_epsilon then true else false)
+        |> (fun bools -> 
+            (true, bools) ||> Array.fold (fun s v -> s&&v))
+            
+
+
+    let linDiodeComps = comps |> List.map (fun c-> match c.Type with |DiodeR -> {c with Type = Diode} |_ -> c)
+    
+    let initialSols,_,_,_ = modifiedNodalAnalysisDC (linDiodeComps,conns) []
+    let mutable prevsols = initialSols
+    
+    let comps',conns'= 
+        (comps,conns)
+        |> combineGrounds
+        |> shortInductorsForDC 
+    
+    let nodeLst = createNodetoCompsList (comps',conns')
+    
+    let vs = comps' |> List.filter (fun c-> match c.Type with |VoltageSource _ -> true |_ -> false) |> List.length
+    let opamps = comps' |> List.filter (fun c-> c.Type=Opamp) |> List.length
+
+    let n = List.length nodeLst - 1 + vs + opamps
+    
+    
+    let arr = Array.create n 0.0
+    let matrix = Array.create n arr
+    
+    let mutable max_iter = 40
+
+    while max_iter <> 0 do
+
+        ////////// matrix creation ///////////
+
+        let vecB =
+            Array.create n {Re=0.0;Im=0.0}
+            |> Array.mapi (fun i v -> (calcVectorBElement (i+1) comps' nodeLst prevsols))
+            |> Array.map (fun c -> c.Re)
+    
+        let flattenedMatrix =
+            matrix
+            |> Array.mapi (fun i top ->
+                top
+                |> Array.mapi (fun j v ->
+                    calcMatrixElementValue (i+1) (j+1) nodeLst comps' 0. prevsols
+                )
+            )
+            |> Array.collect (id)
+
+        let mul = safeSolveMatrixVec flattenedMatrix vecB (List.length nodeLst - 1)
+        match mul with
+        |Some res -> 
+            if hasConverged res prevsols then
+                max_iter <- 1 //exit loop
+                prevsols <- res |> Array.map (fun x->System.Math.Round (x,Constants.roundingDecimalPoints))
+            else 
+                prevsols <- res
+        |None ->
+            max_iter <- 1  //force exit loop, keep previous solutions
+
+        //printfn "Solution in iter %i is : %A" iter prevsols
+        max_iter <- max_iter - 1
+    
+    let componentCurrents = findComponentCurrents prevsols (List.length nodeLst-1) nodeLst comps' conns'
+    prevsols, componentCurrents, nodeLst, [] 
+
 
 /// Returns magnitude and phase of specific frequency for the specified node 
 let acAnalysis matrix nodeLst comps vecB wmega outputNode =    
@@ -548,7 +676,7 @@ let acAnalysis matrix nodeLst comps vecB wmega outputNode =
         |> Array.mapi (fun i top ->
             top
             |> Array.mapi (fun j v ->
-                calcMatrixElementValue (i+1) (j+1) nodeLst comps wmega vecB
+                calcMatrixElementValue (i+1) (j+1) nodeLst comps wmega [||]
             )
         )
         |> Array.collect (id)
@@ -591,7 +719,7 @@ let frequencyResponse (comps,conns) inputSource outputNode  =
     let matrix = Array.create n arr    
     let vecB =
         Array.create n {Re=0.0;Im=0.0}
-        |> Array.mapi (fun i v -> (calcVectorBElement (i+1) comps' nodeLst))
+        |> Array.mapi (fun i v -> (calcVectorBElement (i+1) comps' nodeLst [||]))
     
 
     // Run Frequency response
@@ -754,7 +882,7 @@ let transientAnalysis (comps,conns) inputSource inputNode outputNode =
                     let matrix = Array.create n arr
                     let vecB =
                         Array.create n {Re=0.0;Im=0.0}
-                        |> Array.mapi (fun i v -> (calcVectorBElement (i+1) comps'' nodeLst))
+                        |> Array.mapi (fun i v -> (calcVectorBElement (i+1) comps'' nodeLst [||]))
 
                     // find magnitude and phase using the source frequency 
                     let res = acAnalysis matrix nodeLst comps'' vecB (2.*System.Math.PI*f) outputNode |> complexCToP

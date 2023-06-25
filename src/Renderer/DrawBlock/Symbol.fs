@@ -272,7 +272,7 @@ let getPrefix (compType:ComponentType) =
     | Resistor _ -> "R"
     | Inductor _ -> "L"
     | Capacitor _ -> "C"
-    | Diode -> "D"
+    | Diode |DiodeR -> "D"
     | Opamp -> "OP"
     | VoltageSource _ -> "VS"
     | CurrentSource _ -> "CS"
@@ -447,7 +447,7 @@ let getComponentProperties (compType:ComponentType) (label: string)=
     // 3-tuple of the form ( number of ports, , Height, Width)
     let gS = float Constants.gridSize
     match compType with
-    | Diode  -> ( 2 , 1.0*gS ,  1.0*gS) 
+    | Diode |DiodeR  -> ( 2 , 1.0*gS ,  1.0*gS) 
     | Capacitor _ -> ( 2 , 1.0*gS ,  2.0*gS)
     | Resistor _ | Inductor _ -> ( 2 , gS ,  3.0*gS)
     | VoltageSource _| CurrentSource _ -> (2, 2.*gS,2.*gS )

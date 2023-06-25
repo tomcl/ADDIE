@@ -140,11 +140,11 @@ let runSimulation (model:Model) dispatch =
                         CircuitHasNoErrors |> dispatch
                         SimulationUpdated |> dispatch
                         let res,componentCurrents,nodeLst,dm = Simulation.modifiedNodalAnalysisDC canvasState model.PreviousDiodeModes
-                        //let equations = getDCEquations model.Sheet.DCSim (fst CS)
+                        let equations = getDCEquations model.Sheet.DCSim (fst CS)
                         UpdateVoltages (Array.toList res) |> dispatch
                         UpdateCurrents componentCurrents |> dispatch
                         UpdateDiodeModes dm |> dispatch
-                        UpdateDCSim {MNA=res;ComponentCurrents=componentCurrents;NodeList=nodeLst;Equations=[]} |> dispatch
+                        UpdateDCSim {MNA=res;ComponentCurrents=componentCurrents;NodeList=nodeLst;Equations=equations} |> dispatch
                         
                         match res with
                         |[||] -> 

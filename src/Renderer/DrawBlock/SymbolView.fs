@@ -202,7 +202,7 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
                 [|{X=0.2;Y=0.5};{X=0.8;Y=0.5};{X=0.7;Y=0.4};{X=0.8;Y=0.5};{X=0.9;Y=0.4};{X=0.8;Y=0.5}|]
             | Ground ->
                 [|{X=0;Y=0.3*H};{X=0.5*W;Y=H};{X=W;Y=0.3*H};{X=0.5*W;Y=0.3*H};{X=0.5*W;Y=0};{X=0.5*W;Y=0.3*H}|]
-            | Diode ->
+            | Diode |DiodeR ->
                 [|{X=0;Y=0};{X=0;Y=H};{X=W;Y=0.5*H};{X=W;Y=H};{X=W;Y=0};{X=W;Y=0.5*H}|]
             | Opamp ->
                 [|{X=0;Y=0};{X=0;Y=H};{X=W;Y=H/2.} |]
@@ -217,7 +217,7 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
     let outlineColour, strokeWidth =
         match comp.Type with
         | IOLabel -> outlineColor colour, "4.0"
-        |Resistor _  -> "black", "2.5"
+        |Resistor _  -> "darkblue", "2.5"
         | _ -> "black", "1.0"
 
 
