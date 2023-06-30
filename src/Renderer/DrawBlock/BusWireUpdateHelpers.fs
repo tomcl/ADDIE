@@ -861,8 +861,6 @@ let resetWireSegmentJumps (wireList : list<ConnectionId>) (model : Model) : Mode
     |> TimeHelpers.instrumentInterval "ResetJumps" startT
 
 /// Re-routes the wires in the model based on a list of components that have been altered.
-/// If the wire input and output ports are both in the list of moved components, 
-/// it does not re-route wire but instead translates it.
 /// Keeps manual wires manual (up to a point).
 /// Otherwise it will auto-route wires connected to components that have moved
 let updateWires (model : Model) (compIdList : ComponentId list) (diff : XYPos) =
@@ -874,11 +872,10 @@ let updateWires (model : Model) (compIdList : ComponentId list) (diff : XYPos) =
         |> Map.toList
         |> List.map (fun (cId, wire) -> 
             if List.contains cId wires //Translate wires that are connected to moving components on both sides
-            //then (cId, moveWire wire diff)
-            //elif List.contains cId wires.Inputs //Only route wires connected to ports that moved for efficiency
-            then (cId, updateWire model wire true)
-            //elif List.contains cId wires.Outputs
-            //then (cId, updateWire model wire false)
+            then 
+                cId, (
+                    updateWire model wire true 
+                    |> fun wire -> updateWire model wire false)
             else (cId, wire))
         |> Map.ofList
 
