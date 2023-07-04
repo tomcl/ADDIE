@@ -635,25 +635,6 @@ let displayView model dispatch =
         //printfn "X=%d, buttons=%d, mode=%A, width=%A, " (int ev.clientX) (int ev.buttons) model.DragMode model.ViewerWidth
         if ev.buttons = 1. then 
             dispatch SelectionHasChanged
-        //match model.DividerDragMode, ev.buttons, keyUp with
-        //| DragModeOn pos , 1., false-> 
-        //    let newWidth = model.WaveSimViewerWidth - int ev.clientX + pos
-        //    let w = 
-        //        newWidth
-        //        |> max minViewerWidth
-        //        |> min (windowX - minEditorWidth())
-        //    dispatch <| SetDragMode (DragModeOn (int ev.clientX - w + newWidth))
-        //    dispatch <| SetViewerWidth w 
-        //| DragModeOn pos, _, true ->
-        //    let newWidth = model.WaveSimViewerWidth - int ev.clientX + pos
-        //    let w =
-        //        newWidth
-        //        |> max minViewerWidth
-        //        |> min (windowX - minEditorWidth())
-        //    setViewerWidthInWaveSim w model dispatch
-        //    dispatch <| SetDragMode DragModeOff
-        //    dispatch <| SetViewerWidth w 
-        //| _ -> 
         ()
 
     let headerHeight = getHeaderHeight
@@ -705,17 +686,11 @@ let displayView model dispatch =
         viewOnDiagramButtons model dispatch
 
         //--------------------------------------------------------------------------------------//
-        //------------------------ left section for Sheet (NOT USED) ---------------------------//
-        // div [ leftSectionStyle model ] [ div [ Style [ Height "100%" ] ] [ Sheet.view model.Sheet sheetDispatch ] ]
-
-        //--------------------------------------------------------------------------------------//
         //---------------------------------right section----------------------------------------//
         // right section has horizontal divider bar and tabs
         div [ HTMLAttr.Id "RightSection"; rightSectionStyle model ]
-                // vertical and draggable divider bar
+                
             [ 
-                // dividerbar model dispatch
-                // tabs for different functions
                 viewRightTabs canvasState model dispatch ] 
          
         div [HTMLAttr.Id "BottomSection"; bottomSectionStyle model; Hidden (not model.showGraphArea)]

@@ -306,11 +306,17 @@ type Model = {
     /// Contains a list of pending messages
     Pending: Msg list
     UIState: UICommandType Option
+    /// Controls the visibility of the graph area (bottom section of the screen)
     showGraphArea: bool
+    /// Contains the necessary information to run all simulations
     SimulationData: SimData
+    /// Contains the lengths of the Component and Connection lists, to break simulation if they change
     PrevCanvasStateSizes: int*int
+    /// Contains the cached diode modes of the previous simulation 
     PreviousDiodeModes: bool list
+    /// Contains the outcome of the tests
     Tests: bool list
+    /// Contains the thevenin parameters of a particular circuit
     TheveninParams: TheveninParameters option
 } 
 

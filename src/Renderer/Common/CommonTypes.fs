@@ -48,9 +48,7 @@ module CommonTypes
     // Canvas state mapped to f# data structure //
     //==========================================//
 
-    /// Specify the type of a port in a Component.
-    type PortType = Input | Output
-
+    
     (*
     Note on Ports. Ports are used throughout Issie to represent I/Os of components.
     Because a design sheet can be instantiated as a component they can also represent I/Os of a sheet.
@@ -61,21 +59,9 @@ module CommonTypes
        component they are on (HostID).
     2. Port records on connections do NOT have port numbers, note this means that connection ports
        cannot be the same as the corresponding component port.
-    3. Port numbers on components are contiguous from 0 separtely for input
-       and output ports.
+    3. Port numbers on components are contiguous from 0 
     4. Port numbers must match with the index of the port in the corresponding component
-       InputPorts or OutputPorts list
-    5. For custom components port numbers match index of the port in InputPortNames,OutputPortNames
-    6. For symbols port numbers determine the vertical order in which ports are displayed.
-    7. Thus when changing the order of number of I/Os on a custom component port numbers can be changed
-       as long as port lists and port name lists are similarly re-ordered.
-    8. In the simulation port numbers are not relevant for custom comps - connections match port names with the 
-       sheet input or output component for the port
-    9. In the simulation port numbers matter for all other ports: the simulator defines operation based on them.
-    10.In model.Symbol ports are kept in a single global map, including port numbers. If port numbers are permuted on
-       custom components the port numbers in this map must be changed. However this will normally happen since
-       model.Symbol symbols and ports are changed at the same time by AddSymbol or deleteSymbol or LoadComponents
-       messages.
+       IOPorts list
     *)
 
 
@@ -99,23 +85,7 @@ module CommonTypes
     }
 
     type PortId = | PortId of string
-
-    // NB - this.Text() is not currently used.
-
-    /// This width is for wire displaying, >8 buswires displayed with 8px thickness. Actual size stored in Port type
-    type Width = One | Two | Three | Four | Five | Six | Seven | Eight
-    with
-        member this.Text() = // the match statement is used for performance
-            match this with
-            | One -> "1px"
-            | Two -> "2px"
-            | Three -> "3px"
-            | Four -> "4px"
-            | Five -> "5px"
-            | Six -> "6px"
-            | Seven -> "7px"
-            | Eight -> "8px"
-            
+                    
             
     /// Type to specify the origin of a custom component
     type CCForm =
@@ -125,48 +95,7 @@ module CommonTypes
         |ProtectedSubSheet
 
 
-    /// Note that any memory addresses which have not been explicitly set when printing
-    /// out memory data.
-    type Memory = {
-        // How many bits the address should have.
-        // The memory will have 2^AddressWidth memory locations.
-        AddressWidth : int 
-        // How wide each memory word should be, in bits.
-        WordWidth : int
-        // Data is a list of <2^AddressWidth> elements, where each element is a
-        // 64 bit integer. This makes words longer than 64 bits not supported.
-        // This can be changed by using strings instead of int64, but that is way
-        // less memory efficient.
-        Data : Map<int64,int64>
-    }
-
-    type InitMemData = 
-        | FromData // old method (from data field)
-        | FromFile of string // FromFile fName => read a file fName.ram for data
-        | ToFile of string // ToFile fName => write data to a file fName.ram
-        | ToFileBadName of string // as ToFile but the name does not validate
-        | UnsignedMultiplier
-        | SignedMultiplier
-
-
-    type Memory1 = {
-    // is the data initialised from a file name.ram in the project directory, or some other way?
-    Init: InitMemData
-    // How many bits the address should have.
-    // The memory will have 2^AddressWidth memory locations.
-    AddressWidth : int 
-    // How wide each memory word should be, in bits.
-    WordWidth : int
-    // Data is a list of <2^AddressWidth> elements, where each element is a
-    // 64 bit integer. This makes words longer than 64 bits not supported.
-    // This can be changed by using strings instead of int64, but that is way
-    // less memory efficient.
-    Data : Map<int64,int64>  
-    } 
-
-
-
-
+    
     type VoltageSourceType =
         |DC of Voltage:float
         |ACAnalysis of Amplitude:float * Phase:float
@@ -334,11 +263,7 @@ module CommonTypes
             Phase: float
         }
 
-    ///unconfigured replaces Some -1, Error replaces None, Configured of int replaces Some (positive int)
-    type WireWidth = | Configured of int | Unconfigured | ErrorWidth
-
-    type NumberBase = | Hex | Dec | Bin | SDec
-
+    
     /// Colors to highlight components
     /// Case name is used as HTML color name.
     /// See JSHelpers.getColorString
@@ -360,6 +285,8 @@ module CommonTypes
             | Thistle -> "thistle"
             | c -> sprintf "%A" c
             
+    
+    // useful unicode symbols    
     let omegaString = "\u03a9"
     let muString = "\u03bc"
     let groundSymbol = "\u23DA"
@@ -495,12 +422,6 @@ module CommonTypes
     /// Value set to None if the connection width could not be inferred.
     type ConnectionsWidth = Map<ConnectionId, int option>
 
-    /// Documents user circuit error found during connection width inference
-    type SimulationError = {
-        Msg : string
-        ComponentsAffected : ComponentId list // A list of component Ids.
-        ConnectionsAffected : ConnectionId list // A list of connection Ids.
-    }
 
     /// Messages sent from draw block
     type JSDiagramMsg =
@@ -510,6 +431,16 @@ module CommonTypes
         | InferWidths of unit
         | SetHasUnsavedChanges of bool
 
+
+    /// Documents user circuit error found during connection width inference
+    type SimulationError = {
+        Msg : string
+        ComponentsAffected : ComponentId list // A list of component Ids.
+        ConnectionsAffected : ConnectionId list // A list of connection Ids.
+    }
+
+
+    // Simulation Results Types
     type DCSimulationResults = {
         MNA: float array
         ComponentCurrents: Map<ComponentId,float>

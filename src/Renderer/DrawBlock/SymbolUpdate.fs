@@ -773,9 +773,6 @@ let update (msg : Msg) (model : Model): Model*Cmd<'a>  =
             |Vertical -> {symbol with VScale=Some newScale}
         (replaceSymbol model newSymbol compId), Cmd.none
 
-    | ChangeConstant (compId, newVal, newText) -> 
-        let newsymbol = changeConstantf model compId newVal newText
-        (replaceSymbol model newsymbol compId), Cmd.none
     
     | ChangeRLCIValue (compId, newVal, newStr) ->
         let symbol = Map.find compId model.Symbols

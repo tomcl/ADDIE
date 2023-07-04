@@ -17,9 +17,6 @@ open Operators
 let showAllSymbolPorts _ sym = 
      set (appearance_ >-> showPorts_) ShowBoth sym 
 
-let showSymbolBothForPortMovementPorts _ sym =
-    set (appearance_ >-> showPorts_) ShowBothForPortMovement sym 
-
 let hideSymbolPorts _ sym = 
     set (appearance_ >-> showPorts_) ShowNone sym 
 
@@ -37,14 +34,6 @@ let inline showAllPorts (model: Model) =
     { model with Symbols = newSymbols }
 
 
-
-/// Given a model it shows all ports of custom components and hides all other ports, then returns the updated model
-let inline showAllCustomPorts (model: Model) =
-    let newSymbols = 
-        model.Symbols
-        |> Map.map showSymbolBothForPortMovementPorts
-
-    { model with Symbols = newSymbols }
 
 /// Given a model it hides all ports and returns the updated model
 let inline deleteAllPorts (model: Model) =

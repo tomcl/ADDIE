@@ -120,44 +120,6 @@ let private floatFormField name (width:string) defaultValue minValue onChange =
         ]
     ]
 
-let private int64FormField name (width:string) defaultValue minValue onChange =
-    Field.div [] [
-        Label.label [] [ str name ]
-        Input.number [
-            Input.Props [Style [Width width]; Min minValue]
-            Input.DefaultValue <| sprintf "%d" defaultValue
-            Input.OnChange (getInt64EventValue >> onChange)
-        ]
-    ]
-
-let private intFormFieldNoMin name defaultValue onChange =
-    Field.div [] [
-        Label.label [] [ str name ]
-        Input.number [
-            Input.Props [Style [Width "60px"]]
-            Input.DefaultValue <| sprintf "%d" defaultValue
-            Input.OnChange (getIntEventValue >> onChange)
-        ]
-    ]
-
-let private int64FormFieldNoMin name (defaultValue:int64) (currentText:string option) onChange =
-    Field.div [] [
-        Label.label [] [ str name ]
-        Input.text [
-            Input.Props [Style [Width "180px"]]
-            Input.DefaultValue <| Option.defaultValue $"{defaultValue}" currentText
-            Input.OnChange (getTextEventValue >> onChange)
-        ]
-    ]
-
-
-let private sliderField min max v onChange =
-    Field.div [] [
-        Slider.slider [ Slider.OnChange (getTextEventValue >> onChange)]
-        div [ ]
-            [ str (string v) ]
-        ]
-        
 
 let private makeScaleAdjustmentField model (comp:Component) dispatch =
     let sheetDispatch sMsg = dispatch (Sheet sMsg)
@@ -218,38 +180,6 @@ let constantDialogWithDefault (w,cText) dialog =
     let w = Option.defaultValue w dialog.Int
     let cText = Option.defaultValue cText dialog.Text
     w, cText
-
-///// Create react to chnage constant properties
-//let makeConstantDialog (model:Model) (comp: Component) (text:string) (dispatch: Msg -> Unit): ReactElement =
-//        let symbolDispatch msg = dispatch <| msgToS msg
-//        let wComp, txtComp =
-//            match comp.Type with | Constant1( w,_,txt) -> w,txt | _ -> failwithf "What? impossible" 
-//        let w = Option.defaultValue wComp model.PopupDialogData.Int
-//        let cText = Option.defaultValue txtComp model.PopupDialogData.Text
-//        let reactMsg, compTOpt = CatalogueView.parseConstant 64 w cText
-//        match compTOpt with
-//        | None -> ()
-//        | Some (Constant1(w,cVal,cText) as compT) ->
-//            if compT <> comp.Type then
-//                model.Sheet.ChangeWidth (Sheet >> dispatch) (ComponentId comp.Id) w
-//                symbolDispatch <| SymbolT.ChangeConstant (ComponentId comp.Id, cVal, cText)
-//                dispatch (ReloadSelectedComponent w)
-//                dispatch ClosePropertiesNotification
-//        | _ -> failwithf "What? impossible"
-
-//        div [] [
-//                makeNumberOfBitsField model comp text dispatch
-//                br []
-//                reactMsg
-//                br []
-//                textFormFieldSimple 
-//                    "Enter constant value in decimal, hex, or binary:" 
-//                    cText 
-//                    (fun txt -> 
-//                        printfn $"Setting {txt}"
-//                        dispatch <| SetPopupDialogText (Some txt))
-                
-//            ]              
 
 let private makeSliderField model (comp:Component) text dispatch =
     let sheetDispatch sMsg = dispatch (Sheet sMsg)

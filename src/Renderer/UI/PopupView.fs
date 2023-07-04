@@ -289,75 +289,7 @@ let dialogPopupBodyOnlyInt beforeInt intDefault dispatch =
                 Input.OnChange (getIntEventValue >> Some >> SetPopupDialogInt >> dispatch)
             ]
         ]
-///// Create the body of a dialog Popup with two ints.
-//let dialogPopupBodyTwoInts (beforeInt1,beforeInt2) (intDefault1,intDefault2) (width2:string) dispatch =
 
-//    let setPopupTwoInts (whichInt:IntMode, optText) =
-//        fun (n:int64) -> (Some n, whichInt, optText) |> SetPopupDialogTwoInts |> dispatch
-
-//    setPopupTwoInts (FirstInt,None) (int64 intDefault1)
-//    setPopupTwoInts (SecondInt, None) intDefault2 
-
-//    fun (dialogData : PopupDialogData) ->
-//        div [] [
-//            beforeInt1 dialogData
-//            br []
-//            Input.number [
-//                Input.Props [OnPaste preventDefault; Style [Width "60px"]; AutoFocus true]
-//                Input.DefaultValue <| sprintf "%d" intDefault1
-//                Input.OnChange (getIntEventValue >> int64 >> setPopupTwoInts (FirstInt,None))
-//            ]
-//            br []
-//            beforeInt2 dialogData
-//            br []
-//            Input.text [
-//                Input.Props [OnPaste preventDefault; Style [Width width2]; AutoFocus true]
-//                Input.DefaultValue <| sprintf "%d" intDefault2
-//                Input.OnChange (fun ev ->
-//                    let text = getTextEventValue ev
-//                    let n = getInt64EventValue ev
-//                    setPopupTwoInts(SecondInt, Some text) n)
-//            ]
-//        ]
-
-///// Create the body of a dialog Popup with text and two ints.
-//let dialogPopupBodyTextAndTwoInts (beforeText, textPlaceholder) (beforeInt1,beforeInt2) (intDefault1,intDefault2) dispatch =
-
-//    let setPopupTwoInts (whichInt:IntMode, optText) =
-//        fun (n:int64) -> (Some n, whichInt, optText) |> SetPopupDialogTwoInts |> dispatch
-
-//    setPopupTwoInts (FirstInt,None) (int64 intDefault1)
-//    setPopupTwoInts (SecondInt, None) intDefault2 
-
-//    fun (dialogData : PopupDialogData) ->
-//        div [] [
-//            beforeText dialogData
-//            br []
-//            Input.text [
-//                Input.Props [OnPaste preventDefault; AutoFocus true; SpellCheck false]
-//                Input.Placeholder textPlaceholder
-//                Input.OnChange (getTextEventValue >> Some >> SetPopupDialogText >> dispatch)
-//            ]
-
-//            beforeInt1 dialogData
-//            br []
-//            Input.number [
-//                Input.Props [OnPaste preventDefault; Style [Width "60px"]; AutoFocus true]
-//                Input.DefaultValue <| sprintf "%d" intDefault1
-//                Input.OnChange (getIntEventValue >> int64 >> setPopupTwoInts (FirstInt,None))
-//            ]
-//            br []
-//            beforeInt2 dialogData
-//            br []
-//            Input.text [
-//                Input.Props [OnPaste preventDefault; Style [Width "60px"]; AutoFocus true]
-//                Input.DefaultValue <| sprintf "%d" intDefault2
-//                Input.OnChange (fun ev ->
-//                    let text = getTextEventValue ev
-//                    let n = getInt64EventValue ev
-//                    setPopupTwoInts(SecondInt, Some text) n)
-//            ]
-//        ]
 
 /// Create the body of a dialog Popup with both text and int.
 let dialogPopupBodyTextAndInt beforeText placeholder beforeInt intDefault dispatch =
@@ -813,65 +745,6 @@ let viewInfoPopup dispatch =
     let foot _ = div [] []
     dynamicClosablePopup title body foot [Width 800] dispatch
 
-let viewWaveInfoPopup dispatch =
-    let makeH h =
-        Text.span [ Modifiers [
-            Modifier.TextSize (Screen.Desktop, TextSize.Is6)
-            Modifier.TextWeight TextWeight.Bold
-        ] ] [str h; br []]
-    let styledSpan styles txt = span [Style styles] [str <| txt]
-    let bSpan txt = styledSpan [FontWeight "bold"] txt
-    let iSpan txt = styledSpan [FontStyle "italic"] txt
-    let tSpan txt = span [] [str txt]
-
-    let title = "How to Use the Waveform Viewer"
-
-    let waveInfo = div [] [
-        makeH "Wave and RAM Selection"
-        ul [Style [ListStyle "disc"; MarginLeft "30px"]] [
-            li [] [str "The waveform viewer can view signals on"; bSpan  " any sheet"; str " in the design being simulated."]
-         
-            li [] [str "Use 'select waves' window to select which waveforms are viewed. The filter box allows ports to be selected by name. \
-                       Expand groups to explore design and find ports."]
-                    
-            li [] [str "The waveforms you view can be changed whenever the simulation is running. It is good practice to \
-                        keep only the ones you need at any time."]
-            li [] [str "RAMs and ROMs can be viewed showing contents in the current (cursor) cycle, and showing reads and writes."]
-            li [] [str "Selected waveforms are preserved from one simulation to the next."]
-        ]
-
-        makeH "Waveforms"
-        ul [Style [ListStyle "disc"; MarginLeft "30px"]] [
-            li [] [str "Hover mouse over a waveform name in the viewer to see the it highlighted on the current sheet."]
-            li [] [ str "Change sheet to view or alter components on subsheets."]
-            li [] [ str "Drag names to reorder waveforms, use delete icon to delete, use wave select to make large changes."]
-     
-            li [] [ str "Use cursor and zoom controls at any time to show which cycles to display. \
-                        This setting will be preserved from one simulation to the next."]
-            li [] [str "The cursor current cycle is greyed and can be moved by clicking the the waveforms, \
-                        altering the number in the cursor box, or clicking arrows."]
-        ]
-        makeH "Miscellaneous"
-        ul [Style [ListStyle "disc"; MarginLeft "30px"]] [
-            li [] [str "During a simulation you can move to any sheet and view or edit the design. \
-                       If the design changes a button will appear allowing you to simulate \
-                       the newer design, this will work even if you have edited a subsheet. \
-                       You can move the grey bar to give the waveforms more or less room."] 
-            li [] [str "You can set default values for inputs in properties boxes. \
-                       The main sheet inputs to the simulation are given these values throughout the simulation. \
-                       Components can be edited during a simulation and the new values will appear when the simulation is refreshed."]
-            li [] [str "The waveform radix can be changed. When waveforms are too small to fit binary this will be automatically changed to hex. \
-                        Numeric values not dispalyed with waveform can be viewed using the cursor and the righthand panel."]
-        ]
-    ]
-
-   
-    let body (dialogData:PopupDialogData) =
-        waveInfo
-    let foot _ = div [] []
-    dynamicClosablePopup title body foot [Width 1000] dispatch
-
-
 let viewWaveSelectConfirmationPopup numWaves action dispatch =
     let makeH h =
         Text.span [ Modifiers [
@@ -896,27 +769,6 @@ let viewWaveSelectConfirmationPopup numWaves action dispatch =
         warning
     let foot _ = div [] []
     choicePopup title warning "Select waveforms" "Change selection"  action dispatch
-
-
-let memPropsInfoButton dispatch =
-    let title = "Issie Memories: how RAM and ROM data works"
-    let bullet s = li [] [str s]
-    let info = 
-        ul [Style [ListStyle "disc"; MarginLeft "30px"]] [
-            bullet "RAMs and ROMs need to have initial data contents defined. For RAMs the fixed initial data \
-                    is reset for clock cycle 0 whenever a simulation is started, the RAM data can change during simulation."  
-            bullet "The default initial data is all 0s. Initial data is stored with the design sheet and  may be viewed or \
-                    modified with the memory editor from properties. The editor can change locations numbered higher than 15 by entering a \
-                    number in the 'first location displayed' box."
-            bullet "During the Step or Waveform Viewer simulation RAM data can be viewed, but not manually changed. RAM data may change as the result of writes. \
-                    These changes don't affect the initial data."
-            bullet "When using external tools like an assembler it is useful to enter RAM or ROM initial data from a text file. Memory data can be \
-                    written to a file with extension '.ram'. If a '.ram' file is placed in the project directory a RAM or ROM component can be linked to the \
-                    file, or unlinked, by selecting it from the properties page."
-            bullet "Linked memories will have initial data updated to latest file contents, if they change. Update is automatic
-                    when a new simulation is started and otherwise will happen if needed when the Issie screen refreshes."
-        ]
-    makeInfoPopupButton title info dispatch
 
 
 let makePopupButton (title: string) (menu: PopupDialogData -> ReactElement) (buttonLegend: string) dispatch =

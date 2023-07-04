@@ -69,48 +69,7 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
         let newModel = updateWireSegmentJumps [wireId] (Optic.set (wireOf_ newWire.WId) newWire model)
         
         newModel, Cmd.none
-    
-    //| BusWidths ->
-    //    // (1) Call Issie bus inference
-    //    // (2) Add widths to maps on symbols on wires
-    //    let processConWidths (connWidths: ConnectionsWidth) =
-    //        let addWireWidthFolder (wireMap: Map<ConnectionId, Wire>) _ wire  =
-    //            let width =
-    //                match connWidths[wire.WId] with
-    //                | Some a -> a
-    //                | None -> wire.Width
-    //            let newColor = 
-    //                if wire.Color = Purple || wire.Color = Brown then Purple else DarkSlateGrey
-    //            wireMap.Add ( wire.WId, { wire with Width = width ; Color = newColor} )
-
-    //        let addSymbolWidthFolder (m: Map<ComponentId,Symbol>) (_: ConnectionId) (wire: Wire) =
-    //                let inPort = model.Symbol.Ports[match wire.InputPort with InputPortId ip -> ip]
-    //                let symId = ComponentId inPort.HostId
-    //                let symbol = m[symId]
-
-    //                match symbol.Component.Type with
-    //                | _ -> m
-
-    //        let newWires = ((Map.empty, model.Wires) ||> Map.fold addWireWidthFolder)
-
-    //        let symbolsWithWidths =
-    //            (model.Symbol.Symbols, newWires) ||> Map.fold addSymbolWidthFolder
-
-    //        { model with
-    //            Wires = newWires; 
-    //            Notifications = None;
-    //            ErrorWires=[];
-    //            Symbol = {model.Symbol with Symbols = symbolsWithWidths}
-    //        }, Cmd.none
-
-    //    let canvasState = (SymbolUpdate.extractComponents model.Symbol, extractConnections model)
-
-    //    match BusWidthInferer.inferConnectionsWidth canvasState with
-    //    | Ok connWidths ->
-    //        processConWidths connWidths
-    //    | Error e ->
-    //            { model with Notifications = Some e.Msg }, Cmd.ofMsg (ErrorWires e.ConnectionsAffected)
-
+   
     | CopyWires (connIds : list<ConnectionId>) ->
         // add given wires to Copiedwires state (NB, this contains wires at time of copy)
         let copiedWires = Map.filter (fun connId _ -> List.contains connId connIds) model.Wires

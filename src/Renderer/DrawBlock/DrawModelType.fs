@@ -76,7 +76,7 @@ module SymbolT =
     let orientation_ = Lens.create (fun a -> a.Orientation) (fun s a -> {a with Orientation = s})
 
     /// data here changes how the symbol looks but has no other effect
-    type ShowPorts = | ShowInput | ShowOutput | ShowBoth | ShowBothForPortMovement | ShowNone | ShowOneTouching of Port | ShowOneNotTouching of Port | ShowTarget  
+    type ShowPorts = | ShowBoth | ShowNone 
     
     type AppearanceT =
         {
@@ -174,7 +174,6 @@ module SymbolT =
         | ColorSymbols of compList : ComponentId list * colour : HighLightColor
         | ErrorSymbols of errorIds: ComponentId list * selectIds: ComponentId list * isDragAndDrop: bool
         | ChangeScale of compId:ComponentId * newScale:float * whichScale:ScaleAdjustment
-        | ChangeConstant of compId: ComponentId * NewBits:int64 * NewText:string
         | ChangeRLCIValue of compId: ComponentId * NewValue:float * NewStr:string
         | ResetModel // For Issie Integration
         | LoadComponents of  LoadedComponent list * Component list // For Issie Integration

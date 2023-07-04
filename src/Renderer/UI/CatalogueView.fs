@@ -30,17 +30,6 @@ let private menuItem styles label onClick =
         [ Menu.Item.IsActive false; Menu.Item.Props [ OnClick onClick; Style styles ] ]
         [ str label ]
 
-//let private createComponent compType label model dispatch =
-//    Sheet (SheetT.InitialiseCreateComponent (tryGetLoadedComponents model, compType, label)) |> dispatch
-
-//// Anything requiring a standard label should be checked and updated with the correct number suffix in Symbol/Sheet, 
-//// so give the label ""
-//let createCompStdLabel comp model dispatch =
-//    createComponent comp "" model dispatch
-
-
-
-
 let createSheetDescriptionPopup (model:Model) previousDescr sheetName dispatch =
     let title = sprintf "Sheet Description"
     let beforeText =
@@ -120,12 +109,6 @@ let compareModelsApprox (m1:Model) (m2:Model) =
 
 let viewCatalogue model dispatch =
 
-        let muxTipMessage (numBusses:string) = $"Selects the one of its {numBusses} input busses numbered by the value of the select input 
-                                to be the output. Adjusts bus width to match"
-
-        let deMuxTipMessage (numBits:string) = $"The output numbered by the binary value 
-        of the {numBits} sel inputs is equal to Data, the others are 0"
-
         let viewCatOfModel = fun model ->                 
             let styles = 
                 match model.Sheet.Action with
@@ -140,7 +123,6 @@ let viewCatalogue model dispatch =
                     ]
                     [ react ]
             Menu.menu [Props [Class "py-1"; Style styles]]  [
-                // TODO
                     makeMenuGroup
                         "Ground"
                         [ 
@@ -164,15 +146,5 @@ let viewCatalogue model dispatch =
                           catTip1 "Operational Amplifier"  (fun _ -> createCompStdLabel Opamp model dispatch) "Operational Amplified"
                           catTip1 "Linearized Diode"  (fun _ -> createCompStdLabel DiodeL model dispatch) "Diode: This is a linearized equivalent diode that assumes a 0.7 constant voltage drop on conducting mode"
                           catTip1 "Real Diode"  (fun _ -> createCompStdLabel DiodeR model dispatch) "Real Diode"]
-                            
-                    
-                    
-                    //makeMenuGroupWithTip styles
-                    //    "This project"
-                    //    "Every design sheet is available for use in other sheets as a custom component: \
-                    //    it can be added any number of times, each instance replicating the sheet logic"
-                    //    (makeCustomList styles model dispatch)
-
-                          
                 ]
         (viewCatOfModel) model 
