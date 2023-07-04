@@ -1,15 +1,13 @@
-# Issie - an Interactive Schematic Simulator with Integrated Editor
+# Addie - an Analog Design & Debugging Integrated Environment
 
-Issie (Interactive Schematic Simulator with Integrated Editor) is an application for digital circuit design and simulation. It is targeted at students and hobbyists that want to get a grasp of Digital Electronics concepts in a simple and fun way. Issie is designed to be beginner-friendly and guide the users toward their goals via clear error messages and visual clues. Issie is developed and actively used in teaching at Imperial College London.
+Addie (Analog Design & Debugging Integrated Environment) is an application for digital circuit design and simulation. It is targeted at students and hobbyists that want to get a grasp of Digital Electronics concepts in a simple and fun way. Addie is designed to be beginner-friendly and guide the users toward their goals via clear error messages and visual clues. Addie is developed and actively used in teaching at Imperial College London.
 
 * If you are just interested in using the application, jump to the [Getting Started](#getting-started) section. 
-* If you want user documentation and news go to the [web pages](https://tomcl.github.io/issie/).
+* If you want user documentation and news go to the web pages.
 
 For more technical info about the project, read on. This documentation is partly based on the excellent [VisUAL2](https://github.com/ImperialCollegeLondon/Visual2) documentation, given the similarity in the technology stack used.
 
 ## Introduction
-
-For the Issie website go [here](https://tomcl.github.io/issie/).
 
 The application is mostly written in F#, which gets transpiled to JavaScript via the [Fable](https://fable.io/) compiler. [Electron](https://www.electronjs.org/) is then used to convert the developed web-app to a cross-platform application. [Electron](electronjs.org) provides access to platform-level APIs (such as access to the file system) which would not be available to vanilla browser web-apps.
 
@@ -114,13 +112,13 @@ Contains static files used in the application.
 
 ### `Docs` folder
 
-Contains source information that controls the project documentation web site [https://tomcl.github.io/issie/](https://tomcl.github.io/issie/).
+Contains source information that controls the project documentation web site.
 
-## Project versus File in the Issie application
+## Project versus File in the Addie application
 
-Issie allows the users to create projects and files within those projects. A Issie project is simply a folder named `<project-name>` that contains an empty file named `<project_name>.dprj` (dprj stands for diagram project). The project folder any non-zero number of design files, each named `<component_name>.dgm` (dgm stands for diagram). each deisgn file represents one design sheet of a hierarchical hardware design, sheets can contain, as components, other sheets.
+Addie allows the users to create projects and files within those projects. A Addie project is simply a folder named `<project-name>` that contains an empty file named `<project_name>.dprj` (dprj stands for diagram project). The project folder any non-zero number of design files, each named `<component_name>.dgm` (dgm stands for diagram). each deisgn file represents one design sheet of a hierarchical hardware design, sheets can contain, as components, other sheets.
 
-When opening a project, Issie will initially search the given repository for `.dgm` files, parse and load their content, and allow the user to open them in Issie or use them as components in other designs.
+When opening a project, Addie will initially search the given repository for `.dgm` files, parse and load their content, and allow the user to open them in Addie.
 
 ## Build Overview
 
@@ -133,21 +131,21 @@ This project uses modern F# / dotnet cross-platform build. The build process doe
    * fake (F# build automation tool) 
    * fable (F# to js compiler)
    * paket (alt dotnet package manager to Nuget)
-* Next all the project Dotnet dependencies (`paket.dependencies` for the whole project, selected from by the `paket.references` in each project directory, are loaded by the `paket` packet manager.
+* Next all the project Dotnet dependencies `paket.dependencies` for the whole project, selected from by the `paket.references` in each project directory, are loaded by the `paket` packet manager.
 * Finally fake runs `build.fsx` (this is platform-independent) which uses `npm` to install all the node (Javascript) dependencies listed in `package.json`. That includes tools like webpack and electron, which run under node, as well as the node libraries that will be used by needed by the running electron app, including electron itself. These are all loaded by the `npm` packet manager. 
 
 ## Getting Started
 
-If you just want to run the app go to the [releases page](https://github.com/tomcl/issie/releases) and
-download and run the latest prebuilt binary for your platform (Windows or Macos). Issie will require in total about 200M of disk space.
+If you just want to run the app go to the releases page and
+download and run the latest prebuilt binary for your platform (Windows or Macos). Addie will require in total about 200M of disk space.
 
-* Windows: unzip \*.zip anywhere and double-click the top-level `Issie.exe` application in the unzipped files.
+* Windows: unzip \*.zip anywhere and double-click the top-level `Addie.exe` application in the unzipped files.
 * Macos: Double click the dmg file  and run the application inside the folder, or drag and drop this to install.
     * The binaries are not signed. You will need to [perform a one-off security bypass](https://www.wikihow.com/Install-Software-from-Unsigned-Developers-on-a-Mac).
 
-Issie installs and runs without making system changes - all of its code is inside the directory you download. You can delete this and replace it by a later version of Issie. Each design sheet is stored in a similarly named file under the porject directory. The subdirectory `backup` there contains a large numbers of backup snapshots for design recovery. These are not needed for Issie operation so you can delete them - or even the whole `backup` directory, if you wish.
+Addie installs and runs without making system changes - all of its code is inside the directory you download. You can delete this and replace it by a later version of Addie. Each design sheet is stored in a similarly named file under the porject directory. The subdirectory `backup` there contains a large numbers of backup snapshots for design recovery. These are not needed for Addie operation so you can delete them - or even the whole `backup` directory, if you wish.
 
-Issie binaries will not run (in some cases) from a networked file location (found on many cluster machines). If you have this problem navigate to the top-level directory containing the Issie binaries in a command window and type `issie.exe --no-sandbox`. See https://github.com/tomcl/issie/issues/125 for details.
+Addie binaries will not run (in some cases) from a networked file location (found on many cluster machines). If you have this problem navigate to the top-level directory containing the Addie binaries in a command window and type `Addie.exe --no-sandbox`.
 
 ## Getting Started as Developer
 
@@ -168,9 +166,9 @@ Download and install (if you already have these tools installed just check the v
   * Ticked: F# language support
 * (recommended) install [hyper.js](https://hyper.is/) or (better on Windows is  [Windows Terminal](https://github.com/microsoft/terminal).
 
-### Issie Development
+### Addie Development
 
-1. Download & unzip the [Issie repo](https://github.com/tomcl/ISSIE), or clone it locally, or fork it on github and then clone it locally. 
+1. Download & unzip the Addie repo, or clone it locally, or fork it on github and then clone it locally. 
 
 3. Navigate to the project root directory (which contains this README) in a command-line interpreter, or start one from directory context menu.
 
@@ -184,7 +182,7 @@ Download and install (if you already have these tools installed just check the v
   * If you have changed `packet.json` and therefore need to remake the lock file `paket-lock.json` use `npm install`.
   * On windows `build killzombies` will terminate orphan node and dotnet processes which occasionally happen using this build chain after unusual terminations
 
-NB - in parallel with the above compilation, Issie code will always compile without errors (but not run)under dotnet. Compilation should be identical but when unsure why there is an error it is **very helpful** to build the current code under VS or VSC and get easier to find error messages. Similarly, VS or VSC can be used with confidence to refactor code, testing with compilation. Building under VS or VSC cannot work because the code depends on electron and Node APIs to work.
+NB - in parallel with the above compilation, Addie code will always compile without errors (but not run)under dotnet. Compilation should be identical but when unsure why there is an error it is **very helpful** to build the current code under VS or VSC and get easier to find error messages. Similarly, VS or VSC can be used with confidence to refactor code, testing with compilation. Building under VS or VSC cannot work because the code depends on electron and Node APIs to work.
 
 #### Node management details
 
@@ -209,7 +207,7 @@ A clean build will work equally well on macos, however things are more likely to
   * ``chown -R `whoami` dir``
 for each directory that might have the files with bad permissions. Typically your dev directory `.` and `/usr/local`.
 * Uninstalling and reinstalling latest dotnet is helpful if dotnet has been installed wrong.
-* For Apple silicon Mac users, please use `x86_64` version of `dotnet` to build/run Issie. There is a known [issue](https://github.com/fsprojects/FAKE/issues/2626) of running `dotnet fake build` with `dotnet` arm64 on Apple silicon.
+* For Apple silicon Mac users, please use `x86_64` version of `dotnet` to build/run Addie. There is a known [issue](https://github.com/fsprojects/FAKE/issues/2626) of running `dotnet fake build` with `dotnet` arm64 on Apple silicon.
 
   Steps to install/use x86_64 `dotnet` on Apple silicon:
   1. Install build essentials
@@ -270,8 +268,7 @@ Although the dev chain is complex, it is now very smooth and identical for all p
 * To interface to a new Node package from F# see the excellent [Fable documentation](https://fable.io/docs/communicate/js-from-fable.html). The **best** way to do this is to write an F# interface file which provides
 static typing (like a typescript definition file). In fact there is a wonderful automatic converter [ts2fable](https://github.com/fable-compiler/ts2fable) which generates F# interfaces from typescript `.d` files. This works well, but manual adjutsment is needed for anything complex. See [the Electon API interface](https://github.com/tomcl/issie/blob/master/src/Renderer/Common/ElectronAPI.fs) in Issie which was generated in this way from a published electron API `.d` files - in that case the manual adjustment was quite unpleasant because Electron API is very complex.
 * To understand Elmish and MVU read the excellent [Elmish book](https://zaid-ajaj.github.io/the-elmish-book/#/)
-* For more documentation on Issie in addition to XML code comments see the [Issie Wiki](https://github.com/tomcl/issie/wiki)
-
+* For more documentation on Addie in addition to XML code comments see the Addie Wiki
 
 ## Reinstalling Compiler and Libraries
 
