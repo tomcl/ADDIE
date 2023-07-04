@@ -170,28 +170,8 @@ let makeData aWidth dWidth makeFun =
 
 
 
-let makeFixedROM addr data mem =
-    let signExtend w n =
-        if n &&& (1 <<< (w - 1)) <> 0 then
-            ((-1 <<< w) ||| n) &&& 0xFFFFFFFF
-        else
-            n
-            
-    match mem.Init, addr, data with
-    | UnsignedMultiplier, a, d when a % 2 = 0 && a <= 16 ->
-        Ok <| makeData a d (fun (x:int) (y:int) -> (x * y) % (1 <<< d))
-    | SignedMultiplier, a, d when a % 2 = 0 && a <= 16 ->
-        let w = a / 2
-        Ok <| makeData a d (fun (x:int) (y:int) -> (signExtend w x * signExtend w y) &&& ((1 <<< d) - 1))
-    | FromData,_, _ -> Ok mem.Data
-    | _ -> failwithf $"addr={addr}, data={data}, int={mem.Init} not allowed in makeFixedROM"
-
 let jsonStringToMem (jsonString : string) =
      Json.tryParseAs<Map<int64,int64>> jsonString
-
-
-
-            
 
 
 let getBaseNameNoExtension filePath =

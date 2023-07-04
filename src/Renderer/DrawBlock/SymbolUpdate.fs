@@ -10,7 +10,6 @@ open DrawModelType
 open DrawModelType.SymbolT
 open Symbol
 open SymbolUpdatePortHelpers
-open SymbolReplaceHelpers
 open Optics
 open Optic
 open Operators
