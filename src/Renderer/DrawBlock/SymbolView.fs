@@ -158,7 +158,6 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
     let appear = symbol.Appearance
     let colour = appear.Colour
     let showPorts = appear.ShowPorts
-    // let showOutputPorts = appear.ShowOutputPorts
     let opacity = appear.Opacity
     let comp = symbol.Component
     let h,w = getRotatedHAndW symbol
@@ -172,24 +171,15 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
         let toString = Array.fold (fun x (pos:XYPos) -> x + (sprintf $" {pos.X},{pos.Y}")) "" 
         let originalPoints =
             match comp.Type with
-            | IOLabel ->
-                [|{X=0.;Y=H/2.};{X=W;Y=H/2.}|]
-            | IO -> 
-                [|{X=0;Y=0};{X=0;Y=H};{X=W*4./5.;Y=H};{X=W;Y=H/2.};{X=W*0.8;Y=0}|] 
             | Resistor _ ->
-                //[|{X=0;Y=0.5*H};{X=0.1*W;Y=0.5*H};{X=0.15*W;Y=H};{X=0.3*W;Y=0};{X=0.45*W;Y=H};{X=0.6*W;Y=0};{X=0.75*W;Y=H};{X=0.83*W;Y=0.5*H};{X=W;Y=0.5*H};{X=0.83*W;Y=0.5*H};{X=0.75*W;Y=H};{X=0.6*W;Y=0};{X=0.45*W;Y=H};{X=0.3*W;Y=0};{X=0.15*W;Y=H};{X=0.1*W;Y=0.5*H}|]
                 [|{X=0;Y=0.5*H};{X=0.125*W;Y=0.5*H};{X=0.1875*W;Y=0};{X=0.3125*W;Y=H};{X=0.4375*W;Y=0};{X=0.5625*W;Y=H};{X=0.6875*W;Y=0};{X=0.8125*W;Y=H};{X=0.875*W;Y=0.5*H};{X=W;Y=0.5*H};{X=0.875*W;Y=0.5*H};{X=0.8125*W;Y=H};{X=0.6875*W;Y=0};{X=0.5625*W;Y=H};{X=0.4375*W;Y=0};{X=0.3125*W;Y=H};{X=0.1875*W;Y=0};{X=0.125*W;Y=0.5*H}|]
-            | CurrentSource _ ->
-                [|{X=0.2;Y=0.5};{X=0.8;Y=0.5};{X=0.7;Y=0.4};{X=0.8;Y=0.5};{X=0.9;Y=0.4};{X=0.8;Y=0.5}|]
             | Ground ->
                 [|{X=0;Y=0.3*H};{X=0.5*W;Y=H};{X=W;Y=0.3*H};{X=0.5*W;Y=0.3*H};{X=0.5*W;Y=0};{X=0.5*W;Y=0.3*H}|]
             | DiodeL |DiodeR ->
                 [|{X=0;Y=0};{X=0;Y=H};{X=W;Y=0.5*H};{X=W;Y=H};{X=W;Y=0};{X=W;Y=0.5*H}|]
             | Opamp ->
-                [|{X=0;Y=0};{X=0;Y=H};{X=W;Y=H/2.} |]
-                //[|{X=0;Y=0};{X=0;Y=H};{X=W/2.;Y=H*3./4.};{X=W/2.;Y=H};{X=W/2.;Y=H*3./4.};{X=W;Y=H/2.};{X=W/2.;Y=H/4.};{X=W/2.;Y=0};{X=W/2.;Y=H/4.}; |]
-                
-            | _ -> 
+                [|{X=0;Y=0};{X=0;Y=H};{X=W;Y=H/2.} |]   
+            | _ -> // other symbols will be created explicitly below in 'createdSymbol'
                 [|{X=0;Y=0};{X=0;Y=H};{X=W;Y=H};{X=W;Y=0}|]
         rotatePoints originalPoints {X=W/2.;Y=H/2.} transform
         |> toString 
@@ -285,18 +275,6 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
 
     
     let labelcolour = outlineColor symbol.Appearance.Colour
-    let legendOffset (compWidth: float) (compHeight:float) (symbol: Symbol) : XYPos=
-        let pMap = symbol.PortMaps.Order
-        let vertFlip = symbol.STransform.Rotation = Degree180
-        let getNum  (edge: Edge) = 
-            Map.tryFind edge pMap
-            |> Option.map (fun lst -> lst.Length)
-            |> Option.defaultValue 0
-        let lhsPortNum = getNum Edge.Left
-        let rhsPortNum = getNum Edge.Right
-        let offset:XYPos = {X = 0.; Y = 0.}
-            
-        {X=compWidth / 2.; Y=compHeight / 2. - 7.} + offset
     
 
     let componentValue =
@@ -310,24 +288,12 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
         |VoltageSource(Pulse (v,_,_)) -> string v + "V"
         |_ -> ""
    
-    let doubleRotate (transform:STransform) = 
-        match transform.Rotation with
-        |Degree0 -> {transform with Rotation=Degree180}
-        |_ -> transform
-
 
     // Put everything together 
     (drawPorts comp.IOPorts showPorts symbol)
     |> List.append (drawPortsText comp.IOPorts (portNames comp.Type) symbol)
-    //|> List.append (addLegendText 
-    //                    (legendOffset w (2.*h) symbol) 
-    //                    ("," + componentValue) 
-    //                    "middle" 
-    //                    "bold" 
-    //                    (legendFontSize comp.Type))
     |> List.append (addCompValue symbol componentValue "bold" "16px")
     |> List.append (addComponentLabel comp.Label transform labelcolour)
-    //|> List.append (addComponentLabel componentValue transform NumberLabel labelcolour)
     |> List.append (createdSymbol)
 
 
