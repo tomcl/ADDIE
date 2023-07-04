@@ -9,7 +9,6 @@ open Feliz.Plotly
 open System
 open ModelType
 open CommonTypes
-open Simulation
 open Fulma
 
 let formTransientParameters notTrans (tau:float,alpha:float,hf:float,dc:float) =

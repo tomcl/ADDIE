@@ -10,38 +10,7 @@ module rec ModelType
 
 open CommonTypes
 open Fable.React
-open Sheet.SheetInterface
 open Optics
-open MathJsHelpers
-
-module Constants =
-    /// DiagramStyle.rightSectinoWidthL = 650,
-    /// WaveSimStyle.Constants.leftMargin = 50,
-    /// WaveSimStyle.Constants.rightMargin = 50,
-    /// 2 * MainView.Constants.dividerBarWidth = 20,
-    /// WaveSimStyle.namesColWidth = 200,
-    /// WaveSimStyle.valeusColWidth = 100,
-    let initialWaveformColWidth = 650 - 20 - 20 - 20 - 130 - 100
-
-
-/// Groups components together in the wave selection table.
-/// NB: There are fields which are commented out: these can be added back in
-/// later on if we want to group those components together by type rather than
-/// separately by name.
-type ComponentGroup =
-    | WireLabel
-    | InputOutput
-    | Viewers
-    | Buses
-    | Gates
-    | MuxDemux
-    | Arithmetic
-    | CustomComp
-    | FFRegister
-    | Memories
-    | Component of string
-
-
 
 
 type SimData = {

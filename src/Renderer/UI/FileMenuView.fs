@@ -8,7 +8,6 @@ module FileMenuView
 
 open Fulma
 open Fable.Core
-open Node
 open Fable.React
 open Fable.React.Props
 open Fulma.Extensions.Wikiki

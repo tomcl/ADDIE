@@ -4,22 +4,9 @@ open Elmish
 
 open Fulma
 open Fable.React
-open Fable.React.Props
-open ElectronAPI
-open FilesIO
 open ModelType
-open ModelHelpers
 open CommonTypes
-open Extractor
-open CatalogueView
-open PopupView
-open FileMenuView
-open Sheet.SheetInterface
 open DrawModelType
-open Fable.SimpleJson
-open Helpers
-open NumberHelpers
-open DiagramStyle
 
 module Constants =
     let memoryUpdateCheckTime = 300.

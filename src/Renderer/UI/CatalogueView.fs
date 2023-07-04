@@ -14,14 +14,8 @@ open DiagramStyle
 open ModelType
 open ModelHelpers
 open CommonTypes
-open NumberHelpers
 open PopupView
-open Sheet.SheetInterface
 open DrawModelType
-open FilesIO
-open Fable.SimpleJson
-open Fable.Core.JsInterop
-open System
 open FileMenuView
 open ComponentCreation
 

@@ -18,7 +18,6 @@ open PopupView
 open Notifications
 open Sheet.SheetInterface
 open DrawModelType
-open FilesIO
 open CatalogueView
 open FileMenuView
 open NumberHelpers

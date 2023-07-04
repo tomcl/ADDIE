@@ -12,13 +12,9 @@ open ModelHelpers
 open CommonTypes
 open Extractor
 open CatalogueView
-open PopupView
-open FileMenuView
 open Sheet.SheetInterface
 open DrawModelType
 open Fable.SimpleJson
-open Helpers
-open NumberHelpers
 open CanvasStateAnalyser
 open UpdateHelpers
 open Optics

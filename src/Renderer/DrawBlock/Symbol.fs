@@ -3,10 +3,6 @@ This module draws schematics component symbols. Each symbol is associated with a
 *)
 
 module Symbol
-open Fable.React
-open Fable.React.Props
-open Elmish
-
 open CommonTypes
 open DrawHelpers
 open DrawModelType.SymbolT

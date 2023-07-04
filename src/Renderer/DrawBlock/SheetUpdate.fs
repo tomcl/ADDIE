@@ -11,13 +11,9 @@ open DrawModelType.SheetT
 open SheetUpdateHelpers
 open Sheet
 open Optics
-open FilesIO
 open CanvasStateAnalyser
 open Simulation
 open FSharp.Core
-open Fable.Core
-open Fable.Core.JsInterop
-open Node.ChildProcess
 open Node
 
 module node = Node.Api

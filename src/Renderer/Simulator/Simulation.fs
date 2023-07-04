@@ -2,7 +2,6 @@
 
 open CommonTypes
 open MathJsHelpers
-open JSHelpers
 open System
 open CanvasStateAnalyser
 

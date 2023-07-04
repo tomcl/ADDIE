@@ -1,16 +1,11 @@
 ﻿module ComponentCreation
 
-open Fulma
-open Fulma.Extensions.Wikiki
 open Fable.React
-open Fable.React.Props
-open DiagramStyle
 open ModelType
 open ModelHelpers
 open CommonTypes
 open NumberHelpers
 open PopupView
-open Sheet.SheetInterface
 open DrawModelType
 
 
