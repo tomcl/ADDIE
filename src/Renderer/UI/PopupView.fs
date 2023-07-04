@@ -619,26 +619,19 @@ let makeInfoPopupButton (title: string) (info: ReactElement) dispatch =
 
 let viewInfoPopup dispatch =
 
-    let title = "ISSIE: Interactive Schematic Simulator and Integrated Editor"
+    let title = "ADDIE: Analog Design & Debugging Integrated Environment"
 
     let about = div [] [
         makeH "Version"
         str Version.VersionString
         br []; br []
         makeH "Acknowledgments"
-        str "ISSIE was created by Marco Selvatici (EIE 3rd year) as his BEng final year project. \
-             The waveform viewer was created \
-             by Edoardo Santi (EEE 3rd year) during Summer UROP work. The new schematic editor \
-             was written as 2021 coursework by HLP students in EEE, \
-             and particularly Team 4. The new editor was integrated \
-             by Jo Merrick (EIE 3rd year) for her BEng final year project. \
-             In Spring 2022 the HLP class implemenbted a draw blokc with component rotation and muhc better routing. \
-             In Summer 2022 Jason Zheng rewrote the waveform simulator, Aditya Despande wrote the truth table generator, \
-             and Archontis Pantelopoulos spent all Summer writing the Verilog entry block and making many improvements."
+        str "ADDIE was created by Archontis Pantelopoulos (EIE 4th year) as his MEng final year project, \
+             using the pre-existing digital electronics equivalent: ISSIE."
         br []; br [] 
         makeH "Technology"
         Text.span [] [
-            str "ISSIE is written in "
+            str "ADDIE is written in "
             a [OnClick <| openInBrowser "https://fsharp.org/"] [str "F#"] 
             str " compiled to Javascript by "
             a [OnClick <| openInBrowser "https://fable.io/"] [str "FABLE"]
@@ -649,36 +642,27 @@ let viewInfoPopup dispatch =
         ]
 
     let intro = div [] [
-        str "Issie designs are made of one or more sheets. Each sheet contains components and Input and Output Connectors. \
-        If you have a single sheet that is your complete design. Otherwise any \
-        sheet can include as a single component the hardware defined in another sheet by adding a 'custom component' \
-        from the My Project section of the Catalog. \
-        Multiple copies of other sheets can be added in this way. \
-        Top-level sheets which are not used as subsheets are bolded on the sheet menu." 
+        str "Addie currently supports only linear components (resistors, capacitors, inductors, opamps), \ 
+        DC Current Sources, DC and Sinusoidal Voltage Sources, and linearized (0.7 Voltage Drop) diodes." 
         br []; br []
-        str "Issie has two types of simulation: The Simulation Tab is used mainly for combinational logic and simple clocked logic: \
-        the top 'Waveforms >>' button works with clocked circuits and displays waveforms. Use whichever works for you." 
-        br []; br [];
-        str "In Issie all clocked components use the same clock signal Clk. \
-        Clk connections are not shown: all Clk ports are
-        automatically connected together. In the waveform display active clock edges, 1 per clock cycle, are indicated \
-        by vertical lines through the waveforms. The clock waveform has two edges for each clock cycle and is not shown."
+        str "Addie supports three types of simulation which can be found under the 'Simulations' tab. These are: (i) DC \
+        Operating Point Analysis, (ii) Frequency Response, and (iii) Time Domain Simulations." 
         br []  ; br [];  
         button 
-            [OnClick <| openInBrowser "https://github.com/tomcl/ISSIE"] 
-            [ str "See the Issie Github Repo for more information"]
+            [OnClick <| openInBrowser "https://github.com/apantelopoulos/ADDIE"] 
+            [ str "See the Addie Github Repo for more information"]
         br [] ; br [] ]
 
     let bugReport = 
         let oTextList txtL = Content.content [] [Content.Ol.ol [] (List.map (fun txt -> li [] [str txt]) txtL)]
         div [] [
             str
-                "If you think Issie is not working it is very helpful if you can give us details: we usually answer \
+                "If you think ADDIE is not working it is very helpful if you can give us details: we usually answer \
                 and fix bugs, if they exist, very quickly. Before you contact us, look at the list below and answer as much \
                 as possible to make your Bug Report (sometimes it is not all possible, send what you can)."
             oTextList 
                 [
-                    "Which version of Issie (Info tab, About Issie)"
+                    "Which version of Addie (Info tab, About Addie)"
                     "Which platform (Windows, Macos)"    
                     "What did you do that led to unexpected behaviour?"   
                     "What result did you expect?"   
@@ -723,7 +707,7 @@ let viewInfoPopup dispatch =
                   Tabs.IsBoxed ]
                 [ Tabs.tab [ Tabs.Tab.IsActive (tab = Some 0) ]
                     [ a [ OnClick (fun _ -> dispatch <| SetPopupDialogInt (Some 0)) ]
-                    [ str "About Issie" ] ]
+                    [ str "About Addie" ] ]
                   Tabs.tab [ Tabs.Tab.IsActive (tab = Some 2) ]
                     [ a [ OnClick (fun _ -> dispatch <| SetPopupDialogInt (Some 2)) ]
                     [ str "Introduction" ] ]  

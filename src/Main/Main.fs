@@ -85,9 +85,9 @@ let createMainWindow () =
         //if Api.``process``.platform = Base.Win32 then
         let isDev = (``process``?defaultApp = true)
         if isDev then
-            options.icon <- Some (U2.Case2 (path.join(staticDir(), "icon-1.png")))
+            options.icon <- Some (U2.Case2 (path.join(staticDir(), "addie1.png")))
         else
-            options.icon <- Some (U2.Case2 ("/static/icon-1.png"))
+            options.icon <- Some (U2.Case2 ("/static/addie1.png"))
 
         //elif Api.``process``.platform = Base.Darwin then
             //options.icon <- (U2.Case2 (path.join(staticDir(), "icon.icns")))   (the icns icon does not work)
