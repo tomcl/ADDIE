@@ -4,10 +4,7 @@
 open CommonTypes
 open DrawHelpers
 open Fable.React
-open Fable.React.Props
-open Elmish
 open Optics
-open Node.ChildProcess
 
 //--------------------------COMMON TYPES------------------------------//
 
@@ -76,7 +73,7 @@ module SymbolT =
     let orientation_ = Lens.create (fun a -> a.Orientation) (fun s a -> {a with Orientation = s})
 
     /// data here changes how the symbol looks but has no other effect
-    type ShowPorts = | ShowInput | ShowOutput | ShowBoth | ShowBothForPortMovement | ShowNone | ShowOneTouching of Port | ShowOneNotTouching of Port | ShowTarget  
+    type ShowPorts = | ShowBoth | ShowNone 
     
     type AppearanceT =
         {
@@ -167,7 +164,6 @@ module SymbolT =
         | MoveSymbols of compList: ComponentId list * move: XYPos
         | MoveLabel of compId: ComponentId * move: XYPos
         | ShowPorts of ComponentId list
-        | ShowCustomOnlyPorts of ComponentId list
         | SelectSymbols of ComponentId list// Issie interface
         | SymbolsHaveError of sIds: ComponentId list
         | ChangeLabel of sId : ComponentId * newLabel : string
@@ -175,7 +171,6 @@ module SymbolT =
         | ColorSymbols of compList : ComponentId list * colour : HighLightColor
         | ErrorSymbols of errorIds: ComponentId list * selectIds: ComponentId list * isDragAndDrop: bool
         | ChangeScale of compId:ComponentId * newScale:float * whichScale:ScaleAdjustment
-        | ChangeConstant of compId: ComponentId * NewBits:int64 * NewText:string
         | ChangeRLCIValue of compId: ComponentId * NewValue:float * NewStr:string
         | ResetModel // For Issie Integration
         | LoadComponents of  LoadedComponent list * Component list // For Issie Integration
@@ -436,8 +431,6 @@ module SheetT =
         | ResetModel
         | UpdateSelectedWires of ConnectionId list * bool
         | ColourSelection of compIds : ComponentId list * connIds : ConnectionId list * colour : HighLightColor
-        | PortMovementStart
-        | PortMovementEnd
         | ResetSelection
         | ToggleNet of CanvasState //This message does nothing in sheet, but will be picked up by the update function
         | SelectWires of ConnectionId list

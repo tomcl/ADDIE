@@ -46,7 +46,6 @@
     <Compile Include="DrawBlock\Symbol.fs" />
 	<Compile Include="DrawBlock\SymbolView.fs" />
 	<Compile Include="DrawBlock\SymbolUpdatePortHelpers.fs" />
-	<Compile Include="DrawBlock\SymbolReplaceHelpers.fs" />
     <Compile Include="DrawBlock\SymbolUpdate.fs" />
     <Compile Include="DrawBlock\BusWire.fs" />
 	<Compile Include="DrawBlock\BusWireUpdateHelpers.fs" />
@@ -55,7 +54,6 @@
 	<Compile Include="DrawBlock\SheetUpdateHelpers.fs" />
     <Compile Include="DrawBlock\SheetUpdate.fs" />
     <!-- UI -->
-    <Compile Include="UI\SimulationHelpers.fs" />
     <Compile Include="UI/ModelType.fs" />
     <Compile Include="UI\ModelHelpers.fs" />
     <Compile Include="UI/Style.fs" />
@@ -64,10 +62,9 @@
     <Compile Include="UI\PopupView.fs" />
 	<Compile Include="UI/ComponentCreation.fs" />  
     <Compile Include="UI/FileMenuView.fs" />
-    <Compile Include="UI\CustomCompPorts.fs" />
     <Compile Include="UI/CatalogueView.fs" />
     <Compile Include="UI/SelectedComponentView.fs" />
-    <!-- <Compile Include="UI/WaveSim/WaveformSimulationView.fs" /> -->
+    <Compile Include="UI\SimulationHelpers.fs" />
     <Compile Include="UI\MainView.fs" />
     <Compile Include="UI\UpdateHelpers.fs" />
     <Compile Include="UI\Update.fs" />

@@ -12,13 +12,9 @@ open ModelHelpers
 open CommonTypes
 open Extractor
 open CatalogueView
-open PopupView
-open FileMenuView
 open Sheet.SheetInterface
 open DrawModelType
 open Fable.SimpleJson
-open Helpers
-open NumberHelpers
 open CanvasStateAnalyser
 open UpdateHelpers
 open Optics
@@ -173,6 +169,55 @@ let sheetMsg sMsg model =
     let newModel = { model with Sheet = sModel} 
     {newModel with SavedSheetIsOutOfDate = findChange newModel}, Cmd.map Sheet sCmd
 
+
+//---------------------------PROJECT UPDATE AND SAVING----------------------------//
+
+/// Save any changed sheets to disk in the project directory
+let syncLoadedComponentsToDisk newProj oldProj =
+    let needToSave ldc' ldc =
+       (not <| compareCanvas 10. ldc'.CanvasState ldc.CanvasState)
+    let saveToDisk ldc =
+        let state = ldc.CanvasState
+        let sheetInfo = {Form=ldc.Form;Description=ldc.Description}
+        saveStateToFile newProj.ProjectPath ldc.Name (state,sheetInfo)
+        |> ignore
+        removeFileWithExtn ".dgmauto" oldProj.ProjectPath ldc.Name
+
+    let nameOf sheet (ldc:LoadedComponent) = ldc.Name = sheet
+    let oldLDCs = oldProj.LoadedComponents
+    let newLDCs = newProj.LoadedComponents
+    let sheets = List.distinct (List.map (fun ldc -> ldc.Name) (oldLDCs @ newLDCs))
+    let sheetMap = 
+        sheets
+        |> List.map (fun sheet -> sheet, (List.tryFind (nameOf sheet) newLDCs, List.tryFind (nameOf sheet) oldLDCs))
+        |> Map.ofList
+    sheetMap
+    |> Map.iter (fun name (optLdcNew, optLdcOld) ->
+        match optLdcNew,optLdcOld with
+        | Some ldcNew, Some ldcOld when needToSave ldcNew ldcOld ->
+            saveToDisk ldcOld
+        | Some _, Some _ -> ()
+        | None, Some ldcOld -> 
+            removeFileWithExtn ".dgm" oldProj.ProjectPath ldcOld.Name
+        | Some ldcNew, None -> 
+            saveToDisk ldcNew
+        | None, None -> failwithf "What? Can't happen")
+
+/// Return new model with project updated as per update function.
+/// If p.LoadedComponents data is changed, for each sheet that is different
+/// the sheet will be saved to disk.
+/// This function should be used consistently to keep disk and project data
+/// correct.
+let updateProjectFiles (saveToDisk:bool) (update: Project -> Project) (model: Model) =
+    match model.CurrentProj with
+    | None -> model // do nothing in this case
+    | Some p ->
+        let p' = update p
+        if saveToDisk then 
+            syncLoadedComponentsToDisk p' p // write out to disk as needed
+        {model with CurrentProj = Some p'}
+
+
 //----------------------------------------------------------------------------------------------------------------//
 //-----------------------------------------------UPDATE-----------------------------------------------------------//
 //----------------------------------------------------------------------------------------------------------------//
@@ -212,8 +257,7 @@ let update (msg : Msg) oldModel =
         | _ -> model, Cmd.none //otherwise discard the message
     | FinishUICmd _->
         //printfn $"ending UI command '{model.UIState}"
-        let popup = CustomCompPorts.optCurrentSheetDependentsPopup model
-        {model with UIState = None; PopupViewFunc = popup}, Cmd.ofMsg (Sheet (SheetT.SetSpinner false))
+        {model with UIState = None;}, Cmd.ofMsg (Sheet (SheetT.SetSpinner false))
 
     (*| ShowExitDialog ->
         match model.CurrentProj with
@@ -271,9 +315,9 @@ let update (msg : Msg) oldModel =
         |> set currentProj_ (Some project) 
         |> set (popupDialogData_ >-> projectPath_) project.ProjectPath, Cmd.none
     | UpdateProject update ->
-        CustomCompPorts.updateProjectFiles true update model, Cmd.none
+        updateProjectFiles true update model, Cmd.none
     | UpdateProjectWithoutSyncing update -> 
-        CustomCompPorts.updateProjectFiles false update model,Cmd.none
+        updateProjectFiles false update model,Cmd.none
     | ShowPopup popup -> { model with PopupViewFunc = Some popup }, Cmd.none
     | ShowStaticInfoPopup(title, body, dispatch) ->
         let foot = div [] []

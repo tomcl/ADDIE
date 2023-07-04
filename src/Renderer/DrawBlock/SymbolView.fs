@@ -51,14 +51,7 @@ let addStyledText (style:Text) (pos: XYPos) (name: string) =
 
 /// Generate circles on ports
 let inline private portCircles (pos: XYPos) (show:ShowPorts)= 
-    let circle = 
-        match show with
-        |ShowBothForPortMovement |ShowOneTouching _ -> {portCircle with Fill="DodgerBlue";}
-        |ShowOneNotTouching _ -> {portCircle with Fill="Red"}
-        |ShowTarget -> portCircleTarget
-        |_ -> portCircle
-    
-    [makeCircle pos.X pos.Y circle]
+    [makeCircle pos.X pos.Y portCircle]
 
 /// Puts name on ports
 let private portText (pos: XYPos) name edge =
@@ -88,22 +81,12 @@ let drawPortsText (portList: list<Port>) (listOfNames: list<string>) (symb: Symb
         |> List.collect id
 
 /// Function to draw ports using getPortPos. The ports are equidistant     
-let drawPorts (portType: PortType) (portList: Port List) (showPorts:ShowPorts) (symb: Symbol)= 
+let drawPorts (portList: Port List) (showPorts:ShowPorts) (symb: Symbol)= 
     if not (portList.Length < 1) then       
-        match (showPorts,portType) with
-        |(ShowBoth,_) |(ShowInput,PortType.Input) |(ShowOutput,PortType.Output) | (ShowBothForPortMovement,_) -> [0..(portList.Length-1)] |> List.collect (fun x -> (portCircles (getPortPosToRender symb portList[x]) showPorts ))  
-        |(ShowOneTouching p, _) | (ShowOneNotTouching p, _) -> [0..(portList.Length-1)] |> List.collect (fun x -> if portList[x] = p then (portCircles (getPortPosToRender symb portList[x]) (showPorts) ) else (portCircles (getPortPosToRender symb portList[x]) ShowBothForPortMovement ))
-        |(_,_) -> []
+        match (showPorts) with
+        |ShowBoth -> [0..(portList.Length-1)] |> List.collect (fun x -> (portCircles (getPortPosToRender symb portList[x]) showPorts ))  
+        |(_) -> []
     else []
-
-/// Function to draw the Target of a Moving Port (if there is one)
-let drawMovingPortTarget (pos: (XYPos*XYPos) option) symbol outlinePoints = 
-    match pos with
-    |None -> []
-    |Some (targetPos,mousePos) -> 
-        (portCircles targetPos ShowTarget) 
-        |> List.append ([makeLine targetPos.X targetPos.Y (mousePos.X-symbol.Pos.X) (mousePos.Y-symbol.Pos.Y) {defaultLine with Stroke="DodgerBlue"; StrokeWidth="2.0px" ;StrokeDashArray="4,4"}])
-        |> List.append [makePolygon outlinePoints {defaultPolygon with Fill = "No"; FillOpacity = 0.0; Stroke = "DodgerBlue"; StrokeWidth="2px"}] 
 
 
 //------------------------------HELPER FUNCTIONS FOR DRAWING SYMBOLS-------------------------------------
@@ -175,7 +158,6 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
     let appear = symbol.Appearance
     let colour = appear.Colour
     let showPorts = appear.ShowPorts
-    // let showOutputPorts = appear.ShowOutputPorts
     let opacity = appear.Opacity
     let comp = symbol.Component
     let h,w = getRotatedHAndW symbol
@@ -189,26 +171,15 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
         let toString = Array.fold (fun x (pos:XYPos) -> x + (sprintf $" {pos.X},{pos.Y}")) "" 
         let originalPoints =
             match comp.Type with
-            | IOLabel ->
-                [|{X=0.;Y=H/2.};{X=W;Y=H/2.}|]
-            | Custom x -> 
-                [|{X=0;Y=H-13.};{X=8.;Y=H-7.};{X=0;Y=H-1.};{X=0;Y=0};{X=W;Y=0};{X=W;Y=H};{X=0;Y=H}|]
-            | IO -> 
-                [|{X=0;Y=0};{X=0;Y=H};{X=W*4./5.;Y=H};{X=W;Y=H/2.};{X=W*0.8;Y=0}|] 
             | Resistor _ ->
-                //[|{X=0;Y=0.5*H};{X=0.1*W;Y=0.5*H};{X=0.15*W;Y=H};{X=0.3*W;Y=0};{X=0.45*W;Y=H};{X=0.6*W;Y=0};{X=0.75*W;Y=H};{X=0.83*W;Y=0.5*H};{X=W;Y=0.5*H};{X=0.83*W;Y=0.5*H};{X=0.75*W;Y=H};{X=0.6*W;Y=0};{X=0.45*W;Y=H};{X=0.3*W;Y=0};{X=0.15*W;Y=H};{X=0.1*W;Y=0.5*H}|]
                 [|{X=0;Y=0.5*H};{X=0.125*W;Y=0.5*H};{X=0.1875*W;Y=0};{X=0.3125*W;Y=H};{X=0.4375*W;Y=0};{X=0.5625*W;Y=H};{X=0.6875*W;Y=0};{X=0.8125*W;Y=H};{X=0.875*W;Y=0.5*H};{X=W;Y=0.5*H};{X=0.875*W;Y=0.5*H};{X=0.8125*W;Y=H};{X=0.6875*W;Y=0};{X=0.5625*W;Y=H};{X=0.4375*W;Y=0};{X=0.3125*W;Y=H};{X=0.1875*W;Y=0};{X=0.125*W;Y=0.5*H}|]
-            | CurrentSource _ ->
-                [|{X=0.2;Y=0.5};{X=0.8;Y=0.5};{X=0.7;Y=0.4};{X=0.8;Y=0.5};{X=0.9;Y=0.4};{X=0.8;Y=0.5}|]
             | Ground ->
                 [|{X=0;Y=0.3*H};{X=0.5*W;Y=H};{X=W;Y=0.3*H};{X=0.5*W;Y=0.3*H};{X=0.5*W;Y=0};{X=0.5*W;Y=0.3*H}|]
-            | Diode |DiodeR ->
+            | DiodeL |DiodeR ->
                 [|{X=0;Y=0};{X=0;Y=H};{X=W;Y=0.5*H};{X=W;Y=H};{X=W;Y=0};{X=W;Y=0.5*H}|]
             | Opamp ->
-                [|{X=0;Y=0};{X=0;Y=H};{X=W;Y=H/2.} |]
-                //[|{X=0;Y=0};{X=0;Y=H};{X=W/2.;Y=H*3./4.};{X=W/2.;Y=H};{X=W/2.;Y=H*3./4.};{X=W;Y=H/2.};{X=W/2.;Y=H/4.};{X=W/2.;Y=0};{X=W/2.;Y=H/4.}; |]
-                
-            | _ -> 
+                [|{X=0;Y=0};{X=0;Y=H};{X=W;Y=H/2.} |]   
+            | _ -> // other symbols will be created explicitly below in 'createdSymbol'
                 [|{X=0;Y=0};{X=0;Y=H};{X=W;Y=H};{X=W;Y=0}|]
         rotatePoints originalPoints {X=W/2.;Y=H/2.} transform
         |> toString 
@@ -216,7 +187,7 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
 
     let outlineColour, strokeWidth =
         match colour,comp.Type with
-        |"Red",Ground |"Red",Diode |"Red",Opamp |"Red",DiodeR -> "black", "1.0"
+        |"Red",Ground |"Red",DiodeL |"Red",Opamp |"Red",DiodeR -> "black", "1.0"
         |"Red",_ -> "Red", "2.5"
         |_,Resistor _  -> "darkblue", "2.5"
         | _ -> "black", "1.0"
@@ -304,23 +275,7 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
 
     
     let labelcolour = outlineColor symbol.Appearance.Colour
-    let legendOffset (compWidth: float) (compHeight:float) (symbol: Symbol) : XYPos=
-        let pMap = symbol.PortMaps.Order
-        let vertFlip = symbol.STransform.Rotation = Degree180
-        let getNum  (edge: Edge) = 
-            Map.tryFind edge pMap
-            |> Option.map (fun lst -> lst.Length)
-            |> Option.defaultValue 0
-        let lhsPortNum = getNum Edge.Left
-        let rhsPortNum = getNum Edge.Right
-        let offset:XYPos = {X = 0.; Y = 0.}
-            
-        {X=compWidth / 2.; Y=compHeight / 2. - 7.} + offset
-    let legendFontSize (ct:ComponentType) =
-        match ct with
-        | Custom _ -> "16px"
-        | _ -> "14px"
-
+    
 
     let componentValue =
         match comp.Type with
@@ -333,25 +288,12 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
         |VoltageSource(Pulse (v,_,_)) -> string v + "V"
         |_ -> ""
    
-    let doubleRotate (transform:STransform) = 
-        match transform.Rotation with
-        |Degree0 -> {transform with Rotation=Degree180}
-        |_ -> transform
-
 
     // Put everything together 
-    (drawPorts PortType.Output comp.IOPorts showPorts symbol)
+    (drawPorts comp.IOPorts showPorts symbol)
     |> List.append (drawPortsText comp.IOPorts (portNames comp.Type) symbol)
-    //|> List.append (addLegendText 
-    //                    (legendOffset w (2.*h) symbol) 
-    //                    ("," + componentValue) 
-    //                    "middle" 
-    //                    "bold" 
-    //                    (legendFontSize comp.Type))
     |> List.append (addCompValue symbol componentValue "bold" "16px")
     |> List.append (addComponentLabel comp.Label transform labelcolour)
-    //|> List.append (addComponentLabel componentValue transform NumberLabel labelcolour)
-    |> List.append (drawMovingPortTarget symbol.MovingPortTarget symbol points)
     |> List.append (createdSymbol)
 
 

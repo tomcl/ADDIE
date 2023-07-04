@@ -635,10 +635,8 @@ let mMoveUpdate
                 | _ -> Default
         let newModel = { model with NearbyComponents = nearbyComponents; CursorType = newCursor; LastMousePos = mMsg.Pos; ScrollingLastMousePos = {Pos=mMsg.Pos;Move=mMsg.ScreenMovement} } 
         
-        if Set.contains "CONTROL" model.CurrentKeyPresses then
-            newModel , symbolCmd (SymbolT.ShowCustomOnlyPorts nearbyComponents)
-        else 
-            newModel, symbolCmd (SymbolT.ShowPorts nearbyComponents) // Show Ports of nearbyComponents
+        
+        newModel, symbolCmd (SymbolT.ShowPorts nearbyComponents) // Show Ports of nearbyComponents
 
 let getVisibleScreenCentre (model : Model) : XYPos =
     let canvas = document.getElementById "Canvas"

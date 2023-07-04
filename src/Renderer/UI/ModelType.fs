@@ -10,38 +10,7 @@ module rec ModelType
 
 open CommonTypes
 open Fable.React
-open Sheet.SheetInterface
 open Optics
-open MathJsHelpers
-
-module Constants =
-    /// DiagramStyle.rightSectinoWidthL = 650,
-    /// WaveSimStyle.Constants.leftMargin = 50,
-    /// WaveSimStyle.Constants.rightMargin = 50,
-    /// 2 * MainView.Constants.dividerBarWidth = 20,
-    /// WaveSimStyle.namesColWidth = 200,
-    /// WaveSimStyle.valeusColWidth = 100,
-    let initialWaveformColWidth = 650 - 20 - 20 - 20 - 130 - 100
-
-
-/// Groups components together in the wave selection table.
-/// NB: There are fields which are commented out: these can be added back in
-/// later on if we want to group those components together by type rather than
-/// separately by name.
-type ComponentGroup =
-    | WireLabel
-    | InputOutput
-    | Viewers
-    | Buses
-    | Gates
-    | MuxDemux
-    | Arithmetic
-    | CustomComp
-    | FFRegister
-    | Memories
-    | Component of string
-
-
 
 
 type SimData = {
@@ -306,11 +275,17 @@ type Model = {
     /// Contains a list of pending messages
     Pending: Msg list
     UIState: UICommandType Option
+    /// Controls the visibility of the graph area (bottom section of the screen)
     showGraphArea: bool
+    /// Contains the necessary information to run all simulations
     SimulationData: SimData
+    /// Contains the lengths of the Component and Connection lists, to break simulation if they change
     PrevCanvasStateSizes: int*int
+    /// Contains the cached diode modes of the previous simulation 
     PreviousDiodeModes: bool list
+    /// Contains the outcome of the tests
     Tests: bool list
+    /// Contains the thevenin parameters of a particular circuit
     TheveninParams: TheveninParameters option
 } 
 

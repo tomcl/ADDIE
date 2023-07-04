@@ -3,10 +3,6 @@ This module draws schematics component symbols. Each symbol is associated with a
 *)
 
 module Symbol
-open Fable.React
-open Fable.React.Props
-open Elmish
-
 open CommonTypes
 open DrawHelpers
 open DrawModelType.SymbolT
@@ -274,21 +270,17 @@ let getPrefix (compType:ComponentType) =
     | Resistor _ -> "R"
     | Inductor _ -> "L"
     | Capacitor _ -> "C"
-    | Diode |DiodeR -> "D"
+    | DiodeL |DiodeR -> "D"
     | Opamp -> "OP"
     | VoltageSource _ -> "VS"
     | CurrentSource _ -> "CS"
     | Ground -> "G"
-    | Custom c ->
-        c.Name.ToUpper() + (if c.Name |> Seq.last |> System.Char.IsDigit then "." else "")
     |_  -> ""
 
 
 // Input and Output names of the ports depending on their ComponentType
 let portNames (componentType:ComponentType)  = //(input port names, output port names)
-    match componentType with
-    | Custom x -> (x.IOLabels)
-    | _ -> ([]@[])
+    ([]@[])
    
 
 /// Genererates a list of ports:
@@ -359,29 +351,6 @@ let initPortOrientation (comp: Component) =
         {Order = order; Orientation = orientation}
         
 
-(*
-/// helper function to initialise custom components
-let getCustomCompArgs (x:CustomComponentType) (label:string) =
-    let h = Constants.gridSize + Constants.gridSize * (List.max [List.length x.InputLabels; List.length x.OutputLabels])
-    let maxInLength, maxOutLength = customToLength x.InputLabels, customToLength x.OutputLabels
-    let maxW = maxInLength + maxOutLength + label.Length
-    let scaledW = (maxW * Constants.gridSize / 5) //Divide by 5 is just abitrary as otherwise the symbols would be too wide 
-    let w = max scaledW (Constants.gridSize * 4) //Ensures a minimum width if the labels are very small
-    ( List.length x.InputLabels, List.length x.OutputLabels, h ,  w)
-*)
-/// obtain map from port IDs to port names for Custom Component.
-/// for other components types this returns empty map
-let getCustomPortIdMap (comp: Component)  =
-        let label = comp.Label
-        match comp.Type with
-        | Custom customType ->
-            let io = List.zip comp.IOPorts customType.IOLabels
-            let ioMap =
-                (Map.empty, io) 
-                ||> List.fold (fun currMap (port,label) -> Map.add port.Id label currMap)
-            
-            ioMap
-        | _ -> Map.empty
 
 /// Needed because the I/Os of a custom component can be changed on anotehr sheet.
 /// When the component is reloaded its port maps will be inconsistent.
@@ -405,43 +374,9 @@ let makeMapsConsistent (portIdMap: Map<string,string>) (sym: Symbol) =
 /// adjust symbol (and component) dimensions based on current ports and labels of a custom component.
 /// leaves other symbols unchanged
 let autoScaleHAndW (sym:Symbol) : Symbol =
-    //height same as before, just take max of left and right
-        match sym.Component.Type with
-        | Custom comp ->
-                let portIdMap = getCustomPortIdMap sym.Component
-                let portMaps = makeMapsConsistent portIdMap sym
-                let convertIdsToLbls currMap edge idList =
-                    let lblLst = List.map (fun id -> portIdMap[id]) idList
-                    Map.add edge lblLst currMap
-                let portLabels = 
-                    (Map.empty, portMaps.Order) ||> Map.fold convertIdsToLbls
-                let h = float Constants.gridSize + Constants.customPortSpacing * float (max portLabels[Left].Length portLabels[Right].Length)
-
-                let maxLeftLength = customStringToLength portLabels[Left] 
-                let maxRightLength = customStringToLength portLabels[Right]
-
-                //need to check the sum of the lengths of top and bottom
-                let topLength = customStringToLength portLabels[Top] 
-                let bottomLength = customStringToLength portLabels[Bottom]
-                let labelLength = customStringToLength [sym.Component.Label]
-                //Divide by 5 is just abitrary as otherwise the symbols would be too wide 
-                let maxW = 
-                    [
-                        (maxLeftLength + maxRightLength + labelLength*1.6)
-                        float (portLabels[Top].Length + 1) * topLength
-                        float (portLabels[Bottom].Length + 1) * bottomLength
-                    ] |> List.max |> (*) 1.1
-                let w = maxW
-                let scaledW = max w (float Constants.gridSize * 4.) //Ensures a minimum width if the labels are very small
-                let scaledH = max h (float Constants.gridSize*2.)
-                {sym with
-                    PortMaps = portMaps
-                    Component = {sym.Component with H= float scaledH; W = float scaledW; X = sym.Pos.X; Y=sym.Pos.Y}}
-
-        | _ -> 
-            let comp = sym.Component
-            {sym with Component = {comp with X = sym.Pos.X; Y = sym.Pos.Y}}
-        |> calcLabelBoundingBox
+    let comp = sym.Component
+    {sym with Component = {comp with X = sym.Pos.X; Y = sym.Pos.Y}}
+    |> calcLabelBoundingBox
 
 /// return (num ports, height, width)
 let getComponentProperties (compType:ComponentType) (label: string)=
@@ -449,7 +384,7 @@ let getComponentProperties (compType:ComponentType) (label: string)=
     // 3-tuple of the form ( number of ports, , Height, Width)
     let gS = float Constants.gridSize
     match compType with
-    | Diode |DiodeR  -> ( 2 , 1.0*gS ,  1.0*gS) 
+    | DiodeL |DiodeR  -> ( 2 , 1.0*gS ,  1.0*gS) 
     | Capacitor _ -> ( 2 , 1.0*gS ,  2.0*gS)
     | Resistor _ | Inductor _ -> ( 2 , gS ,  3.0*gS)
     | VoltageSource _| CurrentSource _ -> (2, 2.*gS,2.*gS )
@@ -457,8 +392,7 @@ let getComponentProperties (compType:ComponentType) (label: string)=
     | Opamp -> (3, 2.*gS, 2.*gS)
     | IOLabel  ->(  2 , gS/2. ,  gS)
     | IO -> ( 1 , gS ,  2.*gS)
-    | Custom cct -> cct.IOLabels.Length, 0., 0.
-
+    
 /// make a completely new component
 let makeComponent (pos: XYPos) (compType: ComponentType) (id:string) (label:string) : Component =
     let defaultSTransform = {Rotation = Degree0; flipped = false}

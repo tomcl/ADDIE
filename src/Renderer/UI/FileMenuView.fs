@@ -8,7 +8,6 @@ module FileMenuView
 
 open Fulma
 open Fable.Core
-open Node
 open Fable.React
 open Fable.React.Props
 open Fulma.Extensions.Wikiki
@@ -409,17 +408,6 @@ let maybeWarning dialogText project =
 /// rename a sheet
 let renameSheet oldName newName (model:Model) dispatch =
 
-    let renameComps oldName newName (comps:Component list) : Component list = 
-        comps
-        |> List.map (fun comp -> 
-            match comp with 
-            | {Type= Custom ({Name = compName} as customType)} when compName = oldName-> 
-                {comp with Type = Custom {customType with Name = newName} }
-            | c -> c)
-
-    let renameCustomComponents newName (ldComp:LoadedComponent) =
-        let state = ldComp.CanvasState
-        {ldComp with CanvasState = renameComps oldName newName (fst state), snd state}
 
     let renameSheetsInProject oldName newName proj =
         {proj with
@@ -431,8 +419,7 @@ let renameSheet oldName newName (model:Model) dispatch =
                     match ldComp with
                     | {Name = lcName} when lcName = oldName -> 
                         {ldComp with Name=newName; FilePath = pathJoin [|(dirName ldComp.FilePath);newName + ".dgm"|] }
-                    | _ ->
-                        renameCustomComponents newName ldComp )
+                    | _ -> ldComp )
         }
     match updateProjectFromCanvas model dispatch with
     | None -> 
@@ -502,38 +489,6 @@ let renameFileInProject name project model dispatch =
         dialogPopup title body buttonText buttonAction isDisabled [] dispatch
 
 
-let removeAllCustomComps (name:string) project =
-    let ldcs = project.LoadedComponents
-    ldcs
-    |> List.map (fun lc -> 
-        let comps,conns = lc.CanvasState
-        let idsToBeDeleted = 
-            comps |> List.filter (fun comp -> 
-                match comp.Type with
-                |Custom c when c.Name = name -> true
-                |_ -> false
-            )
-            |> List.map (fun comp -> comp.Id)
-        let newComps = 
-            comps |> List.filter (fun comp -> 
-                match comp.Type with
-                |Custom c when c.Name = name -> 
-                    printfn "custom %A" c
-                    false
-                |_ -> true
-            )
-        printfn "todeleteids %A" idsToBeDeleted
-        let newConns =
-            conns |> List.filter (fun conn ->
-                match conn.Source.HostId,conn.Target.HostId with
-                |hostId,_ when (List.exists (fun id -> id = hostId) idsToBeDeleted) -> false
-                |_,targetId when (List.exists (fun id -> id = targetId) idsToBeDeleted) -> false
-                |_,_ -> true
-            )
-        {lc with CanvasState=(newComps,newConns)}
-    )
-
-
 /// Remove file.
 let removeFileInProject name project model dispatch =
     removeFile project.ProjectPath name
@@ -543,8 +498,7 @@ let removeFileInProject name project model dispatch =
     let project' = {project with LoadedComponents = newComponents}
 
     //delete all custom components from that sheet
-    let newComponents' = removeAllCustomComps name project' 
-    let project' = {project' with LoadedComponents = newComponents'}
+    let project' = {project' with LoadedComponents = newComponents}
 
     match newComponents, name = project.OpenFileName with
     | [],true -> 
@@ -807,33 +761,6 @@ type SheetTree = {
     }
 
 
-/// get the subsheet tree for aa sheets
-let getSheetTrees (p:Project) =
-    let ldcMap = 
-        p.LoadedComponents
-        |> List.map (fun ldc -> ldc.Name,ldc)
-        |> Map.ofList
-    let rec subSheets (path: string list) (sheet: string) : SheetTree=
-        let ldc = Map.tryFind sheet ldcMap
-        match ldc with
-        | None -> {Node=sheet; Size = 1;SubSheets = []}
-        | Some ldc ->
-            let comps,_ = ldc.CanvasState
-            comps
-            |> List.collect (fun comp -> 
-                    match comp.Type with 
-                    | Custom ct when not <| List.contains ct.Name path -> 
-                        [subSheets (ct.Name :: path) ct.Name]
-                    | _ -> 
-                        [])
-            |> (fun subs -> {
-                Node=sheet; 
-                Size = List.sumBy (fun sub -> sub.Size) subs + 1; 
-                SubSheets= subs
-                })
-    p.LoadedComponents
-    |> List.map (fun ldc ->ldc.Name, subSheets []  ldc.Name)
-    |> Map.ofList
 
 /// Display top menu.
 let getInfoButton (name:string) (project:Project) : ReactElement =
@@ -853,7 +780,7 @@ let getInfoButton (name:string) (project:Project) : ReactElement =
         null
 
 
-let getLockButton (name:string) (isSubSheet:bool) (project:Project) (model:Model) dispatch : ReactElement =
+let getLockButton (name:string) (project:Project) (model:Model) dispatch : ReactElement =
     match JSHelpers.debugLevel <> 0 with
     |true -> 
         let ldc = List.find (fun ldc -> ldc.Name = name) project.LoadedComponents 
@@ -864,7 +791,7 @@ let getLockButton (name:string) (isSubSheet:bool) (project:Project) (model:Model
         let lockUnlock currState =
             match currState with
             |Some User ->
-                if isSubSheet then Some ProtectedSubSheet else Some ProtectedTopLevel
+                Some ProtectedTopLevel
             |_ -> Some User 
         Level.item []
             [ Button.button
@@ -915,11 +842,9 @@ let viewTopMenu model dispatch =
         | None -> "no open project", "no open sheet"
         | Some project -> project.ProjectPath, project.OpenFileName
 
-    let makeFileLine isSubSheet name project model =
+    let makeFileLine name project model =
         let nameProps = 
-            if isSubSheet then 
-                [] else  
-                [Props [Style [FontWeight "bold"]]]
+            [Props [Style [FontWeight "bold"]]]
         Navbar.Item.div [ Navbar.Item.Props [ styleNoBorder  ] ]
             [ Level.level [ Level.Level.Props [ styleNoBorder ]]
                   [ Level.left nameProps [ Level.item [] [ str name] ]
@@ -981,7 +906,7 @@ let viewTopMenu model dispatch =
                                                 dispatch ClosePopup
                                         confirmationPopup title body buttonText buttonAction dispatch) ]
                                     [ str "delete" ] ] 
-                          (getLockButton name isSubSheet project model dispatch)] ] ]
+                          (getLockButton name project model dispatch)] ] ]
 
     let toString = Array.fold (fun x (pos:XYPos) -> x + (sprintf $" {pos.X},{pos.Y}")) "" 
 
@@ -993,24 +918,6 @@ let viewTopMenu model dispatch =
         | None -> Navbar.Item.div [] []
         | Some project ->
 
-            let sTrees = getSheetTrees project
-
-            let rec subSheetsOf path sh =
-                match Map.tryFind sh sTrees with
-                | Some tree -> tree.SubSheets
-                | None -> []
-                |> List.collect (fun ssh -> 
-                    match List.contains ssh.Node path with
-                    | true -> []
-                    | false -> ssh.Node :: subSheetsOf (ssh.Node :: path) ssh.Node)
-                |> List.distinct
-
-            let allSubSheets =
-                mapKeys sTrees
-                |> Seq.collect (subSheetsOf [])
-                |> Set
-            let isSubSheet sh = Set.contains sh allSubSheets
-
             let projectFiles = 
                 project.LoadedComponents 
                 |> List.filter (fun comp -> 
@@ -1018,11 +925,7 @@ let viewTopMenu model dispatch =
                     |true -> (comp.Form = Some User || comp.Form = Some ProtectedTopLevel || comp.Form = Some ProtectedSubSheet)
                     |false -> (comp.Form = Some User)
                 )
-                |> List.map (fun comp -> 
-                    let tree = sTrees[comp.Name]
-                    makeFileLine (isSubSheet tree.Node) comp.Name project model , tree)
-                |> List.sortBy (fun (line,tree) -> isSubSheet tree.Node, tree.Node, -tree.Size, tree.Node.ToLower())
-                |> List.map fst
+                |> List.map (fun comp -> makeFileLine  comp.Name project model)
                 |> addVerticalScrollBars
 
             
@@ -1147,7 +1050,7 @@ let viewTopMenu model dispatch =
 
                             Navbar.Item.div []
                                 [ button 
-                                    [Class "button is-grey"; Style compButtonStyle; OnClick(fun _ -> createCompStdLabel Diode model dispatch) ] [
+                                    [Class "button is-grey"; Style compButtonStyle; OnClick(fun _ -> createCompStdLabel DiodeL model dispatch) ] [
                                   svg [ViewBox "-9 2 48 48"] [ 
                                       let H,W=30.,30.
                                       let points = [|{X=0;Y=0};{X=0;Y=H};{X=W;Y=0.5*H};{X=W;Y=H};{X=W;Y=0};{X=W;Y=0.5*H}|]

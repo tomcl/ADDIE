@@ -115,9 +115,7 @@ let inline mapInverse (m:Map<'A,'B>) =
     |> Map.ofSeq
 
 let shortPComp (comp:Component) =
-    match comp.Type with
-    | Custom sc -> sprintf "%s:Custom.%s->%A" comp.Label sc.Name sc.IOLabels 
-    | _ -> sprintf "%s:%A" comp.Label comp.Type
+    sprintf "%s:%A" comp.Label comp.Type
 
 /// return initial n characters of a string
 let sprintInitial n (s:string) = 
