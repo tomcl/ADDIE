@@ -77,9 +77,7 @@ let getComponentIds (model: Model) =
 //------------------------------------------------------------------//
 
 let spComp (comp:Component) =
-    match comp.Type with
-    | Custom {Name=name; IOLabels=io} -> sprintf "Custom:%s(ins=%A)" name io 
-    | x -> sprintf "%A" x
+    sprintf "%A" comp
 
 let spConn (conn:Connection) = 
     sprintf "Conn:%A" conn.Vertices

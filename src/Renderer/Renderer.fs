@@ -218,8 +218,6 @@ let editMenu dispatch' =
                makeElmItem "Rotate Clockwise" "CmdOrCtrl+Right" (fun () -> rotateDispatch SymbolT.RotateClockwise)
                makeElmItem "Flip Vertically" "CmdOrCtrl+Up" (fun () -> sheetDispatch <| SheetT.Flip SymbolT.FlipVertical)
                makeElmItem "Flip Horizontally" "CmdOrCtrl+Down" (fun () -> sheetDispatch <| SheetT.Flip SymbolT.FlipHorizontal)
-               makeItem "Move Component Ports" None (fun _ -> 
-                    dispatch' <| ShowStaticInfoPopup("How to move component ports", SymbolUpdatePortHelpers.moveCustomPortsPopup(), dispatch'))
                menuSeparator
                makeElmItem "Align" "CmdOrCtrl+Shift+A"  (fun ev -> sheetDispatch <| SheetT.Arrangement SheetT.AlignSymbols)
                makeElmItem "Distribute" "CmdOrCtrl+Shift+D" (fun ev-> sheetDispatch <| SheetT.Arrangement SheetT.DistributeSymbols)
@@ -293,26 +291,8 @@ let view' model dispatch =
 
 let mutable firstPress = true
 
-///Used to listen for pressing down of Ctrl for selection toggle
-let keyPressListener initial =
-    let subDown dispatch =
-        Browser.Dom.document.addEventListener("keydown", fun e ->
-                                                let ke: KeyboardEvent = downcast e
-                                                if (jsToBool ke.ctrlKey || jsToBool ke.metaKey) && firstPress then
-                                                    firstPress <- false
-                                                    dispatch <| Sheet(SheetT.PortMovementStart)
-                                                else
-                                                    ())
-    let subUp dispatch =
-        Browser.Dom.document.addEventListener("keyup", fun e ->
-                                                    firstPress <- true
-                                                    dispatch <| Sheet(SheetT.PortMovementEnd))
-    Cmd.batch [Cmd.ofSub subDown; Cmd.ofSub subUp]
-
-
 
 Program.mkProgram init update view'
 |> Program.withReactBatched "app"
 |> Program.withSubscription attachMenusAndKeyShortcuts
-|> Program.withSubscription keyPressListener
 |> Program.run

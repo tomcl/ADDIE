@@ -167,7 +167,6 @@ module SymbolT =
         | MoveSymbols of compList: ComponentId list * move: XYPos
         | MoveLabel of compId: ComponentId * move: XYPos
         | ShowPorts of ComponentId list
-        | ShowCustomOnlyPorts of ComponentId list
         | SelectSymbols of ComponentId list// Issie interface
         | SymbolsHaveError of sIds: ComponentId list
         | ChangeLabel of sId : ComponentId * newLabel : string
@@ -436,8 +435,6 @@ module SheetT =
         | ResetModel
         | UpdateSelectedWires of ConnectionId list * bool
         | ColourSelection of compIds : ComponentId list * connIds : ConnectionId list * colour : HighLightColor
-        | PortMovementStart
-        | PortMovementEnd
         | ResetSelection
         | ToggleNet of CanvasState //This message does nothing in sheet, but will be picked up by the update function
         | SelectWires of ConnectionId list

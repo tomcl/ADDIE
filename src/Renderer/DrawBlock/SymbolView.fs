@@ -191,8 +191,6 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
             match comp.Type with
             | IOLabel ->
                 [|{X=0.;Y=H/2.};{X=W;Y=H/2.}|]
-            | Custom x -> 
-                [|{X=0;Y=H-13.};{X=8.;Y=H-7.};{X=0;Y=H-1.};{X=0;Y=0};{X=W;Y=0};{X=W;Y=H};{X=0;Y=H}|]
             | IO -> 
                 [|{X=0;Y=0};{X=0;Y=H};{X=W*4./5.;Y=H};{X=W;Y=H/2.};{X=W*0.8;Y=0}|] 
             | Resistor _ ->
@@ -202,7 +200,7 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
                 [|{X=0.2;Y=0.5};{X=0.8;Y=0.5};{X=0.7;Y=0.4};{X=0.8;Y=0.5};{X=0.9;Y=0.4};{X=0.8;Y=0.5}|]
             | Ground ->
                 [|{X=0;Y=0.3*H};{X=0.5*W;Y=H};{X=W;Y=0.3*H};{X=0.5*W;Y=0.3*H};{X=0.5*W;Y=0};{X=0.5*W;Y=0.3*H}|]
-            | Diode |DiodeR ->
+            | DiodeL |DiodeR ->
                 [|{X=0;Y=0};{X=0;Y=H};{X=W;Y=0.5*H};{X=W;Y=H};{X=W;Y=0};{X=W;Y=0.5*H}|]
             | Opamp ->
                 [|{X=0;Y=0};{X=0;Y=H};{X=W;Y=H/2.} |]
@@ -216,7 +214,7 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
 
     let outlineColour, strokeWidth =
         match colour,comp.Type with
-        |"Red",Ground |"Red",Diode |"Red",Opamp |"Red",DiodeR -> "black", "1.0"
+        |"Red",Ground |"Red",DiodeL |"Red",Opamp |"Red",DiodeR -> "black", "1.0"
         |"Red",_ -> "Red", "2.5"
         |_,Resistor _  -> "darkblue", "2.5"
         | _ -> "black", "1.0"
@@ -316,11 +314,7 @@ let drawSymbol (symbol:Symbol) (theme:ThemeType) =
         let offset:XYPos = {X = 0.; Y = 0.}
             
         {X=compWidth / 2.; Y=compHeight / 2. - 7.} + offset
-    let legendFontSize (ct:ComponentType) =
-        match ct with
-        | Custom _ -> "16px"
-        | _ -> "14px"
-
+    
 
     let componentValue =
         match comp.Type with

@@ -146,16 +146,6 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
                 ]
     
 
-    | PortMovementStart ->
-        match model.Action with
-        | Idle -> {model with CtrlKeyDown = true}, symbolCmd (SymbolT.ShowCustomOnlyPorts model.NearbyComponents) 
-        | _ -> model, Cmd.none
-
-    | PortMovementEnd ->
-        match model.Action with
-        | Idle -> {model with CtrlKeyDown = false}, symbolCmd (SymbolT.ShowPorts model.NearbyComponents)
-        | _ -> {model with CtrlKeyDown = false}, Cmd.none
-
     | MouseMsg mMsg -> // Mouse Update Functions can be found above, update function got very messy otherwise
         let mouseAlreadyDown = match model.Action with | MovingPort _ -> true |_ -> false //| ConnectingInput _ | ConnectingOutput _
         match mMsg.Op with
@@ -507,7 +497,7 @@ let init () =
         ComponentCurrents = Map.empty
         NodeVoltages = []
         UpdateSim = false
-        CanRunSimulation = false
+        CanRunSimulation = true
         SimulationRunning = false
         ShowNodesOrVoltages = Neither
         ShowCurrents = false

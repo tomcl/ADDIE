@@ -563,35 +563,24 @@ let adjustPosForRotation
 
 /// Takes a symbol in and returns the same symbol rotated left or right
 let rotateSymbol (rotation: RotationType) (sym: Symbol) : Symbol =
-    // update comp w h
-    match sym.Component.Type with
-    | Custom _->
-        let portMaps = rotatePortInfo rotation sym.PortMaps
-        let getHW (sym:Symbol) = {X=sym.Component.W;Y=sym.Component.H}
-        let sym' =
-            {sym with PortMaps = portMaps}
-            |> autoScaleHAndW
-        {sym' with Pos = sym.Pos + (getHW sym - getHW sym') * 0.5}
-        
-    | _ ->
-        let h,w = getRotatedHAndW sym
+    let h,w = getRotatedHAndW sym
 
-        let newPos = adjustPosForRotation rotation h w sym.Pos
-        let newComponent = { sym.Component with X = newPos.X; Y = newPos.Y}
+    let newPos = adjustPosForRotation rotation h w sym.Pos
+    let newComponent = { sym.Component with X = newPos.X; Y = newPos.Y}
 
-        let newSTransform = 
-            match sym.STransform.flipped with
-            | true -> 
-                {sym.STransform with Rotation = rotateAngle (invertRotation rotation) sym.STransform.Rotation} // hack for rotating when flipped 
-            | false -> 
-                {sym.STransform with Rotation = rotateAngle rotation sym.STransform.Rotation}
-        { sym with 
-            Pos = newPos;
-            PortMaps = rotatePortInfo rotation sym.PortMaps
-            STransform =newSTransform 
-            LabelHasDefaultPos = true
-            Component = newComponent
-        } |> calcLabelBoundingBox
+    let newSTransform = 
+        match sym.STransform.flipped with
+        | true -> 
+            {sym.STransform with Rotation = rotateAngle (invertRotation rotation) sym.STransform.Rotation} // hack for rotating when flipped 
+        | false -> 
+            {sym.STransform with Rotation = rotateAngle rotation sym.STransform.Rotation}
+    { sym with 
+        Pos = newPos;
+        PortMaps = rotatePortInfo rotation sym.PortMaps
+        STransform =newSTransform 
+        LabelHasDefaultPos = true
+        Component = newComponent
+    } |> calcLabelBoundingBox
 
 
 
@@ -746,8 +735,6 @@ let update (msg : Msg) (model : Model): Model*Cmd<'a>  =
     | ShowPorts compList ->
         (showPorts model compList), Cmd.none
 
-    | ShowCustomOnlyPorts compList ->
-        (showCustomPorts model compList), Cmd.none
     | MoveSymbols (compList, move) -> 
         (moveSymbols model compList move), Cmd.none
 
@@ -814,15 +801,6 @@ let update (msg : Msg) (model : Model): Model*Cmd<'a>  =
     | Flip(compList, orientation) ->
         (transformSymbols (flipSymbol orientation) model compList), Cmd.none
 
-    | MovePort (portId, pos) ->      
-        movePortUpdate model portId pos
-
-    | MovePortDone (portId, pos)->
-        let port = model.Ports[portId]
-        let symId = ComponentId port.HostId
-        let oldSymbol = model.Symbols[symId]
-        let newSymbol = {(updatePortPos oldSymbol pos portId) with MovingPortTarget = None}
-        set (symbolOf_ symId) newSymbol model, Cmd.ofMsg (unbox UpdateBoundingBoxes)
     | SaveSymbols -> // want to add this message later, currently not used
         let newSymbols = Map.map storeLayoutInfoInComponent model.Symbols
         { model with Symbols = newSymbols }, Cmd.none

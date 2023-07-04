@@ -341,7 +341,7 @@ let private makeDescription (comp:Component) model dispatch =
     | VoltageSource (DC _) -> div [] [str "DC Voltage Source"]
     | VoltageSource (Sine _) -> div [] [str "Sinusoidal Voltage Source"]
     | CurrentSource _ -> div [] [str "DC Current Source"]
-    | Diode -> div [] [str "Linearized Diode"]
+    | DiodeL -> div [] [str "Linearized Diode"]
     | Opamp -> div [] [str "Ideal Operational Amplifier"]
     | Ground -> div [] [str "Ground"]
     |_ -> div [] []
@@ -385,10 +385,7 @@ let viewSelectedComponent (model: ModelType.Model) dispatch =
     /// return an OK label text, or an error message
     let formatLabelText (txt: string) compId =
         let comp = SymbolUpdate.extractComponent model.Sheet.Wire.Symbol compId
-        let allowedDotPos =
-            match comp.Type with
-            | Custom {Name = name} -> name.Length
-            | _ -> -1
+        let allowedDotPos = -1
         txt.ToUpper()
         |> (fun chars -> 
             let symbols = model.Sheet.Wire.Symbol.Symbols |> Map.toList |> List.filter (fun (i,s) -> i <> compId) |> List.map snd

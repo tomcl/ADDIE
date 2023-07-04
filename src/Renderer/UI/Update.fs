@@ -212,8 +212,7 @@ let update (msg : Msg) oldModel =
         | _ -> model, Cmd.none //otherwise discard the message
     | FinishUICmd _->
         //printfn $"ending UI command '{model.UIState}"
-        let popup = CustomCompPorts.optCurrentSheetDependentsPopup model
-        {model with UIState = None; PopupViewFunc = popup}, Cmd.ofMsg (Sheet (SheetT.SetSpinner false))
+        {model with UIState = None;}, Cmd.ofMsg (Sheet (SheetT.SetSpinner false))
 
     (*| ShowExitDialog ->
         match model.CurrentProj with

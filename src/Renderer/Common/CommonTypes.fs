@@ -125,18 +125,6 @@ module CommonTypes
         |ProtectedSubSheet
 
 
-    /// Name identifies the LoadedComponent used.
-    /// The labels define legends on symbol designating inputs or outputs: and are the names of the Input or Output components of the CC sheet.
-    /// Label strings are unique per CustomComponent.
-    /// Label position in list determines inputPortNumber or outputPortNumber of label.
-    /// Multiple CustomComponent instances are differentiated by Component data.
-    type CustomComponentType = {
-        Name: string
-        IOLabels: string  list
-        Form : CCForm option
-        Description : string option
-    }
-
     /// Note that any memory addresses which have not been explicitly set when printing
     /// out memory data.
     type Memory = {
@@ -194,12 +182,11 @@ module CommonTypes
         | Inductor of Inductance:float * TextBoxValue:string
         | VoltageSource of VoltageSourceType
         | CurrentSource of Current:float * TextBoxValue:string
-        | Diode // linearized diode
+        | DiodeL // linearized diode
         | DiodeR // real diode
         | Ground
         | Opamp
-        | Custom of CustomComponentType // schematic sheet used as component
-
+        
 
 
     // --------------- Types needed for symbol ---------------- //

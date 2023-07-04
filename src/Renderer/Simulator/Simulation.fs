@@ -15,8 +15,8 @@ module Constants =
     let startACFreq = 0. //(exponent -> here: 10^0)
     let endACFreq = 7. //(exponent -> here: 10^7)
     let ACFreqStepsPerDecade = 20.
-    let I_S = (10.0**(-15.0))  //3.3*(10.0**(-9.0))
-    let V_t =  0.025875 //0.04621
+    let I_S = 3.35*(10.0**(-9.0))//(10.0**(-15.0))
+    let V_t =  0.04942 //0.04621 //0.025875 
     let convergence_epsilon = (10.0**(-9.))
 
 //////////////////  SIMULATION HELPERS   /////////////////
@@ -73,7 +73,7 @@ let findAllInductors comps =
     comps |> List.filter (fun c->match c.Type with |Inductor _ ->true |_->false)
 
 let findAllDiodes comps =
-    comps |> List.filter (fun c-> c.Type = Diode)
+    comps |> List.filter (fun c-> c.Type = DiodeL)
    
 let findCompFromId comps id =
     comps |> List.find (fun (c:Component)->c.Id=id)
@@ -480,7 +480,7 @@ and transformAllDiodes (comps,conns) cachedDiodeModes : Component list * Connect
     let runTransformation (diodeModeMap:Map<string,bool>) comps =
         comps
         |> List.map (fun c -> 
-            if c.Type = Diode then 
+            if c.Type = DiodeL then 
                 match diodeModeMap[c.Id] with
                 |true -> {c with Type = (VoltageSource (DC Constants.diodeConstant))}
                 |false -> {c with Type=(CurrentSource (0.,"0"))} 
@@ -600,6 +600,8 @@ and transformAllDiodes (comps,conns) cachedDiodeModes : Component list * Connect
         (comps,conns,[])
 
 
+/// implementation of newton-raphson with MNA
+/// currenlty works for real diodes only (DiodeR)
 and newtonRaphson (comps,conns) =
     let hasConverged (prev: float array ) (newSols: float array) =
         newSols
@@ -608,12 +610,13 @@ and newtonRaphson (comps,conns) =
             (true, bools) ||> Array.fold (fun s v -> s&&v))
             
 
-
-    let linDiodeComps = comps |> List.map (fun c-> match c.Type with |DiodeR -> {c with Type = Diode} |_ -> c)
-    
+    // transform to linearized diodes to obtain initial solution
+    let linDiodeComps = comps |> List.map (fun c-> match c.Type with |DiodeR -> {c with Type = DiodeL} |_ -> c)
     let initialSols,_,_,_ = modifiedNodalAnalysisDC (linDiodeComps,conns) []
-    let mutable prevsols = initialSols
     
+    
+    // algorithm setup
+    let mutable prevsols = initialSols
     let comps',conns'= 
         (comps,conns)
         |> combineGrounds
@@ -632,6 +635,8 @@ and newtonRaphson (comps,conns) =
     
     let mutable max_iter = 40
 
+
+    // newton raphson implementation
     while max_iter <> 0 do
 
         ////////// matrix creation ///////////
@@ -693,7 +698,7 @@ let frequencyResponse (comps,conns) inputSource outputNode  =
     let convertDiodeToConductingMode (comps,conns) =
         comps 
         |> List.map (fun c-> 
-            if c.Type = Diode 
+            if c.Type = DiodeL 
                 then {c with Type = (VoltageSource (DC Constants.diodeConstant))} 
             else c),conns
      
