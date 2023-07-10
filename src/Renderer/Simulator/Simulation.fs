@@ -17,6 +17,7 @@ module Constants =
     let I_S = 3.35*(10.0**(-9.0))//(10.0**(-15.0))
     let V_t =  0.04942 //0.04621 //0.025875 
     let convergence_epsilon = (10.0**(-9.))
+    let newtonRaphsonMaxIterations = 40
 
 //////////////////  SIMULATION HELPERS   /////////////////
 
@@ -632,13 +633,13 @@ and newtonRaphson (comps,conns) =
     let arr = Array.create n 0.0
     let matrix = Array.create n arr
     
-    let mutable max_iter = 40
+    let mutable max_iter = Constants.newtonRaphsonMaxIterations
 
 
     // newton raphson implementation
     while max_iter <> 0 do
 
-        ////////// matrix creation ///////////
+        ////////// matrix creation for MNA ///////////
 
         let vecB =
             Array.create n {Re=0.0;Im=0.0}
