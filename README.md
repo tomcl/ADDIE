@@ -101,10 +101,6 @@ This is boilerplate which you do not need to change; normally the F# project fil
 | `Renderer/UI/*`     | Contains the UI logic|
 | `./renderer.fs`     | Top-level file that drives the renderer code: contains Elmish MVU loop and Electron menu code |
 
-### `Tests` folder
-
-Currently tests are very old, and will not work. They are based on F# Expecto testing library and in principle the widthinferrer and simulator code (which runs under dotnet) could be tested here.
-
 
 ### `Static` folder
 
