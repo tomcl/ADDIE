@@ -8,6 +8,53 @@
 module NumberHelpers
 open CommonTypes
 
+module Constants =
+    let displayPrecision = 3
+
+/// Return a display string for a float q
+/// displayed to given precision using the appropriate SI multiplier.
+/// Reverts to scientific notation if abs value of number is too large.
+/// Displays 0 if abs value of number is too small.
+let rec displayWithSIMultiplier (precision: int) (q: float): string =
+    if q < 0.0 then 
+        // deal with negative inputs
+        "-" + displayWithSIMultiplier precision -q
+    else
+        let multipliers = [
+            9, "G"
+            6, "M"
+            3, "k"
+            0, ""
+            -3, "m"
+            -6, "u"
+            -9, "n"
+            -12, "p"
+            ]
+
+        let displayWithPrecision : (float -> string) =
+            match precision with
+            | 1 -> sprintf "%.1g"
+            | 2 -> sprintf "%.2g"
+            | 3 -> sprintf "%.3g"
+            | 4 -> sprintf "%.4g"
+            | 5 -> sprintf "%.5g"
+            | _ -> sprintf "%.6g"
+
+        let tryGetDisplay (unitExp:int,unitName:string) =
+            let scaledQty = (q / 10.0 ** float unitExp)
+            match scaledQty > 10000.0, int scaledQty with
+            | true, _ ->
+                Some <| displayWithPrecision q
+            | false, 0 -> 
+                // too small, try another unit
+                None 
+            | _ ->
+                // The right size
+                Some <| displayWithPrecision scaledQty + unitName
+        multipliers
+        |> List.tryPick tryGetDisplay
+        |> Option.defaultValue "0"
+
 
 /// Converts the text input of an RLCI Popup to its float value (Option)
 /// Returns None in case the input has invalid format
@@ -32,11 +79,13 @@ let textToFloatValue (text:string) =
                     || String.length (beginning.TrimEnd [|'.'|]) = (bLength-1)
                 then
                     match last with
-                    | 'K' | 'k' -> 1000.* (float beginning) |> Some
-                    | 'M' -> 1000000.* (float beginning)|> Some
-                    | 'm' -> 0.001* (float beginning)|> Some
-                    | 'u' -> 0.000001* (float beginning)|> Some
-                    | 'n' -> 0.000000001* (float beginning)|> Some
+                    | 'K' | 'k' -> 1e3 * (float beginning) |> Some
+                    | 'M' -> 1e6 * (float beginning)|> Some
+                    | 'm' -> 1e-3 * (float beginning)|> Some
+                    | 'u' -> 1e-6 * (float beginning)|> Some
+                    | 'n' -> 1e-9 * (float beginning)|> Some
+                    | "p" -> 1e-12 * float beginning |> Some
+                    | "R" -> float beginning |> Some
                     | _ -> None
                 else None
             |false -> None 
