@@ -7,9 +7,24 @@
 
 module NumberHelpers
 open CommonTypes
+open EEExtensions
 
 module Constants =
     let displayPrecision = 3
+    let sIMultipliers = [
+            9, "G"
+            6, "M"
+            3, "k"
+            0, ""
+            -3, "m"
+            -6, "u"
+            -9, "n"
+            -12, "p"
+            ]
+    let validSISuffixes = 
+        sIMultipliers 
+        |> List.map snd 
+        |> String.concat ""
 
 /// Return a display string for a float q
 /// displayed to given precision using the appropriate SI multiplier.
@@ -20,16 +35,6 @@ let rec displayWithSIMultiplier (precision: int) (q: float): string =
         // deal with negative inputs
         "-" + displayWithSIMultiplier precision -q
     else
-        let multipliers = [
-            9, "G"
-            6, "M"
-            3, "k"
-            0, ""
-            -3, "m"
-            -6, "u"
-            -9, "n"
-            -12, "p"
-            ]
 
         let displayWithPrecision : (float -> string) =
             match precision with
@@ -51,7 +56,7 @@ let rec displayWithSIMultiplier (precision: int) (q: float): string =
             | _ ->
                 // The right size
                 Some <| displayWithPrecision scaledQty + unitName
-        multipliers
+        Constants.sIMultipliers
         |> List.tryPick tryGetDisplay
         |> Option.defaultValue "0"
 
@@ -84,11 +89,57 @@ let textToFloatValue (text:string) =
                     | 'm' -> 1e-3 * (float beginning)|> Some
                     | 'u' -> 1e-6 * (float beginning)|> Some
                     | 'n' -> 1e-9 * (float beginning)|> Some
-                    | "p" -> 1e-12 * float beginning |> Some
-                    | "R" -> float beginning |> Some
+                    | 'p' -> 1e-12 * (float beginning) |> Some
+                    | 'R' -> float beginning |> Some
                     | _ -> None
                 else None
             |false -> None 
+
+/// Converts the text in an RCLI Popup to an  float Result value.
+/// In case of R or C or V or I or L  popups R/F/V/A/H is a valid optional suffix (the unit).
+/// The valid suffix for a given call is provided in popupUnitSuffix.
+/// The error string is a helpful (it is hoped) error message.
+let popupTextToFloat (popupUnitSuffix: string option) (text:string) =
+    let removeSuffixOpt suffix text =
+        if String.endsWith suffix text then
+            Some text[0..text.Length - suffix.Length - 1 ]
+        else None
+
+    let removeSuffix suffix text =
+        removeSuffixOpt suffix text
+        |> Option.defaultValue text
+    let text' = 
+        text
+        |> removeSuffix (Option.defaultValue "" popupUnitSuffix)
+
+    let digits, siUnit = // splits into a number and all terminating alpha chars
+        String.regexMatchGroups "([/d.]*)([a-zA-Z]*)$" text' 
+        |> Option.map (fun grps -> grps[0], grps[1])
+        |> Option.defaultValue (text',"")
+
+    let knownBadUnitMsg = 
+        match siUnit with
+        | "R" -> Some "a resistor"
+        | "H" -> Some "an inductor"
+        | "F" -> Some "a capacitor"
+        | "V" -> Some "a voltage source"
+        | "A" -> Some "a current source"
+        | _ -> None 
+        |> Option.map (fun unitName -> Error <| siUnit +  "is not valid here - this popup is not " + unitName)
+
+    let multiplier =
+        Constants.sIMultipliers
+        |> List.tryPick (fun (exp, name) -> if name = siUnit then Some (Ok (10.0**float exp)) else None)
+        |> Option.defaultValue (Error $"{siUnit} is not a valid SI unit multiplier - did you mean one of {Constants.validSISuffixes}?")
+      
+    match knownBadUnitMsg, String.tryParseWith System.Double.TryParse digits, multiplier with
+    | Some badUnitMsg, _, _ -> badUnitMsg
+    | _, _, Error multiplierMsg  -> 
+        Error multiplierMsg
+    | _, Some numberParse, Ok multiplier -> 
+        Ok (numberParse*multiplier)
+    | _, None, _ -> 
+        Error $"'{digits}' is not a valid number"
 
 
 
