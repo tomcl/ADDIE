@@ -50,7 +50,7 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
     | AddWire ( (inputId, outputId) : (IOPortId * IOPortId) ) ->
         // add a newly created wire to the model
         // then send BusWidths message which will re-infer bus widths
-        // the new wires (extarcted as connections) are not added back into Issie model. 
+        // the new wires (extarcted as connections) are not added back into Addie model. 
         // This happens on save or when starting a simulation (I think)
         let wireId = ConnectionId(JSHelpers.uuid())
         let newWire = 
@@ -113,7 +113,7 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
 
     | DeleteWires (connectionIds : list<ConnectionId>) ->
         // deletes wires from model, then runs bus inference
-        // Issie model is not affected but will extract connections from wires
+        // Addie model is not affected but will extract connections from wires
         // at some time.
         let newWires =
              model.Wires
@@ -214,8 +214,8 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
 
     | LoadConnections conns -> 
         // we assume components (and hence ports) are loaded before connections
-        // Issie connections are loaded as wires
-        // vertices on Issie connections contains routing info so wires can be 
+        // Addie connections are loaded as wires
+        // vertices on Addie connections contains routing info so wires can be 
         // reconstructed precisely
 
         /// check whether a laoded wires position matches a symbol vertex
@@ -237,7 +237,7 @@ let update (msg : Msg) (model : Model) : Model*Cmd<Msg> =
                 let outputId = PortId conn.Source.Id
                 let connId = ConnectionId conn.Id
                 let getVertex (x,y,_) = (x,y)
-                let segments = issieVerticesToSegments connId conn.Vertices
+                let segments = addieVerticesToSegments connId conn.Vertices
                 let makeWirePosMatchSymbol inOut (wire:Wire) =
                     match inOut with
                     | true -> 

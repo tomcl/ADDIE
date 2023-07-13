@@ -1,7 +1,7 @@
 (*
 This module implements wires between symbol ports. Wires can be autorouted, or manually routed by dragging segments.
 Moving symbols causes the corresponding wires to move.
-Wires are read and written from Issie as lists of wire vertices, whatever teh internal representation is.
+Wires are read and written from Addie as lists of wire vertices, whatever teh internal representation is.
 *)
 
 
@@ -492,10 +492,10 @@ let makeInitialSegmentsList
     |> xyVerticesToSegments hostId 
 
 
-//----------------------interface to Issie-----------------------//
+//----------------------interface to Addie-----------------------//
 
-/// Convert a (possibly legacy) issie Connection stored as a list of vertices to a list of segments
-let issieVerticesToSegments 
+/// Convert a (possibly legacy) addie Connection stored as a list of vertices to a list of segments
+let addieVerticesToSegments 
         (connId) 
         (verticesList: list<float*float*bool>) =
     let verticesList' =
@@ -554,7 +554,7 @@ let issieVerticesToSegments
     verticesToSegments connId verticesList'
 
 /// Converts a segment list into a list of vertices to store inside Connection
-let segmentsToIssieVertices (segList:Segment list) (wire:Wire) = 
+let segmentsToAddieVertices (segList:Segment list) (wire:Wire) = 
     ((wire.StartPos, wire.InitialOrientation, false),segList)
     ||> List.scan(fun (currPos, currOrientation, _) seg ->
         let (nextPos, nextOrientation) =
@@ -568,7 +568,7 @@ let segmentsToIssieVertices (segList:Segment list) (wire:Wire) =
 /// This function is given a ConnectionId and it
 /// converts the corresponding BusWire.Wire type to a
 /// Connection type, offering an interface
-/// between our implementation and Issie.
+/// between our implementation and Addie.
 let extractConnection (wModel : Model) (cId : ConnectionId) : Connection =
     let conn = wModel.Wires[cId]
     let ConnectionId strId, PortId strPort1, PortId strPort2 = conn.WId, conn.Port1, conn.Port2
@@ -576,13 +576,13 @@ let extractConnection (wModel : Model) (cId : ConnectionId) : Connection =
         Id = strId
         Source = { Symbol.getPort wModel.Symbol strPort1 with PortNumber = None } // None for connections 
         Target = { Symbol.getPort wModel.Symbol strPort2 with PortNumber = None } // None for connections 
-        Vertices = segmentsToIssieVertices conn.Segments conn
+        Vertices = segmentsToAddieVertices conn.Segments conn
     }
 
 /// This function is given a list of ConnectionId and it
 /// converts the corresponding BusWire.Wire(s) to a
 /// list of Connections, offering an interface
-/// between our implementation and Issie.
+/// between our implementation and Addie.
 let extractConnections (wModel : Model) : list<Connection> = 
     wModel.Wires
     |> Map.toList

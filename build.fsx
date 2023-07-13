@@ -47,7 +47,7 @@ Target.create "CleanNode" <| fun _ ->
     File.delete (__SOURCE_DIRECTORY__ @@ "package-lock.json")
 
 Target.create "DotnetRestore" (fun _ ->
-    Shell.Exec("dotnet","restore issie.sln") |> ignore)
+    Shell.Exec("dotnet","restore addie.sln") |> ignore)
 
 Target.create "NpmInstall" (fun _ ->
   Npm.exec "ci" id
@@ -70,7 +70,7 @@ Target.create "DistDir" (fun _ ->
 )
 
 Target.create "KillZombies" <| fun _ ->
-    Fake.Core.Process.killAllByName "issie.exe"
+    Fake.Core.Process.killAllByName "addie.exe"
     Fake.Core.Process.killAllByName "node"
     Fake.Core.Process.killAllByName "dotnet"
 

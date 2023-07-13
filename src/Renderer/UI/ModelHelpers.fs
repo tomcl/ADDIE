@@ -5,14 +5,14 @@ open ModelType
 open Elmish
 
 
-/// This is needed because DrawBlock cannot directly access Issie Model.
+/// This is needed because DrawBlock cannot directly access Addie Model.
 /// can be replaced when all Model is placed at start of compile order and DB
 /// model is refactored
 let drawBlockModelToUserData (model: Model) (userData: UserData)=
     let bwModel =model.Sheet.Wire
     {userData with WireType = bwModel.Type;}
 
-/// This is needed because DrawBlock cannot directly access Issie Model.
+/// This is needed because DrawBlock cannot directly access Addie Model.
 /// can be replaced when all Model is placed at start of compile order and DB
 /// model is refactored
 let userDataToDrawBlockModel (model: Model) =

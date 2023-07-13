@@ -15,7 +15,7 @@
 (*
 
 Popups must be careful in handling internal state because this cannot be updated by
-dispatch as would be expected. (example below taken from main Issie popup usage).
+dispatch as would be expected. (example below taken from main Addie popup usage).
 
 viewpopup model ->
 model.Popup model.PopupDialogData -> (PopupDialogData contains memory setup data (widths) but not memory component data)

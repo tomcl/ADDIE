@@ -809,7 +809,7 @@ let update (msg : Msg) (model : Model): Model*Cmd<'a>  =
 
 
 
-// ----------------------interface to Issie----------------------------- //
+// ----------------------interface to Addie----------------------------- //
 let extractComponent (symModel: Model) (sId:ComponentId) : Component = 
     let symbol = symModel.Symbols[sId]
     let symWithInfo = storeLayoutInfoInComponent () symbol

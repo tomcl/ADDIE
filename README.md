@@ -33,8 +33,8 @@ Electron bundles Chromium (View) and node.js (Engine), therefore as in every nod
 Additionally, the section `"scripts"`:
 ```
  "scripts": {
-    "clean-dev-mac": "sudo killall -9 node && sudo killall -9 dotnet && sudo killall -9 issie",
-    "clean-dev-win": "taskkill /f /im node.exe && taskkill /f /im dotnet.exe && taskkill /f /im issie.exe",
+    "clean-dev-mac": "sudo killall -9 node && sudo killall -9 dotnet && sudo killall -9 addie",
+    "clean-dev-win": "taskkill /f /im node.exe && taskkill /f /im dotnet.exe && taskkill /f /im addie.exe",
     "compile": "dotnet fable src/Main -s && dotnet fable src/Renderer -s",
     "dev": "dotnet fable watch src/Main -s --run npm run devrenderer",
     "devrenderer": "dotnet fable watch src/Renderer -s --define ASSERTS --run npm run start",
@@ -262,7 +262,7 @@ Although the dev chain is complex, it is now very smooth and identical for all p
 * To update the tool versions (not normally needed) edit `dotnet-tools.json`.
 * To change the dotnet packages used (advanced) change `paket.dependencies` at top level **and** `paket.references` in the directory of the relevant `.fsproj` file. Currently dotnet packages are not pinned to versions so latest compatible versions are always used. This is probably wrong but seems to work well.
 * To interface to a new Node package from F# see the excellent [Fable documentation](https://fable.io/docs/communicate/js-from-fable.html). The **best** way to do this is to write an F# interface file which provides
-static typing (like a typescript definition file). In fact there is a wonderful automatic converter [ts2fable](https://github.com/fable-compiler/ts2fable) which generates F# interfaces from typescript `.d` files. This works well, but manual adjutsment is needed for anything complex. See [the Electon API interface](https://github.com/tomcl/issie/blob/master/src/Renderer/Common/ElectronAPI.fs) in Issie which was generated in this way from a published electron API `.d` files - in that case the manual adjustment was quite unpleasant because Electron API is very complex.
+static typing (like a typescript definition file). In fact there is a wonderful automatic converter [ts2fable](https://github.com/fable-compiler/ts2fable) which generates F# interfaces from typescript `.d` files. This works well, but manual adjutsment is needed for anything complex. See [the Electon API interface](https://github.com/tomcl/addie/blob/master/src/Renderer/Common/ElectronAPI.fs) in Addie which was generated in this way from a published electron API `.d` files - in that case the manual adjustment was quite unpleasant because Electron API is very complex.
 * To understand Elmish and MVU read the excellent [Elmish book](https://zaid-ajaj.github.io/the-elmish-book/#/)
 * For more documentation on Addie in addition to XML code comments see the Addie Wiki
 

@@ -164,7 +164,7 @@ module SymbolT =
         | MoveSymbols of compList: ComponentId list * move: XYPos
         | MoveLabel of compId: ComponentId * move: XYPos
         | ShowPorts of ComponentId list
-        | SelectSymbols of ComponentId list// Issie interface
+        | SelectSymbols of ComponentId list// Addie interface
         | SymbolsHaveError of sIds: ComponentId list
         | ChangeLabel of sId : ComponentId * newLabel : string
         | PasteSymbols of sIds: ComponentId list
@@ -172,8 +172,8 @@ module SymbolT =
         | ErrorSymbols of errorIds: ComponentId list * selectIds: ComponentId list * isDragAndDrop: bool
         | ChangeScale of compId:ComponentId * newScale:float * whichScale:ScaleAdjustment
         | ChangeRLCIValue of compId: ComponentId * NewValue:float * NewStr:string
-        | ResetModel // For Issie Integration
-        | LoadComponents of  LoadedComponent list * Component list // For Issie Integration
+        | ResetModel // For Addie Integration
+        | LoadComponents of  LoadedComponent list * Component list // For Addie Integration
         | RotateLeft of compList : ComponentId list * RotationType
         | Flip of compList: ComponentId list * orientation: FlipType
         /// Taking the input and..
@@ -290,8 +290,8 @@ module BusWireT =
         | ResetJumps of list<ConnectionId>
         | MakeJumps of list<ConnectionId>
         | UpdateWireDisplayType of WireType
-        | ResetModel // For Issie Integration
-        | LoadConnections of list<Connection> // For Issie Integration
+        | ResetModel // For Addie Integration
+        | LoadConnections of list<Connection> // For Addie Integration
         | UpdateConnectedWires of list<ComponentId> // rotate each symbol separately. TODO - rotate as group? Custom comps do not rotate
         | RerouteWire of string
 
@@ -334,7 +334,7 @@ module SheetT =
         | ConnectingIO of CommonTypes.IOPortId // When trying to connect a wire from an input
         | Scrolling // For Automatic Scrolling by moving mouse to edge to screen
         | Idle
-        // ------------------------------ Issie Actions ---------------------------- //
+        // ------------------------------ Addie Actions ---------------------------- //
         | InitialisedCreateComponent of LoadedComponent list * ComponentType * string
         | MovingPort of portId: string//?? should it have the port id?
 
@@ -375,7 +375,7 @@ module SheetT =
     type WireTypeMsg =
         | Jump | Radiussed | Modern
 
-    type IssieInterfaceMsg =
+    type AddieInterfaceMsg =
         | ToggleArrows
 
     /// Possible fields that may (or may not) be used in a dialog popup.
@@ -425,7 +425,7 @@ module SheetT =
         | ClosePopup
         | SetPopupDialogText of string option
         | SetPopupDialogInt of int option
-        // ------------------- Issie Interface Messages ----------------------
+        // ------------------- Addie Interface Messages ----------------------
         | InitialiseCreateComponent of LoadedComponent list * ComponentType * string // Need to initialise for drag-and-drop
         | FlushCommandStack
         | ResetModel
@@ -440,7 +440,7 @@ module SheetT =
         | Arrangement of Arrange
         | RotateLabels
         | WireType of WireTypeMsg
-        | IssieInterface of IssieInterfaceMsg
+        | AddieInterface of AddieInterfaceMsg
         | MovePort of MouseT //different from mousemsg because ctrl pressed too
         | SaveSymbols
         | UpdateNodes

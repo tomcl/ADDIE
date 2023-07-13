@@ -627,7 +627,7 @@ let viewInfoPopup dispatch =
         br []; br []
         makeH "Acknowledgments"
         str "ADDIE was created by Archontis Pantelopoulos (EIE 4th year) as his MEng final year project, \
-             using the pre-existing digital electronics equivalent: ISSIE."
+             using the pre-existing digital electronics equivalent: Addie."
         br []; br [] 
         makeH "Technology"
         Text.span [] [

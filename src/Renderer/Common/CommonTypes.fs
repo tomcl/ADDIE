@@ -7,7 +7,7 @@ module CommonTypes
     open Optics
     /// Position on SVG canvas
     /// Positions can be added, subtracted, scaled using overloaded +,-, *  operators
-    /// currently these custom operators are not used in Issie - they should be!
+    /// currently these custom operators are not used in Addie - they should be!
     type XYPos =
         {
             X : float
@@ -50,7 +50,7 @@ module CommonTypes
 
     
     (*
-    Note on Ports. Ports are used throughout Issie to represent I/Os of components.
+    Note on Ports. Ports are used throughout Addie to represent I/Os of components.
     Because a design sheet can be instantiated as a component they can also represent I/Os of a sheet.
 
     1. Port records are used on both connections and components, a connection

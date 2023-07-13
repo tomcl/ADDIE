@@ -1,5 +1,5 @@
 ﻿(*
-This module draws schematics component symbols. Each symbol is associated with a unique Issie component.
+This module draws schematics component symbols. Each symbol is associated with a unique Addie component.
 *)
 
 module Symbol

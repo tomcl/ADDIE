@@ -364,7 +364,7 @@ let update (msg : Msg) (model : Model): Model*Cmd<Msg> =
             wireCmd (BusWireT.MakeJumps wires)
         ]
                 
-    // ---------------------------- Issie Messages ---------------------------- //
+    // ---------------------------- Addie Messages ---------------------------- //
 
     | InitialiseCreateComponent (ldcs, compType, lbl) ->
         { model with Action = (InitialisedCreateComponent (ldcs, compType, lbl)) ; TmpModel = Some model}, Cmd.none

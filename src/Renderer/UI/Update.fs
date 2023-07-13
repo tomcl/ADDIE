@@ -40,7 +40,7 @@ let private readUserData (userAppDir: string) (model: Model) : Model * Cmd<Msg> 
 
     let modelOpt =
         try
-            let jsonRes = tryReadFileSync <| pathJoin [|userAppDir;"IssieSettings.json"|]
+            let jsonRes = tryReadFileSync <| pathJoin [|userAppDir;"AddieSettings.json"|]
             jsonRes
             |> Result.bind (fun json -> Json.tryParseAs<UserData> json)
             |> Result.bind (fun (data: UserData) -> Ok {model with UserData = data})
@@ -62,7 +62,7 @@ let private writeUserData (model:Model) =
             Json.serialize<UserData> data |> Ok
         with
         | e -> Error "Can't write settings on this PC because userAppDir does not exist"
-        |> Result.bind (fun json -> writeFile (pathJoin [|userAppDir;"IssieSettings.json"|]) json)
+        |> Result.bind (fun json -> writeFile (pathJoin [|userAppDir;"AddieSettings.json"|]) json)
         |> Result.mapError (fun mess -> $"Write error on directory {userAppDir}: %s{mess}")
         |> function | Error mess -> printfn "%s" mess | _ -> ())
     |> ignore
@@ -78,7 +78,7 @@ let getMenuView (act: MenuCommand) (model: Model) (dispatch: Msg -> Unit) =
     | MenuNewFile -> 
         FileMenuView.addFileToProject model dispatch
     | MenuExit ->
-        FileMenuView.doActionWithSaveFileDialog "Exit ISSIE" CloseApp model dispatch ()
+        FileMenuView.doActionWithSaveFileDialog "Exit Addie" CloseApp model dispatch ()
     
             
     | _ -> ()

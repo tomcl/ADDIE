@@ -153,7 +153,7 @@ let private tryLoadStateFromPath (filePath: string) =
 
         |> Result.map jsonStringToState
         |> ( function
-            | Error msg  -> Result.Error <| sprintf "could not convert file '%s' to a valid issie design sheet. Details: %s" filePath msg
+            | Error msg  -> Result.Error <| sprintf "could not convert file '%s' to a valid addie design sheet. Details: %s" filePath msg
             | Ok res -> Ok res)
 
 let makeData aWidth dWidth makeFun =
@@ -189,7 +189,7 @@ let getBaseNameNoExtension filePath =
 
 let private projectFileFilters =
     createObj !![
-        "name" ==> "ISSIE project file"
+        "name" ==> "Addie project file"
         "extensions" ==> ResizeArray [ "dprj" ]
     ] 
     |> unbox<FileFilter> 
@@ -205,7 +205,7 @@ let private ramFileFilters =
 
 let private projectFilters =
     createObj !![ 
-        "name" ==> "ISSIE project"   
+        "name" ==> "Addie project"   
         "extensions" ==> ResizeArray [ "" ]
     ]
     |> unbox<FileFilter>
@@ -238,7 +238,7 @@ let askForExistingProjectPath (defaultPath: string option) : string option =
 let rec askForNewProjectPath (defaultPath:string option) : string option =
     let options = createEmpty<SaveDialogSyncOptions>
     options.filters <- Some (projectFilters |> ResizeArray)
-    options.title <- Some "Enter new ISSIE project directory and name"
+    options.title <- Some "Enter new Addie project directory and name"
     options.nameFieldLabel <- Some "New project name"
     options.defaultPath <- defaultPath
     options.buttonLabel <- Some "Create Project"
@@ -256,7 +256,7 @@ let rec askForNewProjectPath (defaultPath:string option) : string option =
             then
                 electronRemote.dialog.showErrorBox(
                     "Invalid project directory",
-                    "You are trying to create a new Issie project inside an existing project directory. \
+                    "You are trying to create a new Addie project inside an existing project directory. \
                      This is not allowed, please choose a different directory")
                 askForNewProjectPath defaultPath
             
@@ -344,7 +344,7 @@ let magnifySheet magnification (comp: LegacyCanvas.LegacyComponent) =
 /// The standard way to add functionality to an existing component is to create a new
 /// component type, keeping the old type. Then on reading sheets from disk both new and old
 /// will be correctly read. This function will be called on load and will convert from the old
-/// type to the new one so that the rest of issie need only process new types, but compatibility
+/// type to the new one so that the rest of addie need only process new types, but compatibility
 /// with saved old types remains.
 let getLatestComp (comp: Component) =
     comp
@@ -417,7 +417,7 @@ let loadAllComponentFiles (folderPath:string)  =
         try
             Ok <| fs.readdirSync (U2.Case1 folderPath)
         with
-        | e -> Error <| sprintf "Error reading Issie project directory at '%s: %A" folderPath e
+        | e -> Error <| sprintf "Error reading Addie project directory at '%s: %A" folderPath e
     match x with
     | Error msg -> Error msg
     | Ok x ->

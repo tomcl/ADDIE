@@ -131,8 +131,8 @@ let fileMenu (dispatch) =
         makeItem "New Sheet" (Some "CmdOrCtrl+N") (fun ev -> dispatch (MenuAction(MenuNewFile,dispatch)))
         makeItem "Save Sheet" (Some "CmdOrCtrl+S") (fun ev -> dispatch (MenuAction(MenuSaveFile,dispatch)))
         //makeItem "Print Sheet" (Some "CmdOrCtrl+P") (fun ev -> dispatch (MenuAction(MenuPrint,dispatch)))
-        makeItem "Exit ACES" None (fun ev -> dispatch (MenuAction(MenuExit,dispatch)))
-        makeItem ("About ACES" + Version.VersionString) None (fun ev -> PopupView.viewInfoPopup dispatch)
+        makeItem "Exit Addie" None (fun ev -> dispatch (MenuAction(MenuExit,dispatch)))
+        makeItem ("About Addie" + Version.VersionString) None (fun ev -> PopupView.viewInfoPopup dispatch)
         makeCondRoleItem (JSHelpers.debugLevel <> 0 && not isMac) "Hard Restart app" None MenuItemRole.ForceReload
         makeCondItem (JSHelpers.debugLevel <> 0 && not isMac) "Trace all" None (fun _ ->
             JSHelpers.debugTraceUI <- Set.ofList ["update";"view"])
@@ -151,7 +151,7 @@ let viewMenu dispatch =
     let sheetDispatch sMsg = dispatch (Sheet sMsg)
     let dispatch = SheetT.KeyPress >> sheetDispatch
     let wireTypeDispatch = SheetT.WireType >> sheetDispatch
-    let interfaceDispatch = SheetT.IssieInterface >> sheetDispatch
+    let interfaceDispatch = SheetT.AddieInterface >> sheetDispatch
     let busWireDispatch (bMsg: BusWireT.Msg) = sheetDispatch (SheetT.Msg.Wire bMsg)
     
     
