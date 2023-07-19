@@ -446,41 +446,6 @@ let mDragUpdate
                     LastMousePos = mMsg.Pos
                     ScrollingLastMousePos = {Pos=mMsg.Pos;Move=mMsg.ScreenMovement}}
         , Cmd.ofMsg CheckAutomaticScrolling
-    //| ConnectingInput _ ->
-    //    let nearbyComponents = findNearbyComponents model mMsg.Pos 50 
-    //    let _, nearbyOutputPorts = findNearbyPorts model
-
-    //    let targetPort, drawLineTarget =
-    //        match mouseOnPort nearbyOutputPorts mMsg.Pos 12.5 with
-    //        | Some (OutputPortId portId, portLoc) -> (portId, portLoc) // If found target, snap target of the line to the port
-    //        | None -> ("", mMsg.Pos)
-
-    //    { model with
-    //                NearbyComponents = nearbyComponents
-    //                ConnectPortsLine = (fst model.ConnectPortsLine, drawLineTarget)
-    //                TargetPortId = targetPort
-    //                LastMousePos = mMsg.Pos
-    //                ScrollingLastMousePos = {Pos=mMsg.Pos;Move=mMsg.ScreenMovement}}
-    //    , Cmd.ofMsg CheckAutomaticScrolling
-    //| ConnectingOutput _ ->
-    //    let nearbyComponents = findNearbyComponents model mMsg.Pos 50
-    //    let nearbyInputPorts, _ = findNearbyPorts model
-
-    //    let targetPort, drawLineTarget =
-    //        match mouseOnPort nearbyInputPorts mMsg.Pos 12.5 with
-    //        | Some (InputPortId portId, portLoc) -> (portId, portLoc) // If found target, snap target of the line to the port
-    //        | None -> ("", mMsg.Pos)
-
-    //    { model with
-    //                NearbyComponents = nearbyComponents
-    //                ConnectPortsLine = (fst model.ConnectPortsLine, drawLineTarget)
-    //                TargetPortId = targetPort
-    //                LastMousePos = mMsg.Pos
-    //                ScrollingLastMousePos = {Pos=mMsg.Pos;Move=mMsg.ScreenMovement} }
-    //    , Cmd.ofMsg CheckAutomaticScrolling
-
-    | MovingPort portId->
-        model, symbolCmd (SymbolT.MovePort (portId, mMsg.Pos))
     | Panning initPos->
         let sPos = initPos - mMsg.ScreenPage
         model, Cmd.ofMsg (Msg.UpdateScrollPos sPos)
@@ -572,27 +537,6 @@ let mUpUpdate (model: Model) (mMsg: MouseT) : Model * Cmd<Msg> = // mMsg is curr
         {model with Action = Idle; TargetPortId = ""; UndoList = undoList ; RedoList = redoList ; AutomaticScrolling = false }, cmd
     
     
-    //| ConnectingInput inputPortId ->
-    //    let cmd, undoList ,redoList =
-    //        if model.TargetPortId <> "" // If a target has been found, connect a wire
-    //        then wireCmd (BusWireT.AddWire (inputPortId, (OutputPortId model.TargetPortId))),
-    //                       appendUndoList model.UndoList newModel, []
-    //        else Cmd.none , model.UndoList , model.RedoList
-    //    {model with Action = Idle; TargetPortId = ""; UndoList = undoList ; RedoList = redoList ; AutomaticScrolling = false }, cmd
-    //| ConnectingOutput outputPortId ->
-    //    let cmd , undoList , redoList =
-    //        if model.TargetPortId <> "" // If a target has been found, connect a wire
-    //        then  wireCmd (BusWireT.AddWire (InputPortId model.TargetPortId, outputPortId)),
-    //                       appendUndoList model.UndoList newModel , []
-    //        else Cmd.none , model.UndoList , model.RedoList
-    //    { model with Action = Idle; TargetPortId = ""; UndoList = undoList ; RedoList = redoList ; AutomaticScrolling = false  }, cmd
-    | MovingPort portId ->
-        let symbol = Symbol.getCompId model.Wire.Symbol portId
-        {model with Action = Idle},
-        Cmd.batch [
-            symbolCmd (SymbolT.MovePortDone (portId, mMsg.Pos))
-            wireCmd (BusWireT.UpdateSymbolWires symbol);
-            wireCmd (BusWireT.RerouteWire portId)]
     | _ -> model, Cmd.none
 
 /// Mouse Move Update, looks for nearby components and looks if mouse is on a port

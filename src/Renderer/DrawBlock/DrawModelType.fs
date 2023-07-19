@@ -177,8 +177,6 @@ module SymbolT =
         | RotateLeft of compList : ComponentId list * RotationType
         | Flip of compList: ComponentId list * orientation: FlipType
         /// Taking the input and..
-        | MovePort of portId: string * move: XYPos
-        | MovePortDone of portId: string * move: XYPos
         | SaveSymbols
         | SetTheme of ThemeType
              //------------------------Sheet interface message----------------------------//
@@ -441,7 +439,6 @@ module SheetT =
         | RotateLabels
         | WireType of WireTypeMsg
         | AddieInterface of AddieInterfaceMsg
-        | MovePort of MouseT //different from mousemsg because ctrl pressed too
         | SaveSymbols
         | UpdateNodes
         | CanvasChanged

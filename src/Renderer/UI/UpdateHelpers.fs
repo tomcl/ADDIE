@@ -50,7 +50,16 @@ let shortDisplayMsg (msg:Msg) =
     | SetPopupDialogText3 _ 
     | SetPopupDialogInt _ 
     | SetPopupDialogInt2 _ 
-    | SetPopupDialogBadLabel _ 
+    | SetPopupDialogBadLabel _
+    | SetPopupDialogVSType _
+    | SetSimulationACInDB
+    | SetSimulationACInHz
+    | SetSimulationACOut _
+    | SetSimulationACSource _
+    | SetSimulationTheveninComp _
+    | SetSimulationTheveninParams _
+    | SetSimulationTimeOut _
+    | SetSimulationTimeSource _
     | CloseDiagramNotification
     | SetFilesNotification _ 
     | CloseFilesNotification
@@ -72,6 +81,29 @@ let shortDisplayMsg (msg:Msg) =
     | FinishUICmd
     | ReadUserData _
     | SetUserData _
+    | UpdateDCSim _
+    | UpdateDiodeModes _
+    | UpdateVoltages _
+    | UpdateACSim _
+    | UpdateTimeSim _
+    | UpdateCanvasStateSizes _
+    | UpdateCurrents _
+    | UpdateNodes _ 
+    | CircuitHasErrors
+    | CircuitHasNoErrors
+    | RunSim
+    | RunTests
+    | SafeStartSim
+    | SimulationUpdated
+    | ClearSimulationResults
+    | ForceStopSim
+    | HideCurrents
+    | SetGraphVisibility _
+    | ShowNodesOrVoltages
+    | ShowNodesOrVoltagesExplicitState _
+    | HideNodesOrVoltages
+    | HideCurrents
+    | ShowOrHideCurrents _
     | SetThemeUserData _ -> None
     | ExecCmd _ -> Some "ExecCmd"
     | ExecFuncInMessage _ -> Some "ExecFuncInMessage"
