@@ -150,7 +150,7 @@ let private  viewRightTab canvasState model dispatch =
 
                     (Tabs.tab // wavesim tab
                     [ Tabs.Tab.IsActive (model.SimSubTabVisible = TimeSim) ]
-                    [ a [  OnClick (fun _ -> dispatch <| ChangeSimSubTab TimeSim; dispatch <| ShowNodesOrVoltagesExplicitState Nodes; dispatch <|SetGraphVisibility false) ] [str "Time Analysis"] ])
+                    [ a [  OnClick (fun _ -> dispatch <| ChangeSimSubTab TimeSim; dispatch <| ShowNodesOrVoltagesExplicitState Nodes; dispatch <|SetGraphVisibility false) ] [str "Transient Analysis"] ])
                     ]
         div [ HTMLAttr.Id "RightSelection"; Style [Height "100%"]] 
             [
@@ -159,8 +159,7 @@ let private  viewRightTab canvasState model dispatch =
                 viewSimSubTab canvasState model dispatch
             ]
     | Tests ->
-        let temp = [true;true;true;true;true;true;true;true;true;true;]
-        let tdTests = temp |> List.mapi (fun i b -> tr [] [td [] [str (sprintf "Test %i" (i+1))]; td [] [str (if b then "Pass" else "Fail")]])
+        let tdTests = model.Tests |> List.mapi (fun i b -> tr [] [td [] [str (sprintf "Test %i" (i+1))]; td [] [str (if b then "Pass" else "Fail")]])
         div [ Style [Width "90%"; MarginLeft "5%"; MarginTop "15px" ]] 
             [
                 Heading.h4 [] [str "Tests"]
