@@ -1,15 +1,17 @@
-#r "paket: groupref FakeBuild //"
-#load ".fake/build.fsx/intellisense.fsx"
+#!/usr/bin/env -S dornet fsi
+#r "nuget: Fake.Core.Target"
+#r "nuget: Fake.JavaScript.Npm, 6.0.0"
 
-#if !FAKE
-#r "netstandard"
-#r "Facades/netstandard" // https://github.com/ionide/ionide-vscode-fsharp/issues/839#issuecomment-396296095
-#endif
+System.Environment.GetCommandLineArgs()
+|> Array.skip 2 // skip fsi.exe; build.fsx
+|> Array.toList
+|> Fake.Core.Context.FakeExecutionContext.Create false __SOURCE_FILE__
+|> Fake.Core.Context.RuntimeContext.Fake
+|> Fake.Core.Context.setExecutionContext
 
 open System
 open Fake.Core
 open Fake.Core.TargetOperators
-open Fake.DotNet
 open Fake.IO
 open Fake.IO.Globbing.Operators
 open Fake.IO.FileSystemOperators
