@@ -10,6 +10,8 @@ open Fulma
 open Fable.React
 open Fable.React.Props
 open Fulma.Extensions.Wikiki
+open Feliz
+
 
 open JSHelpers
 open ModelType
@@ -168,19 +170,17 @@ let mockDispatchS msgFun msg =
     | Sheet (SheetT.Msg.Wire (BusWireT.Msg.Symbol sMsg)) ->
         msgFun msg
     | _ -> ()
-
-
+/// Return dialog fileds used by constant, or default value
 
 let msgToS = 
     BusWireT.Msg.Symbol >> SheetT.Msg.Wire >> Msg.Sheet
-  
-/// Return dialog fileds used by constant, or default values
+
 let constantDialogWithDefault (w,cText) dialog =
     let w = Option.defaultValue w dialog.Int
     let cText = Option.defaultValue cText dialog.Text
     w, cText
 
-let private makeSliderField model (comp:Component) text dispatch =
+let private makeSliderField model (comp:Component) text dispatch  =
     let sheetDispatch sMsg = dispatch (Sheet sMsg)
     
     let onchange = (
@@ -246,6 +246,8 @@ let private makeValueField model (comp:Component) text dispatch =
         | Inductor (v,s) -> "Inductance value", s
         | CurrentSource (v,s) -> "Current value", s
         | _ -> failwithf "makeNumberOfBitsField called with invalid component"
+
+
     textValueFormField true title value None (
         fun newValue ->
             if textToFloatValue newValue = None
@@ -288,9 +290,6 @@ let private makeExtraInfo model (comp:Component) text dispatch : ReactElement =
                 makeSliderField model comp text dispatch
             ]
     | _ -> div [] []
-
-
-
 
 
 let viewSelectedComponent (model: ModelType.Model) dispatch =
@@ -346,6 +345,7 @@ let viewSelectedComponent (model: ModelType.Model) dispatch =
                 |_ ->
                     checkIfLabelIsUnique chars symbols           
             )
+
     match model.Sheet.SelectedComponents with
     | [ compId ] ->
         let comp = SymbolUpdate.extractComponent model.Sheet.Wire.Symbol compId
@@ -375,7 +375,7 @@ let viewSelectedComponent (model: ModelType.Model) dispatch =
             textFormField 
                 required 
                 "Component Name" 
-                defaultText 
+                comp.Label 
                 isBad 
                 (fun text -> // onChange
                     match formatLabelText text compId with

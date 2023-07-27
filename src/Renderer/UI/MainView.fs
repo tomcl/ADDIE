@@ -120,6 +120,7 @@ let makeSelectionChangeMsg (model:Model) (dispatch: Msg -> Unit) (ev: 'a) =
 /// Display the content of the right tab.
 let private  viewRightTab canvasState model dispatch =
     let pane = model.RightPaneTabVisible
+    
     match pane with
     | Catalogue ->
         
