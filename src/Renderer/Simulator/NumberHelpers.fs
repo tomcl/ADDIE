@@ -69,31 +69,31 @@ let textToFloatValue (text:string) =
 
     let checkNoChars (s:string) =
         s |> Seq.forall isDigitOrDot
-    
+
     match String.length text with
-    |0 -> Some 0.
-    |length ->
-        match text |> Seq.last with
-        | ch when  System.Char.IsNumber ch -> if checkNoChars text then (float text) |> Some else None
-        | last ->
+    | 0 -> Some 0.0
+    | length ->
+        match System.Double.TryParse(text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture) with
+        | true, result -> Some result
+        | _ ->
             let beginning = text.Remove (length-1)
             let bLength = String.length beginning 
             match checkNoChars beginning with
-            |true ->
-                if String.length (beginning.TrimEnd [|'.'|]) = bLength 
-                    || String.length (beginning.TrimEnd [|'.'|]) = (bLength-1)
-                then
-                    match last with
-                    | 'K' | 'k' -> 1e3 * (float beginning) |> Some
-                    | 'M' -> 1e6 * (float beginning)|> Some
-                    | 'm' -> 1e-3 * (float beginning)|> Some
-                    | 'u' -> 1e-6 * (float beginning)|> Some
-                    | 'n' -> 1e-9 * (float beginning)|> Some
-                    | 'p' -> 1e-12 * (float beginning) |> Some
-                    | 'R' -> float beginning |> Some
+            | true ->
+                if String.length (beginning.TrimEnd [|'.'|]) = bLength || String.length (beginning.TrimEnd [|'.'|]) = (bLength-1) then
+                    match text.[length-1] with
+                    | 'K' | 'k' -> Some (1e3 * (float beginning))
+                    | 'M' -> Some (1e6 * (float beginning))
+                    | 'm' -> Some (1e-3 * (float beginning))
+                    | 'u' -> Some (1e-6 * (float beginning))
+                    | 'n' -> Some (1e-9 * (float beginning))
+                    | 'p' -> Some (1e-12 * (float beginning))
+                    | 'R' -> Some (float beginning)
                     | _ -> None
                 else None
-            |false -> None 
+            | false -> None
+
+
 
 /// Converts the text in an RCLI Popup to an  float Result value.
 /// In case of R or C or V or I or L  popups R/F/V/A/H is a valid optional suffix (the unit).
@@ -143,11 +143,13 @@ let popupTextToFloat (popupUnitSuffix: string option) (text:string) =
 
 
 
+
+
 let floatValueToText (value:float) :string =
-    let asStr = string value
+    let asStr = if ((string value) |> Seq.exists (fun c -> c = 'e' || c = 'E')) then sprintf "%.10f" value else string value
     let hasDot = asStr |> Seq.contains '.'
     let hasMinus = asStr[0]='-'
-    
+
     let str = if hasMinus then asStr[1..(String.length asStr)] else asStr
     let length = Seq.length str   
 
