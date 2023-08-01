@@ -389,7 +389,7 @@ let openFileInProject name project (model:Model) dispatch =
 
 
 
-/// return a react warning message if name if not valid for a sheet Add or Rename, or else None
+/// return a react warning message if name is not valid for a sheet Add or Rename, or else None
 let maybeWarning dialogText project =
     let redText txt = Some <| div [ Style [ Color "red" ] ] [ str txt ]
     if isFileInProject dialogText project then
