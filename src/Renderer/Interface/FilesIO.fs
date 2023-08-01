@@ -54,7 +54,7 @@ let baseNameWithoutExtension =
 
 let fileNameIsBad name = 
     name 
-    |> Seq.filter (fun ch -> not (ch = ' ' || System.Char.IsLetter ch || System.Char.IsDigit ch))
+    |> Seq.filter (fun ch -> not (ch = ' ' || ch = '_' || System.Char.IsLetterOrDigit ch))
     |> Seq.isEmpty
     |> not
 
