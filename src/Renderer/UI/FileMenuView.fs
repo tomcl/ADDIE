@@ -1004,8 +1004,8 @@ let viewTopMenu model dispatch =
                       Navbar.Item.div []
                           [ Navbar.Item.div []
                                 [ Breadcrumb.breadcrumb [ Breadcrumb.HasArrowSeparator ]
-                                      [ Breadcrumb.item [] [ str <| cropToLength 30 false projectPath ]
-                                        Breadcrumb.item [] [ span [ Style [ FontWeight "bold" ] ] [ str fileName ] ] ] ] ]
+                                      [ Breadcrumb.item [] [ str <| cropToLength 20 false projectPath ]
+                                        Breadcrumb.item [] [ span [ Style [ FontWeight "bold" ] ] [ str <| cropToLength 20 true fileName ] ] ] ] ]
                       Navbar.Item.div []
                           [ Navbar.Item.div []
                                 [ Button.button
