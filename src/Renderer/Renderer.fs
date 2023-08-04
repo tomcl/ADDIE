@@ -19,6 +19,7 @@ open JSHelpers
 open Sheet.SheetInterface
 open DrawModelType
 
+
 importSideEffects "./scss/main.css"
 
 let isMac = Node.Api.``process``.platform = Node.Base.Darwin
@@ -119,11 +120,6 @@ let makeMenu (topLevel: bool) (name : string) (table : MenuItemConstructorOption
    subMenu
 
 let displayPerformance n m = TimeHelpers.checkPerformance n m JSHelpers.startTimer JSHelpers.stopAndLogTimer
-
-
-
-
-
 
 
 let fileMenu (dispatch) =
@@ -276,7 +272,8 @@ let addDebug dispatch (msg:Msg) =
     if str <> "" then printfn ">>Dispatch %s" str else ()
     dispatch msg
 
-let view model dispatch = DiagramMainView.displayView model (addDebug dispatch)
+let view model dispatch = 
+    DiagramMainView.displayView model (addDebug dispatch) 
 
 // -- Update Model
 
@@ -285,6 +282,8 @@ let update msg model = Update.update msg model
 printfn "Starting renderer..."
 
 let view' model dispatch =
+
+
     let start = TimeHelpers.getTimeMs()
     view model dispatch
     |> TimeHelpers.instrumentInterval "View" start

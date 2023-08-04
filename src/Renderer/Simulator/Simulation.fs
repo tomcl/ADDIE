@@ -211,7 +211,7 @@ let calcMatrixElementValue row col (nodeToCompsList:(Component*int option) list 
         |Resistor (v,_) -> {Re= (1./v)*1.; Im=0.}
         |Inductor (v,_) -> {Re = 0.; Im= -(1./(v*omega)*1.)}
         |Capacitor (v,_) -> {Re = 0.; Im= (v*omega)*1.}
-        |DiodeR ->
+        |DiodeR -> 
             let vd = findVd nodeToCompsList comp.Id prevSolution
             {Re= Constants.I_S*(exp(vd/Constants.V_t))/Constants.V_t; Im=0.}
         |CurrentSource _ |VoltageSource _ |Opamp  -> {Re = 0.0; Im=0.0}
@@ -738,7 +738,6 @@ let frequencyResponse (comps,conns) inputSource outputNode  =
     
 
 
-
 /// helper function used for finding the thevenin parameters
 let replaceCompWithCS csValue compId (comps,conns) =
     let comps' =
@@ -919,6 +918,3 @@ let transientAnalysis (comps,conns) inputSource inputNode outputNode =
 
     |_ -> DCTimeAnalysis (comps',conns') inputNode outputNode
      
-    
-
-    

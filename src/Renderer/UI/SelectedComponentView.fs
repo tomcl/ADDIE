@@ -10,7 +10,6 @@ open Fulma
 open Fable.React
 open Fable.React.Props
 open Fulma.Extensions.Wikiki
-open Feliz
 
 
 open JSHelpers
@@ -180,7 +179,26 @@ let constantDialogWithDefault (w,cText) dialog =
     let cText = Option.defaultValue cText dialog.Text
     w, cText
 
-let private makeSliderField model (comp:Component) text dispatch  =
+
+
+let computeValues extractedValue =
+
+    let rec computeExponent (value:float) (exponent: int) : int =
+        match value with
+        | v when v = 0 -> 0
+        | v when (1.0 <= v && 10.0 >= v) -> exponent
+        | v when (v < 1.0) ->  computeExponent (value * 10.0) (exponent + 1)
+        | _ -> computeExponent (value / 10.0) (exponent - 1)
+
+    match extractedValue with
+    | v when (v < 0.000000001 || v >= 1000000) -> (1.0, 9.9, 0.1)
+    | v when (v < 0.000000002) -> (0.000000001, v * 2.0, 0.0000000001)    
+    | v when (v >= 600000) -> (v / 2.0 ,999999,10000)
+    | _ -> (extractedValue * 0.5, extractedValue * 1.5, (10.0 ** ((-1.0 * (float (computeExponent extractedValue 0))) - 1.0)))
+
+
+
+let private makeSliderField model (comp:Component) text dispatch =
     let sheetDispatch sMsg = dispatch (Sheet sMsg)
     
     let onchange = (
@@ -204,24 +222,18 @@ let private makeSliderField model (comp:Component) text dispatch  =
         | Resistor (v,_) | Capacitor (v,_) | Inductor (v,_) | CurrentSource (v,_) -> v
         | _ -> failwithf "makeNumberOfBitsField called with invalid component"
 
-    let min,max,step =
-        match extractedValue with
-        |v when (v>=0.000000001 && v<0.00000001) -> 0.000000001,0.0000000099,0.0000000001
-        |v when (v>=0.00000001 && v<0.0000001) -> 0.00000001,0.000000099,0.000000001
-        |v when (v>=0.0000001 && v<0.000001) -> 0.0000001,0.00000099,0.00000001
-        |v when (v>=0.000001 && v<0.00001) -> 0.000001,0.0000099,0.0000001
-        |v when (v>=0.00001 && v<0.0001) -> 0.00001,0.000099,0.000001
-        |v when (v>=0.0001 && v<0.001) -> 0.0001,0.00099,0.00001
-        |v when (v>=0.001 && v<0.01) -> 0.001,0.0099,0.0001
-        |v when (v>=0.01 && v<0.1) -> 0.01,0.099,0.001
-        |v when (v>=0.1 && v<1) -> 0.1,0.99,0.01
-        |v when (v>=1 && v<10) -> 1,9.9,0.1
-        |v when (v>=10 && v<100) -> 10,99,1
-        |v when (v>=100 && v<1000) -> 100,999,10
-        |v when (v>=1000 && v<10000) -> 1000,9999,100
-        |v when (v>=10000 && v<100000) -> 10000,99999,1000
-        |v when (v>=100000 && v<1000000) -> 100000,999999,10000
-        |_ -> 1,10,0.01
+
+    let (min, max, step) = 
+        if (model.LastViewedPropertiesTab || model.AppendedToTextBox) then
+            SetLastStoredValue extractedValue |> dispatch
+            SetAppendedToTextBox false |> dispatch
+
+            computeValues extractedValue
+
+        else
+            computeValues model.LastStoredValue        
+    
+   
     
     div [] [
         Slider.slider [ 
@@ -255,6 +267,7 @@ let private makeValueField model (comp:Component) text dispatch =
                 let props = errorPropsNotification "Invalid number value"
                 dispatch <| SetPropertiesNotification props
             else
+                SetAppendedToTextBox true |> dispatch
                 model.Sheet.ChangeRLCIValue sheetDispatch (ComponentId comp.Id) (Option.get (textToFloatValue newValue)) newValue
                 //SetComponentLabelFromText model comp text' // change the JS component label
                 let lastUsedWidth = model.LastUsedDialogWidth 
@@ -262,6 +275,8 @@ let private makeValueField model (comp:Component) text dispatch =
                 dispatch <| SetPopupDialogText (Some newValue)
                 dispatch ClosePropertiesNotification
     )
+
+
 
 
 let private makeDescription (comp:Component) model dispatch =
@@ -278,7 +293,7 @@ let private makeDescription (comp:Component) model dispatch =
     |_ -> div [] []
         
 
-let private makeExtraInfo model (comp:Component) text dispatch : ReactElement =
+let private makeExtraInfo model (comp:Component) text dispatch : ReactElement=
     match comp.Type with
     | Resistor _ 
     | Capacitor _ 
@@ -287,12 +302,11 @@ let private makeExtraInfo model (comp:Component) text dispatch : ReactElement =
         div []
             [
                 makeValueField model comp text dispatch
-                makeSliderField model comp text dispatch
+                makeSliderField model comp text dispatch 
             ]
     | _ -> div [] []
 
-
-let viewSelectedComponent (model: ModelType.Model) dispatch =
+let viewSelectedComponent (model: ModelType.Model) dispatch=
 
     let checkIfLabelIsUnique chars (symbols: SymbolT.Symbol list)  =
         match List.exists (fun (s:SymbolT.Symbol) -> s.Component.Label = chars) symbols with
@@ -359,7 +373,7 @@ let viewSelectedComponent (model: ModelType.Model) dispatch =
             let label' = formatLabelText defaultText compId // No formatting atm
             let labelText = match label' with Ok s -> s | Error e -> defaultText
             readOnlyFormField "Description" <| makeDescription comp model dispatch
-            makeExtraInfo model comp labelText  dispatch
+            makeExtraInfo model comp labelText dispatch 
             let required = 
                 match comp.Type with 
                 //| SplitWire _ | MergeWires | BusSelection _ -> false 

@@ -110,7 +110,11 @@ let init() = {
     PreviousDiodeModes = []
     Tests = []
     TheveninParams = None
+    LastViewedPropertiesTab = false
+    AppendedToTextBox = false
+    LastStoredValue = 1.0
 }
+
 
 
 let makeSelectionChangeMsg (model:Model) (dispatch: Msg -> Unit) (ev: 'a) =
@@ -118,12 +122,12 @@ let makeSelectionChangeMsg (model:Model) (dispatch: Msg -> Unit) (ev: 'a) =
 
 
 /// Display the content of the right tab.
-let private  viewRightTab canvasState model dispatch =
+let private viewRightTab canvasState model dispatch =
     let pane = model.RightPaneTabVisible
     
     match pane with
     | Catalogue ->
-        
+        SetLastViewedPropertiesTab true |> dispatch
         div [ Style [Width "90%"; MarginLeft "5%"; MarginTop "15px" ; Height "calc(100%-100px)"] ] [
             Heading.h4 [] [ str "Catalogue" ]
             div [ Style [ MarginBottom "15px" ; Height "100%"; OverflowY OverflowOptions.Auto] ] 
@@ -131,12 +135,16 @@ let private  viewRightTab canvasState model dispatch =
             CatalogueView.viewCatalogue model dispatch
         ]
     | Properties ->
+        let propertieTab = SelectedComponentView.viewSelectedComponent model dispatch
+        SetLastViewedPropertiesTab false |> dispatch
         div [ Style [Width "90%"; MarginLeft "5%"; MarginTop "15px" ] ] [
             Heading.h4 [] [ str "Component properties" ]
-            SelectedComponentView.viewSelectedComponent model dispatch
+            propertieTab
         ]
 
     | Simulation ->
+        SetLastViewedPropertiesTab true |> dispatch
+
         let subtabs = 
             Tabs.tabs [ Tabs.IsFullWidth; Tabs.IsBoxed; Tabs.CustomClass "rightSectionTabs";
                         Tabs.Props [Style [Margin 0] ] ]  
@@ -160,6 +168,8 @@ let private  viewRightTab canvasState model dispatch =
                 viewSimSubTab canvasState model dispatch
             ]
     | Tests ->
+        SetLastViewedPropertiesTab true |> dispatch
+
         let tdTests = model.Tests |> List.mapi (fun i b -> tr [] [td [] [str (sprintf "Test %i" (i+1))]; td [] [str (if b then "Pass" else "Fail")]])
         div [ Style [Width "90%"; MarginLeft "5%"; MarginTop "15px" ]] 
             [
@@ -214,7 +224,9 @@ let dividerbar (model:Model) dispatch =
             OnMouseDown (setDragMode true model dispatch)       
         ] []
 
+
 let viewRightTabs canvasState model dispatch =
+    
     /// Hack to avoid scrollbar artifact changing from Simulation to Catalog
     /// The problem is that the HTML is bistable - with Y scrollbar on the catalog <aside> 
     /// moves below the tab body div due to reduced available width, keeping scrollbar on. 
@@ -229,6 +241,7 @@ let viewRightTabs canvasState model dispatch =
                 [ Tabs.Tab.IsActive (model.RightPaneTabVisible = Tests)]
                 [ a [  OnClick (fun _ ->    
                     dispatch <| ChangeRightTab Tests) ] [str "Tests"] ]
+                
         else
             null
             
@@ -257,10 +270,9 @@ let viewRightTabs canvasState model dispatch =
                 [ a [  OnClick (fun _ -> 
                     dispatch <| ChangeRightTab Simulation ) ] [str "Simulations"] ]
             testTab
-        ]
+        ]  
         div [HTMLAttr.Id "TabBody"; belowHeaderStyle "36px"; Style [OverflowY scrollType]] [viewRightTab canvasState model dispatch]
-
-    ]
+    ] 
 let mutable testState:CanvasState = [],[]
 let mutable lastDragModeOn = false
 
@@ -268,7 +280,11 @@ let mutable lastDragModeOn = false
 //------------------------------------------VIEW FUNCTION--------------------------------------------------//
 //---------------------------------------------------------------------------------------------------------//
 /// Top-level application view: as react components that create a react virtual-DOM
+
+
 let displayView model dispatch =
+    
+
     JSHelpers.traceIf "view" (fun _ -> "View Function...")
     let windowX,windowY =
         int Browser.Dom.self.innerWidth, int Browser.Dom.self.innerHeight
@@ -347,9 +363,8 @@ let displayView model dispatch =
         div [ HTMLAttr.Id "RightSection"; rightSectionStyle model ]
                 
             [ 
-                viewRightTabs canvasState model dispatch ] 
+                viewRightTabs canvasState model dispatch] 
          
         div [HTMLAttr.Id "BottomSection"; bottomSectionStyle model; Hidden (not model.showGraphArea)]
                 (Graph.viewGraph model dispatch)  
             ]
-
