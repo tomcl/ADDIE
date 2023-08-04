@@ -148,7 +148,6 @@ let popupTextToFloat (popupUnitSuffix: string option) (text:string) =
 
 
 
-
 let floatValueToText (value:float) =
 
     let rec normaliseValue (value:float) (exponent:int) =

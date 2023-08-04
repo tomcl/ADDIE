@@ -10,6 +10,8 @@ open Fulma
 open Fable.React
 open Fable.React.Props
 open Fulma.Extensions.Wikiki
+open Feliz
+
 
 
 open JSHelpers
@@ -180,7 +182,6 @@ let constantDialogWithDefault (w,cText) dialog =
     w, cText
 
 
-
 let computeValues extractedValue =
 
     let rec computeExponent (value:float) (exponent: int) : int =
@@ -306,7 +307,9 @@ let private makeExtraInfo model (comp:Component) text dispatch : ReactElement=
             ]
     | _ -> div [] []
 
+
 let viewSelectedComponent (model: ModelType.Model) dispatch=
+
 
     let checkIfLabelIsUnique chars (symbols: SymbolT.Symbol list)  =
         match List.exists (fun (s:SymbolT.Symbol) -> s.Component.Label = chars) symbols with

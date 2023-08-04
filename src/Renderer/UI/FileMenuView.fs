@@ -389,7 +389,7 @@ let openFileInProject name project (model:Model) dispatch =
 
 
 
-/// return a react warning message if name if not valid for a sheet Add or Rename, or else None
+/// return a react warning message if name is not valid for a sheet Add or Rename, or else None
 let maybeWarning dialogText project =
     let redText txt = Some <| div [ Style [ Color "red" ] ] [ str txt ]
     if isFileInProject dialogText project then
@@ -1004,8 +1004,8 @@ let viewTopMenu model dispatch =
                       Navbar.Item.div []
                           [ Navbar.Item.div []
                                 [ Breadcrumb.breadcrumb [ Breadcrumb.HasArrowSeparator ]
-                                      [ Breadcrumb.item [] [ str <| cropToLength 30 false projectPath ]
-                                        Breadcrumb.item [] [ span [ Style [ FontWeight "bold" ] ] [ str fileName ] ] ] ] ]
+                                      [ Breadcrumb.item [] [ str <| cropToLength 20 false projectPath ]
+                                        Breadcrumb.item [] [ span [ Style [ FontWeight "bold" ] ] [ str <| cropToLength 20 true fileName ] ] ] ] ]
                       Navbar.Item.div []
                           [ Navbar.Item.div []
                                 [ Button.button
