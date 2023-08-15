@@ -35,13 +35,9 @@ let shortDisplayMsg (msg:Msg) =
     | ChangeSimSubTab _ -> None
     | SetHighlighted (comps,conns) -> Some $"SetHighlighted: {comps.Length} comps, {conns.Length} conns"
     | SetSelWavesHighlighted x -> Some $"SetSelWavesHighlighted{x.Length}"
-    | SetClipboard _ -> Some "SetClipboard"
-    | SetCreateComponent _ -> Some "SetCreateComponent"
+   // | SetCreateComponent _ -> Some "SetCreateComponent"
     | SetProject _ -> Some "SetProject"
-    | UpdateProject _ 
-    | UpdateModel _ 
     | UpdateProjectWithoutSyncing _ 
-    | ShowPopup _ 
     | ShowStaticInfoPopup _ 
     | ClosePopup 
     | SetPopupDialogBadLabel _ 
@@ -61,15 +57,9 @@ let shortDisplayMsg (msg:Msg) =
     | SetSimulationTimeOut _
     | SetSimulationTimeSource _
     | CloseDiagramNotification
-    | SetFilesNotification _ 
     | CloseFilesNotification
-    | SetPropertiesNotification _ 
     | ClosePropertiesNotification
-    | SetTopMenu _ 
-    | ReloadSelectedComponent _ 
-    | SetDragMode _ 
     // Set width of right-hand pane when tab is WaveSimulator or TruthTable
-    | SetViewerWidth _ 
     | MenuAction _ 
     | DiagramMouseEvent
     | SelectionHasChanged
@@ -81,28 +71,15 @@ let shortDisplayMsg (msg:Msg) =
     | FinishUICmd
     | ReadUserData _
     | SetUserData _
-    | UpdateDCSim _
-    | UpdateDiodeModes _
-    | UpdateVoltages _
-    | UpdateACSim _
-    | UpdateTimeSim _
     | UpdateCanvasStateSizes _
-    | UpdateCurrents _
     | UpdateNodes _ 
     | CircuitHasErrors
     | CircuitHasNoErrors
-    | RunSim
     | RunTests
     | SafeStartSim
-    | SimulationUpdated
     | ClearSimulationResults
     | ForceStopSim
-    | HideCurrents
-    | SetGraphVisibility _
     | ShowNodesOrVoltages
-    | ShowNodesOrVoltagesExplicitState _
-    | HideNodesOrVoltages
-    | HideCurrents
     | ShowOrHideCurrents _
     | SetThemeUserData _ -> None
     | ExecCmd _ -> Some "ExecCmd"

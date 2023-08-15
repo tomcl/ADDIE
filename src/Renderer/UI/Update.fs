@@ -225,7 +225,6 @@ let updateProjectFiles (saveToDisk:bool) (update: Project -> Project) (model: Mo
 /// Main MVU model update function
 let update (msg : Msg) oldModel =
     let startOfUpdateTime = TimeHelpers.getTimeMs()
-    
 
     //Add the message to the pending queue if it is a mouse drag message
     let model =
@@ -258,19 +257,9 @@ let update (msg : Msg) oldModel =
     | FinishUICmd _->
         //printfn $"ending UI command '{model.UIState}"
         {model with UIState = None;}, Cmd.ofMsg (Sheet (SheetT.SetSpinner false))
-
-    (*| ShowExitDialog ->
-        match model.CurrentProj with
-        | Some p when model.SavedSheetIsOutOfDate ->
-            {model with ExitDialog = true}, Cmd.none
-        | _ -> // exit immediately since nothing to save
-            exitApp()
-            model, Cmd.none*)
     | CloseApp ->
         exitApp model
         model, Cmd.none
-    (*| SetExitDialog status ->
-        {model with ExitDialog = status}, Cmd.none*)
     | Sheet sMsg ->
         match sMsg, model.PopupViewFunc with
         | SheetT.ToggleNet canvas, _ ->
@@ -280,20 +269,11 @@ let update (msg : Msg) oldModel =
             model, Cmd.none
         | _ -> sheetMsg sMsg model
     // special mesages for mouse control of screen vertical dividing bar, active when Wavesim is selected as rightTab
-    | SetDragMode mode -> {model with DividerDragMode= mode}, Cmd.none
-    | SetViewerWidth w ->
-        model, Cmd.none
-    | ReloadSelectedComponent width ->
-        {model with LastUsedDialogWidth=width}, Cmd.none
-    | UpdateModel( updateFn: Model -> Model) ->
-        updateFn model, Cmd.none
     | ChangeRightTab newTab -> 
         let inferMsg = JSDiagramMsg <| InferWidths()
         let editCmds = [inferMsg; ClosePropertiesNotification] |> List.map Cmd.ofMsg
         firstTip <- true
         { model with RightPaneTabVisible = newTab }, Cmd.batch <| editCmds
-
-        //| TruthTable -> Cmd.batch <| editCmds
     | ChangeSimSubTab subTab ->
         let inferMsg = JSDiagramMsg <| InferWidths()
         let editCmds = [inferMsg; ClosePropertiesNotification] |> List.map Cmd.ofMsg
@@ -308,17 +288,13 @@ let update (msg : Msg) oldModel =
     | SetSelWavesHighlighted connIds ->
         let wModel, wCmd = SheetUpdate.update (SheetT.ColourSelection ([], Array.toList connIds, HighLightColor.Blue)) model.Sheet
         {model with Sheet = wModel}, Cmd.map Sheet wCmd
-    | SetClipboard components -> { model with Clipboard = components }, Cmd.none
-    | SetCreateComponent pos -> { model with LastCreatedComponent = Some pos }, Cmd.none
+    //| SetCreateComponent pos -> { model with LastCreatedComponent = Some pos }, Cmd.none
     | SetProject project ->
         model
         |> set currentProj_ (Some project) 
         |> set (popupDialogData_ >-> projectPath_) project.ProjectPath, Cmd.none
-    | UpdateProject update ->
-        updateProjectFiles true update model, Cmd.none
     | UpdateProjectWithoutSyncing update -> 
         updateProjectFiles false update model,Cmd.none
-    | ShowPopup popup -> { model with PopupViewFunc = Some popup }, Cmd.none
     | ShowStaticInfoPopup(title, body, dispatch) ->
         let foot = div [] []
         PopupView.closablePopup title body foot [Width 800] dispatch
@@ -361,10 +337,14 @@ let update (msg : Msg) oldModel =
             match pair with 
             |Some (p1,p2) ->
                 let thevP = Simulation.findTheveninParams (comps,conns) id p1 p2
-                {model with TheveninParams = Some thevP}, Cmd.none
-            |_ -> 
-                model, Cmd.ofMsg (SetPropertiesNotification (Notifications.errorPropsNotification "Cannot find Thevenin/Norton parameters"))
-        |_ -> model, Cmd.ofMsg (SetPropertiesNotification (Notifications.errorPropsNotification "Cannot find Thevenin/Norton parameters"))
+              //  {model with TheveninParams = Some thevP}, Cmd.none
+                match thevP with
+                 | Error m -> 
+                    set (popupDialogData_ >-> text_) (Some m) model, Cmd.none
+                 | Ok value -> {model with TheveninParams = Some value}, Cmd.none
+            // the Cmd will always be none from the return value so this is faster
+            |_ -> model, Cmd.none
+        |_ -> model, Cmd.none
     | SetSimulationTheveninComp c ->
         set (simulationData_ >-> theveninComp_) c model, Cmd.none
     | SetPopupDialogBadLabel isBad ->
@@ -375,18 +355,10 @@ let update (msg : Msg) oldModel =
         set (popupDialogData_ >-> int2_) int model, Cmd.none
     | CloseDiagramNotification ->
         { model with Notifications = {model.Notifications with FromDiagram = None} }, Cmd.none
-    | SetFilesNotification n ->
-        { model with Notifications =
-                        { model.Notifications with FromFiles = Some n} }, Cmd.none
     | CloseFilesNotification ->
         { model with Notifications = {model.Notifications with FromFiles = None} }, Cmd.none
-    | SetPropertiesNotification n ->
-        { model with Notifications =
-                        { model.Notifications with FromProperties = Some n} }, Cmd.none
     | ClosePropertiesNotification ->
         { model with Notifications = { model.Notifications with FromProperties = None} }, Cmd.none
-    | SetTopMenu t ->
-        { model with TopMenuOpenState = t}, Cmd.none
     | ExecFuncInMessage (f,dispatch)->
         (f model dispatch; model), Cmd.none
     | ExecCmd cmd ->
@@ -416,13 +388,10 @@ let update (msg : Msg) oldModel =
         match act with 
         | MenuSaveFile -> getMenuView act model dispatch, Cmd.ofMsg (Sheet SheetT.SaveSymbols)
         | _ -> getMenuView act model dispatch, Cmd.none
-        
     | DiagramMouseEvent -> model, Cmd.none
     | SetIsLoading b ->
         let cmd = if b then Cmd.none else Cmd.ofMsg (Sheet (SheetT.SetSpinner false)) //Turn off spinner after project/sheet is loaded
         {model with IsLoading = b}, cmd
-    | SetGraphVisibility b ->
-        {model with showGraphArea = b}, Cmd.none
     | ReadUserData userAppDir ->
         printfn $"Got user app dir of {userAppDir}"
         let model,cmd = readUserData userAppDir model        
@@ -446,27 +415,13 @@ let update (msg : Msg) oldModel =
             |> List.map (fun i -> findConnectionsOnNode nodeLst i (BusWire.extractConnections model.Sheet.Wire))
             |> List.map (findNodeLocation)
         {model with Sheet = {model.Sheet with NodeLocations = nodeLoc}}, Cmd.none
-    | UpdateVoltages newVolts -> 
-        {model with Sheet = {model.Sheet with NodeVoltages = newVolts}}, Cmd.none
-    | UpdateCurrents newCurrents -> 
-        {model with Sheet = {model.Sheet with ComponentCurrents = newCurrents}}, Cmd.none
-    | UpdateDCSim newSim ->
-        {model with Sheet = {model.Sheet with DCSim=newSim}}, Cmd.none
-    | UpdateACSim newSim ->
-        {model with Sheet = {model.Sheet with ACSim=newSim}}, Cmd.none
     | ClearSimulationResults ->
         {model with TheveninParams = None; Sheet = {model.Sheet with ACSim=[];DCSim=emptyDCResults;TimeSim=emptyTimeResults}}, Cmd.none
-    | UpdateTimeSim newSim ->
-        {model with Sheet = {model.Sheet with TimeSim=newSim}}, Cmd.none
-    | SimulationUpdated ->
-        {model with Sheet = {model.Sheet with UpdateSim=false}}, Cmd.none
-    | RunSim ->
-        {model with Sheet = {model.Sheet with UpdateSim=true}}, Cmd.none
     | ForceStopSim ->
-        let cmd' = [HideCurrents;HideNodesOrVoltages;SetGraphVisibility false;ClearSimulationResults] |> List.map Cmd.ofMsg
+        let cmd' = [UpdateSheet ("Changing the sheet", (Optic.set ShowCurrents_ false)); UpdateSheet ("Changing the sheet", (Optic.set ShowNodesOrVoltages_ Neither)); UpdateModelNew ("setting graph visibility", Optic.set showGraphArea_ false);ClearSimulationResults] |> List.map Cmd.ofMsg
         {model with Sheet = {model.Sheet with SimulationRunning=false}}, Cmd.batch cmd'
     | SafeStartSim ->
-        {model with Sheet = {model.Sheet with SimulationRunning=true}}, Cmd.ofMsg RunSim
+        {model with Sheet = {model.Sheet with SimulationRunning=true}}, Cmd.none
     | CircuitHasErrors ->
         {model with Sheet = {model.Sheet with CanRunSimulation=false}}, Cmd.none
     | CircuitHasNoErrors ->
@@ -476,22 +431,14 @@ let update (msg : Msg) oldModel =
         let tests = Test.runTestCases ()
         {model with Tests = tests}, Cmd.none
     | UpdateCanvasStateSizes (compsNo,connsNo) ->
-        {model with PrevCanvasStateSizes = (compsNo,connsNo)}, Cmd.ofMsg RunSim
-    | UpdateDiodeModes newModes ->
-        {model with PreviousDiodeModes = newModes}, Cmd.none
+        {model with PrevCanvasStateSizes = (compsNo,connsNo)}, Cmd.none
     | ShowNodesOrVoltages ->
         let newState =
             match model.Sheet.ShowNodesOrVoltages with
             |Neither -> Nodes |Nodes -> Voltages |Voltages -> Neither
         {model with Sheet = {model.Sheet with ShowNodesOrVoltages=newState}}, Cmd.none
-    | ShowNodesOrVoltagesExplicitState state ->
-        {model with Sheet = {model.Sheet with ShowNodesOrVoltages = state}}, Cmd.none
     | ShowOrHideCurrents ->
         {model with Sheet = {model.Sheet with ShowCurrents = (not model.Sheet.ShowCurrents)}}, Cmd.none
-    | HideCurrents ->
-        {model with Sheet = {model.Sheet with ShowCurrents = false}}, Cmd.none
-    | HideNodesOrVoltages -> 
-        {model with Sheet = {model.Sheet with ShowNodesOrVoltages = Neither}}, Cmd.none
     | ExecutePendingMessages n ->
         if n = (List.length model.Pending)
         then 
@@ -506,14 +453,12 @@ let update (msg : Msg) oldModel =
         //ignore the exectue message
         else 
             model, Cmd.none
-    | SetLastViewedPropertiesTab b ->
-        {model with LastViewedPropertiesTab = b}, Cmd.none
-    | SetAppendedToTextBox b ->
-        {model with AppendedToTextBox = b}, Cmd.none
-    | SetLastStoredValue b ->
-        {model with LastStoredValue = b}, Cmd.none
-    // Various messages here that are not implemented as yet, or are no longer used
-    // should be sorted out
+    | UpdateModelNew (s, f) ->
+        f model, Cmd.none
+    | UpdateNotification (s, nf) ->
+        (Optic.set Notifications_ (nf model.Notifications) model), Cmd.none
+    | UpdateSheet (s, nf) ->
+        (Optic.set Sheet_ (nf model.Sheet) model), Cmd.none
     | DoNothing -> //Acts as a placeholder to propergrate the ExecutePendingMessages message in a Cmd
         model, cmd
     | JSDiagramMsg _ | KeyboardShortcutMsg _ -> // catch all messages not otherwise processed. Should remove this?

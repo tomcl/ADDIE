@@ -101,6 +101,9 @@ type PopupProgress =
         Speed: float
     }
 
+type UpdateModelFunc<'a, 'b> = 'a -> 'b
+
+
 type Msg =
     | Sheet of DrawModelType.SheetT.Msg
     | JSDiagramMsg of JSDiagramMsg
@@ -109,13 +112,9 @@ type Msg =
     | ChangeSimSubTab of SimSubTab
     | SetHighlighted of ComponentId list * ConnectionId list
     | SetSelWavesHighlighted of ConnectionId array
-    | SetClipboard of CanvasState
-    | SetCreateComponent of Component
+    //| SetCreateComponent of Component
     | SetProject of Project
-    | UpdateProject of (Project -> Project)
-    | UpdateModel of (Model -> Model)
     | UpdateProjectWithoutSyncing of (Project->Project)
-    | ShowPopup of ((Msg -> Unit) -> PopupDialogData -> ReactElement)
     | ShowStaticInfoPopup of (string * ReactElement * (Msg -> Unit))
     | ClosePopup
     | SetPopupDialogText of string option
@@ -133,21 +132,14 @@ type Msg =
     | SetPopupDialogInt of int option
     | SetPopupDialogInt2 of int64 option
     | CloseDiagramNotification
-    | SetFilesNotification of ((Msg -> unit) -> ReactElement)
     | CloseFilesNotification
     | SetPopupDialogBadLabel of bool
-    | SetPropertiesNotification of ((Msg -> unit) -> ReactElement)
     | ClosePropertiesNotification
-    | SetTopMenu of TopMenu
-    | ReloadSelectedComponent of int
-    | SetDragMode of DragMode
     /// Set width of right-hand pane when tab is WaveSimulator or TruthTable
-    | SetViewerWidth of int
     | MenuAction of MenuCommand * (Msg -> unit)
     | DiagramMouseEvent
     | SelectionHasChanged
     | SetIsLoading of bool
-    | SetGraphVisibility of bool
     | CloseApp
     | ExecutePendingMessages of int
     | DoNothing
@@ -162,29 +154,18 @@ type Msg =
     | ExecCmdAsynch of Elmish.Cmd<Msg>
     | SendSeqMsgAsynch of seq<Msg>
     | UpdateNodes 
-    | UpdateCurrents of Map<ComponentId,float>
-    | UpdateVoltages of float list
-    | UpdateDCSim of DCSimulationResults
-    | UpdateACSim of ComplexP list
-    | UpdateTimeSim of TimeSimulationResults
     | ShowNodesOrVoltages
-    | ShowNodesOrVoltagesExplicitState of DCNodesOrVoltagesOrNone
-    | HideNodesOrVoltages
-    | SimulationUpdated
-    | RunSim
     | ForceStopSim
     | CircuitHasErrors
     | CircuitHasNoErrors
     | SafeStartSim
     | ShowOrHideCurrents
-    | HideCurrents
     | ClearSimulationResults
     | UpdateCanvasStateSizes of int*int
-    | UpdateDiodeModes of bool list
     | RunTests
-    | SetLastViewedPropertiesTab of bool
-    | SetAppendedToTextBox of bool
-    | SetLastStoredValue of float
+    | UpdateModelNew of string*(Model -> Model)
+    | UpdateNotification of string*(Notifications -> Notifications)
+    | UpdateSheet of string*(DrawModelType.SheetT.Model -> DrawModelType.SheetT.Model)
 
 
 //================================//
@@ -300,6 +281,81 @@ type Model = {
 } 
 
     
+let updateModelNew dispatch descr updFun =
+   dispatch<| UpdateModelNew(descr, updFun)
+
+
+let updateModelNotifications dispatch descr updateNotificationFun =
+    dispatch <| UpdateNotification(descr, updateNotificationFun)
+
+let updateModelSheet dispatch descr updateSheetFun =
+    dispatch <| UpdateSheet(descr, updateSheetFun)
+
+let ShowNodesOrVoltages_ = Lens.create (fun (a : DrawModelType.SheetT.Model) -> a.ShowNodesOrVoltages) (fun c a -> {a with ShowNodesOrVoltages = c})
+let ShowCurrents_ = Lens.create (fun (a : DrawModelType.SheetT.Model) -> a.ShowCurrents) (fun c a -> {a with ShowCurrents = c})
+let NodeVoltages_ = Lens.create (fun (a : DrawModelType.SheetT.Model) -> a.NodeVoltages) (fun c a -> {a with NodeVoltages = c})
+let ComponentCurrents_ = Lens.create (fun (a : DrawModelType.SheetT.Model) -> a.ComponentCurrents) (fun c a -> {a with ComponentCurrents = c})
+
+let DCSim_ = Lens.create (fun (a : DrawModelType.SheetT.Model) -> a.DCSim) (fun c a -> {a with DCSim = c})
+
+let ACSim_ = Lens.create (fun (a : DrawModelType.SheetT.Model) -> a.ACSim) (fun c a -> {a with ACSim = c})
+
+let TimeSim_ = Lens.create (fun (a : DrawModelType.SheetT.Model) -> a.TimeSim) (fun c a -> {a with TimeSim = c})
+
+let UpdateSim_ = Lens.create (fun (a : DrawModelType.SheetT.Model) -> a.UpdateSim) (fun c a -> {a with UpdateSim = c})
+
+let SimulationRunning_ = Lens.create (fun (a : DrawModelType.SheetT.Model) -> a.SimulationRunning) (fun c a -> {a with SimulationRunning = c})
+
+let CanRunSimulation_ = Lens.create (fun (a : DrawModelType.SheetT.Model) -> a.CanRunSimulation) (fun c a -> {a with CanRunSimulation = c})
+
+
+
+let FromDiagram_ = Lens.create (fun a -> a.FromDiagram) (fun c a -> {a with FromDiagram = c})
+let FromSimulation_ = Lens.create (fun a -> a.FromSimulation) (fun c a -> {a with FromSimulation = c})
+let FromWaveSim_ = Lens.create (fun a -> a.FromWaveSim) (fun c a -> {a with FromWaveSim = c})
+let FromFiles_ = Lens.create (fun a -> a.FromFiles) (fun c a -> {a with FromFiles = c})
+let FromMemoryEditor_ = Lens.create (fun a -> a.FromMemoryEditor) (fun c a -> {a with FromMemoryEditor = c})
+let FromProperties_ = Lens.create (fun a -> a.FromProperties) (fun c a -> {a with FromProperties = c})
+ 
+let UserData_ = Lens.create (fun a -> a.UserData) (fun c a -> {a with UserData = c})
+let Sheet_ = Lens.create (fun a -> a.Sheet) (fun c a -> {a with Sheet = c})
+let IsLoading_ = Lens.create (fun a -> a.IsLoading) (fun c a -> {a with IsLoading = c})
+let LastChangeCheckTime_ = Lens.create (fun a -> a.LastChangeCheckTime) (fun c a -> {a with LastChangeCheckTime = c})
+let LastSimulatedCanvasState_ = Lens.create (fun a -> a.LastSimulatedCanvasState) (fun c a -> {a with LastSimulatedCanvasState = c})
+let LastDetailedSavedState_ = Lens.create (fun a -> a.LastDetailedSavedState) (fun c a -> {a with LastDetailedSavedState = c})
+let CurrentSelected_ = Lens.create (fun a -> a.CurrentSelected) (fun c a -> {a with CurrentSelected = c})
+let LastSelectedIds_ = Lens.create (fun a -> a.LastSelectedIds) (fun c a -> {a with LastSelectedIds = c})
+let LastUsedDialogWidth_ = Lens.create (fun a -> a.LastUsedDialogWidth) (fun c a -> {a with LastUsedDialogWidth = c})
+let SelectedComponent_ = Lens.create (fun a -> a.SelectedComponent) (fun c a -> {a with SelectedComponent = c})
+let RightPaneTabVisible_ = Lens.create (fun a -> a.RightPaneTabVisible) (fun c a -> {a with RightPaneTabVisible = c})
+let SimSubTabVisible_ = Lens.create (fun a -> a.SimSubTabVisible) (fun c a -> {a with SimSubTabVisible = c})
+let Hilighted_ = Lens.create (fun a -> a.Hilighted) (fun c a -> {a with Hilighted = c})
+let Clipboard_ = Lens.create (fun a -> a.Clipboard) (fun c a -> {a with Clipboard = c})
+let LastCreatedComponent_ = Lens.create (fun a -> a.LastCreatedComponent) (fun c a -> {a with LastCreatedComponent = c})
+let SavedSheetIsOutOfDate_ = Lens.create (fun a -> a.SavedSheetIsOutOfDate) (fun c a -> {a with SavedSheetIsOutOfDate = c})
+let CurrentProj_ = Lens.create (fun a -> a.CurrentProj) (fun c a -> {a with CurrentProj = c})
+let PopupViewFunc_ = Lens.create (fun a -> a.PopupViewFunc) (fun c a -> {a with PopupViewFunc = c})
+let SpinnerPayload_ = Lens.create (fun a -> a.SpinnerPayload) (fun c a -> {a with SpinnerPayload = c})
+let PopupDialogData_ = Lens.create (fun a -> a.PopupDialogData) (fun c a -> {a with PopupDialogData = c})
+
+let Notifications_ = Lens.create (fun a -> a.Notifications) (fun c a -> {a with Notifications = c})
+
+let TopMenuOpenState_ = Lens.create (fun a -> a.TopMenuOpenState) (fun c a -> {a with TopMenuOpenState = c})
+let DividerDragMode_ = Lens.create (fun a -> a.DividerDragMode) (fun c a -> {a with DividerDragMode = c})
+let Pending_ = Lens.create (fun a -> a.Pending) (fun c a -> {a with Pending = c})
+let UIState_ = Lens.create (fun a -> a.UIState) (fun c a -> {a with UIState = c})
+let showGraphArea_ = Lens.create (fun a -> a.showGraphArea) (fun c a -> {a with showGraphArea = c})
+let SimulationData_ = Lens.create (fun a -> a.SimulationData) (fun c a -> {a with SimulationData = c})
+let PrevCanvasStateSizes_ = Lens.create (fun a -> a.PrevCanvasStateSizes) (fun c a -> {a with PrevCanvasStateSizes = c})
+let PreviousDiodeModes_ = Lens.create (fun a -> a.PreviousDiodeModes) (fun c a -> {a with PreviousDiodeModes = c})
+let Tests_ = Lens.create (fun a -> a.Tests) (fun c a -> {a with Tests = c})
+let TheveninParams_ = Lens.create (fun a -> a.TheveninParams) (fun c a -> {a with TheveninParams = c})
+let LastViewedPropertiesTab_ = Lens.create (fun a -> a.LastViewedPropertiesTab) (fun c a -> {a with LastViewedPropertiesTab = c})
+let AppendedToTextBox_ = Lens.create (fun a -> a.AppendedToTextBox) (fun c a -> {a with AppendedToTextBox = c})
+let LastStoredValue_ = Lens.create (fun a -> a.LastStoredValue) (fun c a -> {a with LastStoredValue = c})
+
+
+
 let sheet_ = Lens.create (fun a -> a.Sheet) (fun s a -> {a with Sheet = s})
 let popupDialogData_ = Lens.create (fun a -> a.PopupDialogData) (fun p a -> {a with PopupDialogData = p})
 let simulationData_ = Lens.create (fun a -> a.SimulationData) (fun p a -> {a with SimulationData = p})

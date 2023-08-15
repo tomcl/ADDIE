@@ -32,6 +32,7 @@ let state1: CanvasState =
 let testCase1 = {CanvasState=state1; TestedSim = DCsim; DCRes = [|5.;4.;-0.001|]; ACTimeInput="";ACTimeOutput=""; ACTimeRes= Map.empty<int,float>}
     
 
+(*
 let runTestCases () =
     
     let allTestCases = [testCase1]
@@ -41,6 +42,23 @@ let runTestCases () =
         |DCsim ->
             let mna,_,_,_ = Simulation.modifiedNodalAnalysisDC tc.CanvasState []
             mna = tc.DCRes
+        |ACsim ->
+            false //PENDING
+        |TimeSim ->
+            false //PENDING
+        )
+
+*)
+let runTestCases () =
+    
+    let allTestCases = [testCase1]
+    allTestCases
+    |> List.map (fun tc ->
+        match tc.TestedSim with
+        |DCsim ->
+            match (Simulation.modifiedNodalAnalysisDC tc.CanvasState []) with
+             | Error m -> false
+             | Ok (mna,_,_,_) ->  mna = tc.DCRes
         |ACsim ->
             false //PENDING
         |TimeSim ->

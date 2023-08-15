@@ -1,12 +1,16 @@
 ﻿module ComponentCreation
 
 open Fable.React
+open Optics
+open Optic
+
 open ModelType
 open ModelHelpers
 open CommonTypes
 open NumberHelpers
 open PopupView
 open DrawModelType
+
 
 
 let createComponent compType label model dispatch =

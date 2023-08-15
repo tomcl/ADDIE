@@ -6,6 +6,7 @@ open System
 open CanvasStateAnalyser
 
 
+
 //////////////////  SIMULATION CONSTANTS  ////////////////
 module Constants =
     [<Literal>]
@@ -80,17 +81,17 @@ let findCompFromId comps id =
             
 let findInputAtTime vs t =
         match vs with
-        |None -> failwithf "No Voltage Source present in the circuit"
+        |None -> Error "No Voltage Source present in the circuit"
         |Some v ->
             match v.Type with
-            |VoltageSource (DC x) -> x
+            |VoltageSource (DC x) -> Ok x
             |VoltageSource (Sine (a,dc,f,p)) ->
-                a*sin(2.*System.Math.PI*f*t+p)+dc
+               Ok (a*sin(2.*System.Math.PI*f*t+p)+dc)
             |VoltageSource (Pulse (v1,v2,f))->
                 let md = t % f
-                if md < f/2. then v1
-                else v2
-            |_ -> failwithf "Impossible"
+                if md < f/2. then Ok v1
+                else Ok v2
+            |_ -> Error "Impossible"
 
 
 /// Converts the input Voltage Source into a (DC 1) source so that the ratio 
@@ -208,14 +209,14 @@ let calcVectorBElement row comps (nodeToCompsList:(Component*int option) list li
 let calcMatrixElementValue row col (nodeToCompsList:(Component*int option) list list) comps omega prevSolution  = 
     let findMatrixGCompValue (comp,no) omega =
         match comp.Type with
-        |Resistor (v,_) -> {Re= (1./v)*1.; Im=0.}
-        |Inductor (v,_) -> {Re = 0.; Im= -(1./(v*omega)*1.)}
-        |Capacitor (v,_) -> {Re = 0.; Im= (v*omega)*1.}
-        |DiodeR -> 
+        |Resistor (v,_) -> Ok {Re= (1./v)*1.; Im=0.}
+        |Inductor (v,_) -> Ok {Re = 0.; Im= -(1./(v*omega)*1.)}
+        |Capacitor (v,_) -> Ok {Re = 0.; Im= (v*omega)*1.}
+        |DiodeR ->
             let vd = findVd nodeToCompsList comp.Id prevSolution
-            {Re= Constants.I_S*(exp(vd/Constants.V_t))/Constants.V_t; Im=0.}
-        |CurrentSource _ |VoltageSource _ |Opamp  -> {Re = 0.0; Im=0.0}
-        |_ -> failwithf "Not Implemented yet"
+            Ok {Re= Constants.I_S*(exp(vd/Constants.V_t))/Constants.V_t; Im=0.}
+        |CurrentSource _ |VoltageSource _ |Opamp  ->Ok {Re = 0.0; Im=0.0}
+        |_ -> Error "Not Implemented yet"
     
 
     let findMatrixBVoltageValue (comp,no) (vsAndOpamps:Component list) col nodesNo =
@@ -224,13 +225,13 @@ let calcMatrixElementValue row col (nodeToCompsList:(Component*int option) list 
             match comp.Id = vsAndOpamps[col-nodesNo].Id with
             |true ->
                 match (comp.Type,no) with
-                |VoltageSource (_),Some 1 -> {Re = -1.0; Im=0.0}
-                |VoltageSource (_), Some 0 -> {Re = 1.0; Im=0.0}
-                |Opamp, Some 2 -> {Re = 1.0; Im=0.0}
-                |Opamp, _ -> {Re = 0.0; Im=0.0}
-                |_ -> failwithf "Unable to identify port of Voltage Source"
-            |false -> {Re = 0.0; Im=0.0}
-        |_ -> {Re = 0.0; Im=0.0}
+                |VoltageSource (_),Some 1 -> Ok {Re = -1.0; Im=0.0}
+                |VoltageSource (_), Some 0 -> Ok {Re = 1.0; Im=0.0}
+                |Opamp, Some 2 -> Ok {Re = 1.0; Im=0.0}
+                |Opamp, _ -> Ok {Re = 0.0; Im=0.0}
+                |_ -> Error "Unable to identify port of Voltage Source"
+            |false -> Ok {Re = 0.0; Im=0.0}
+        |_ -> Ok {Re = 0.0; Im=0.0}
 
     let findMatrixCVoltageValue (comp,no) (vsAndOpamps:Component list) col nodesNo =
         match comp.Type with
@@ -238,14 +239,14 @@ let calcMatrixElementValue row col (nodeToCompsList:(Component*int option) list 
             match comp.Id = vsAndOpamps[col-nodesNo].Id with
             |true ->
                 match (comp.Type,no) with
-                |VoltageSource (_),Some 1 -> {Re = -1.0; Im=0.0}
-                |VoltageSource (_), Some 0 -> {Re = 1.0; Im=0.0}
-                |Opamp, Some 0 -> {Re = 1.0; Im=0.0}
-                |Opamp, Some 1 -> {Re = -1.0; Im=0.0}
-                |Opamp, _ -> {Re = 0.0; Im=0.0}
-                |_ -> failwithf "Unable to identify port of Voltage Source"
-            |false -> {Re = 0.0; Im=0.0}
-        |_ -> {Re = 0.0; Im=0.0}
+                |VoltageSource (_),Some 1 -> Ok {Re = -1.0; Im=0.0}
+                |VoltageSource (_), Some 0 -> Ok {Re = 1.0; Im=0.0}
+                |Opamp, Some 0 -> Ok {Re = 1.0; Im=0.0}
+                |Opamp, Some 1 -> Ok {Re = -1.0; Im=0.0}
+                |Opamp, _ -> Ok {Re = 0.0; Im=0.0}
+                |_ -> Error "Unable to identify port of Voltage Source"
+            |false -> Ok {Re = 0.0; Im=0.0}
+        |_ -> Ok {Re = 0.0; Im=0.0}
                 
     let nodesNo = List.length nodeToCompsList
     
@@ -267,37 +268,62 @@ let calcMatrixElementValue row col (nodeToCompsList:(Component*int option) list 
     let vsNo = List.length allVoltageSources
 
     let vsAndOpamps = allVoltageSources @ allOpamps
-
-
-    if (row < nodesNo && col < nodesNo) then
-    // conductance matrix
-        if row=col then
-            ({Re=0.;Im=0.}, nodeToCompsList[row]) 
-            ||> List.fold(fun s c ->
-                s + (findMatrixGCompValue c omega)
-            )
-
-        else
-            ({Re=0.;Im=0.}, findComponentsBetweenNodes (row,col) nodeToCompsList)
-            ||> List.fold(fun s c ->
-                s - (findMatrixGCompValue c omega)
-            )
-    else 
-    // extra elements for modified nodal analysis (vs / opamp)
-        if (row >= nodesNo && col >= nodesNo) then
-            // matrix D is always 0
-            {Re=0.;Im=0.}
-        else
-            if row < nodesNo then
-                ({Re=0.;Im=0.}, nodeToCompsList[row])
+    let mutable errorMessage = ""
+    let toReturn = 
+        if (row < nodesNo && col < nodesNo) then
+        // conductance matrix
+            if row=col then
+                ({Re=0.;Im=0.}, nodeToCompsList[row]) 
                 ||> List.fold(fun s c ->
-                    s + (findMatrixBVoltageValue c vsAndOpamps col nodesNo)
-                )            
+                    match (findMatrixGCompValue c omega) with
+                    | Error m ->
+                        errorMessage <- m
+                        s
+                    | Ok value ->
+                        s + value
+                )
+
             else
-                ({Re=0.;Im=0.}, nodeToCompsList[col])
+                ({Re=0.;Im=0.}, findComponentsBetweenNodes (row,col) nodeToCompsList)
                 ||> List.fold(fun s c ->
-                    s + (findMatrixCVoltageValue c vsAndOpamps row nodesNo)
-                )       
+                    match (findMatrixGCompValue c omega) with
+                    | Error m ->
+                        errorMessage <- m
+                        s
+                    | Ok value ->
+                        s - value
+                )
+        else 
+        // extra elements for modified nodal analysis (vs / opamp)
+            if (row >= nodesNo && col >= nodesNo) then
+                // matrix D is always 0
+                {Re=0.;Im=0.}
+            else
+                if row < nodesNo then
+                    ({Re=0.;Im=0.}, nodeToCompsList[row])
+                    ||> List.fold(fun s c ->
+                        match (findMatrixBVoltageValue c vsAndOpamps col nodesNo) with
+                        | Error m -> 
+                            errorMessage <- m
+                            s
+                        | Ok value ->
+                            s + value
+                    )            
+                else
+                    ({Re=0.;Im=0.}, nodeToCompsList[col])
+                    ||> List.fold(fun s c ->
+                        match (findMatrixCVoltageValue c vsAndOpamps row nodesNo) with
+                        | Error m ->
+                            errorMessage <- m
+                            s
+                        | Ok value ->
+                            s + value
+                    )     
+
+    if (errorMessage = "") then
+        Ok toReturn
+    else
+        Error errorMessage   
 
 
 
@@ -415,58 +441,76 @@ let rec modifiedNodalAnalysisDC (comps,conns) cachedDiodeModes =
     if List.exists (fun c -> c.Type = DiodeR) comps then
         newtonRaphson (comps,conns)
     else
-
+    let mutable errorMessage = ""
     // transform canvas state for DC Analysis  
     let comps',conns',localDiodeModes= 
         (comps,conns)
         |> combineGrounds
         |> shortInductorsForDC 
-        |> (fun cs -> transformAllDiodes cs cachedDiodeModes)
+        |> (fun cs -> 
+            match (transformAllDiodes cs cachedDiodeModes) with
+            | Error m ->
+                errorMessage <- m
+                ([],[],[])
+            | Ok value -> value)
 
-    
-    /////// required information ////////
-    
-    let nodeLst = createNodetoCompsList (comps',conns')
-    
-    let vs = comps' |> List.filter (fun c-> match c.Type with |VoltageSource _ -> true |_ -> false) |> List.length
-    let opamps = comps' |> List.filter (fun c-> c.Type=Opamp) |> List.length
+    if errorMessage = "" then
+        /////// required information ////////
+        
+        let nodeLst = createNodetoCompsList (comps',conns')
+        
+        let vs = comps' |> List.filter (fun c-> match c.Type with |VoltageSource _ -> true |_ -> false) |> List.length
+        let opamps = comps' |> List.filter (fun c-> c.Type=Opamp) |> List.length
 
-    let n = List.length nodeLst - 1 + vs + opamps
-    
-    
-    let arr = Array.create n 0.0
-    let matrix = Array.create n arr
+        let n = List.length nodeLst - 1 + vs + opamps
+        
+        
+        let arr = Array.create n 0.0
+        let matrix = Array.create n arr
 
 
-    ////////// matrix creation ///////////
-    
+        ////////// matrix creation ///////////
+        
 
-    let vecB =
-        Array.create n {Re=0.0;Im=0.0}
-        |> Array.mapi (fun i v -> (calcVectorBElement (i+1) comps' nodeLst [||]))
-        |> Array.map (fun c -> c.Re)
-    
-    let flattenedMatrix =
-        matrix
-        |> Array.mapi (fun i top ->
-            top
-            |> Array.mapi (fun j v ->
-                calcMatrixElementValue (i+1) (j+1) nodeLst comps' 0. [||]
+        let vecB =
+            Array.create n {Re=0.0;Im=0.0}
+            |> Array.mapi (fun i v -> (calcVectorBElement (i+1) comps' nodeLst [||]))
+            |> Array.map (fun c -> c.Re)
+        
+        let mutable errorMessage = ""
+
+        let flattenedMatrix =
+            matrix
+            |> Array.mapi (fun i top ->
+                top
+                |> Array.mapi (fun j v ->
+                    match (calcMatrixElementValue (i+1) (j+1) nodeLst comps' 0. [||]) with
+                    | Error m -> 
+                        errorMessage <- m
+                        {Re=0.0;Im=0.0}
+                    | Ok value ->
+                        value
+                )
             )
-        )
-        |> Array.collect (id)
-     
+            |> Array.collect (id)
+        
 
-    ////////// solve ///////////
+        ////////// solve ///////////
+    
+        if (errorMessage = "") then
+            let mul = safeSolveMatrixVec flattenedMatrix vecB (List.length nodeLst - 1)
+            match mul with
+            |Some res -> 
+                let result = res |> Array.map (fun x->System.Math.Round (x,Constants.roundingDecimalPoints))
+                let componentCurrents = findComponentCurrents result (List.length nodeLst-1) nodeLst comps' conns'
+                Ok (result, componentCurrents, nodeLst, localDiodeModes )
 
-    let mul = safeSolveMatrixVec flattenedMatrix vecB (List.length nodeLst - 1)
-    match mul with
-    |Some res -> 
-        let result = res |> Array.map (fun x->System.Math.Round (x,Constants.roundingDecimalPoints))
-        let componentCurrents = findComponentCurrents result (List.length nodeLst-1) nodeLst comps' conns'
-        result, componentCurrents, nodeLst, localDiodeModes 
+            |None -> Ok (Array.empty, Map.empty, nodeLst, [])
+        else
+            Error errorMessage
+    else
+        Error errorMessage
 
-    |None -> Array.empty, Map.empty, nodeLst, []
 
 
 /// This function takes place before modified nodal analysis
@@ -474,7 +518,7 @@ let rec modifiedNodalAnalysisDC (comps,conns) cachedDiodeModes =
 /// or 0 A current sources. It explores all posible combinations
 /// (conducting, non-conducting mode) accordiong to the number of diodes 
 /// and returns the combination that satisfies all the conditions
-and transformAllDiodes (comps,conns) cachedDiodeModes : Component list * Connection list * bool list = 
+and transformAllDiodes (comps,conns) cachedDiodeModes = 
     
     /// transforms CanvasState components according to the selected modes
     let runTransformation (diodeModeMap:Map<string,bool>) comps =
@@ -556,48 +600,52 @@ and transformAllDiodes (comps,conns) cachedDiodeModes : Component list * Connect
 
         // used to force stop the loop in case no solution was found
         let mutable iter = pown 2 diodesNo
-        
+        let mutable errorMessage = ""
 
         while (not allConditions) do    
             
             let diodeModeMap = List.zip diodes diodeModes |> Map.ofList
             let comps' = runTransformation diodeModeMap comps
-            let res,_,nodeLst,_ = modifiedNodalAnalysisDC (comps',conns) []
-        
-            // holds (per diode) whether the condition is satisfied
-            let conditionList = 
-                diodeModeMap 
-                |> Map.map (fun dId mode -> (checkSingleDiodeCondition comps' res nodeLst dId mode))
-                |> Map.values
-                |> Seq.toList
 
-            // update allColditions
-            allConditions <- (true,conditionList) ||> List.fold (fun s v -> s&&v)
-            iter <- iter - 1
-            
-            //force stop
-            if iter = 0 then
+            match (modifiedNodalAnalysisDC (comps',conns) []) with
+             | Error m -> 
+                errorMessage <- m
                 allConditions <- true
+             | Ok (res,_,nodeLst,_) ->
+                // holds (per diode) whether the condition is satisfied
+                let conditionList = 
+                    diodeModeMap 
+                    |> Map.map (fun dId mode -> (checkSingleDiodeCondition comps' res nodeLst dId mode))
+                    |> Map.values
+                    |> Seq.toList
 
-            // if all conditions are met, save the current diode modes to return them
-            if allConditions then
-                correctDiodeModes <- diodeModes
-            
-            // find next diode modes to be checked
-            let next = nextModes diodeModes
-            diodeModes <- next
+                // update allColditions
+                allConditions <- (true,conditionList) ||> List.fold (fun s v -> s&&v)
+                iter <- iter - 1
+                
+                //force stop
+                if iter = 0 then
+                    allConditions <- true
 
+                // if all conditions are met, save the current diode modes to return them
+                if allConditions then
+                    correctDiodeModes <- diodeModes
+                
+                // find next diode modes to be checked
+                let next = nextModes diodeModes
+                diodeModes <- next
 
-
-        
-        // extract updated CanvasState and return it
-        let diodeModeMap = List.zip diodes correctDiodeModes |> Map.ofList
-        let compsFinal = runTransformation diodeModeMap comps
-        (compsFinal,conns,correctDiodeModes) 
+        if (errorMessage = "") then
+            // extract updated CanvasState and return it
+            let diodeModeMap = List.zip diodes correctDiodeModes |> Map.ofList
+            let compsFinal = runTransformation diodeModeMap comps
+            Ok (compsFinal,conns,correctDiodeModes) 
+        else
+            Error errorMessage
     
     |false ->
         // if no diodes are present in the circuit -> do nothing
-        (comps,conns,[])
+        Ok (comps,conns,[])
 
 
 /// implementation of newton-raphson with MNA
@@ -612,82 +660,107 @@ and newtonRaphson (comps,conns) =
 
     // transform to linearized diodes to obtain initial solution
     let linDiodeComps = comps |> List.map (fun c-> match c.Type with |DiodeR -> {c with Type = DiodeL} |_ -> c)
-    let initialSols,_,_,_ = modifiedNodalAnalysisDC (linDiodeComps,conns) []
-    
-    
-    // algorithm setup
-    let mutable prevsols = initialSols
-    let comps',conns'= 
-        (comps,conns)
-        |> combineGrounds
-        |> shortInductorsForDC 
-    
-    let nodeLst = createNodetoCompsList (comps',conns')
-    
-    let vs = comps' |> List.filter (fun c-> match c.Type with |VoltageSource _ -> true |_ -> false) |> List.length
-    let opamps = comps' |> List.filter (fun c-> c.Type=Opamp) |> List.length
-
-    let n = List.length nodeLst - 1 + vs + opamps
-    
-    
-    let arr = Array.create n 0.0
-    let matrix = Array.create n arr
-    
-    let mutable max_iter = Constants.newtonRaphsonMaxIterations
 
 
-    // newton raphson implementation
-    while max_iter <> 0 do
+    match (modifiedNodalAnalysisDC (linDiodeComps,conns) []) with
+        | Error m -> Error m
+        | Ok (initialSols,_,_,_) ->
 
-        ////////// matrix creation for MNA ///////////
+            // algorithm setup
+            let mutable prevsols = initialSols
+            let comps',conns'= 
+                (comps,conns)
+                |> combineGrounds
+                |> shortInductorsForDC 
+            
+            let nodeLst = createNodetoCompsList (comps',conns')
+            
+            let vs = comps' |> List.filter (fun c-> match c.Type with |VoltageSource _ -> true |_ -> false) |> List.length
+            let opamps = comps' |> List.filter (fun c-> c.Type=Opamp) |> List.length
 
-        let vecB =
-            Array.create n {Re=0.0;Im=0.0}
-            |> Array.mapi (fun i v -> (calcVectorBElement (i+1) comps' nodeLst prevsols))
-            |> Array.map (fun c -> c.Re)
-    
-        let flattenedMatrix =
-            matrix
-            |> Array.mapi (fun i top ->
-                top
-                |> Array.mapi (fun j v ->
-                    calcMatrixElementValue (i+1) (j+1) nodeLst comps' 0. prevsols
-                )
-            )
-            |> Array.collect (id)
+            let n = List.length nodeLst - 1 + vs + opamps
+            
+            
+            let arr = Array.create n 0.0
+            let matrix = Array.create n arr
+            
+            let mutable max_iter = Constants.newtonRaphsonMaxIterations
+            let mutable errorMessage = ""
 
-        let mul = safeSolveMatrixVec flattenedMatrix vecB (List.length nodeLst - 1)
-        match mul with
-        |Some res -> 
-            if hasConverged res prevsols then
-                max_iter <- 1 //exit loop
-                prevsols <- res |> Array.map (fun x->System.Math.Round (x,Constants.roundingDecimalPoints))
-            else 
-                prevsols <- res
-        |None ->
-            max_iter <- 1  //force exit loop, keep previous solutions
+            // newton raphson implementation
+            while max_iter <> 0 do
 
-        //printfn "Solution in iter %i is : %A" iter prevsols
-        max_iter <- max_iter - 1
-    
-    let componentCurrents = findComponentCurrents prevsols (List.length nodeLst-1) nodeLst comps' conns'
-    prevsols, componentCurrents, nodeLst, [] 
+                ////////// matrix creation for MNA ///////////
 
+                let vecB =
+                    Array.create n {Re=0.0;Im=0.0}
+                    |> Array.mapi (fun i v -> (calcVectorBElement (i+1) comps' nodeLst prevsols))
+                    |> Array.map (fun c -> c.Re)
+            
+                let flattenedMatrix =
+                    matrix
+                    |> Array.mapi (fun i top ->
+                        top
+                        |> Array.mapi (fun j v ->
+                            match (calcMatrixElementValue (i+1) (j+1) nodeLst comps' 0. prevsols) with
+                            | Error m -> 
+                                errorMessage <- m
+                                max_iter <- 0
+                                {Re=0.0;Im=0.0}
+                            | Ok value -> value
+                        )
+                    )
+                    |> Array.collect (id)
+
+
+                if (errorMessage <> "") then
+                    let mul = safeSolveMatrixVec flattenedMatrix vecB (List.length nodeLst - 1)
+                    match mul with
+                    |Some res -> 
+                        if hasConverged res prevsols then
+                            max_iter <- 1 //exit loop
+                            prevsols <- res |> Array.map (fun x->System.Math.Round (x,Constants.roundingDecimalPoints))
+                        else 
+                            prevsols <- res
+                    |None ->
+                        max_iter <- 1  //force exit loop, keep previous solutions
+
+                    //printfn "Solution in iter %i is : %A" iter prevsols
+                    max_iter <- max_iter - 1
+                else 
+                    max_iter <- 0
+            
+            if (errorMessage = "") then
+                let componentCurrents = findComponentCurrents prevsols (List.length nodeLst-1) nodeLst comps' conns'
+                Ok (prevsols, componentCurrents, nodeLst, []) 
+
+            else
+                Error errorMessage
 
 /// Returns magnitude and phase of specific frequency for the specified node 
-let acAnalysis matrix nodeLst comps vecB wmega outputNode =    
+let acAnalysis matrix nodeLst comps vecB wmega outputNode = 
+    let mutable errorMessage = ""
     let flattenedMatrix =
         matrix
         |> Array.mapi (fun i top ->
             top
             |> Array.mapi (fun j v ->
-                calcMatrixElementValue (i+1) (j+1) nodeLst comps wmega [||]
+                match (calcMatrixElementValue (i+1) (j+1) nodeLst comps wmega [||]) with
+                 | Error m ->
+                    errorMessage <- m
+                    {Re=0.0;Im=0.0}
+                 | Ok value ->
+                    value
             )
         )
         |> Array.collect (id)
-    let result = safeSolveMatrixVecComplex flattenedMatrix vecB (List.length nodeLst - 1)
-    //printfn "result %A" result
-    result[outputNode-1]        
+
+    if (errorMessage = "") then
+        let result = safeSolveMatrixVecComplex flattenedMatrix vecB (List.length nodeLst - 1)
+        //printfn "result %A" result
+        Ok result[outputNode-1]     
+    else
+        Error errorMessage   
 
      
 /// Main frequency response function
@@ -729,13 +802,25 @@ let frequencyResponse (comps,conns) inputSource outputNode  =
 
     // Run Frequency response
     let frequencies = [Constants.startACFreq..(1./Constants.ACFreqStepsPerDecade)..Constants.endACFreq] |> List.map (fun x -> 10.**x)
+    let mutable errorMessage = ""
+    let toReturn = 
+        frequencies
+        |> List.map (fun wmega->
+
+            match (acAnalysis matrix nodeLst comps' vecB wmega outputNode) with
+            | Error m -> 
+                errorMessage <- m
+                {Re=0.0;Im=0.0}
+            | Ok value ->
+                value
+        )
+        |> List.map complexCToP
     
-    frequencies
-    |> List.map (fun wmega->
-        acAnalysis matrix nodeLst comps' vecB wmega outputNode
-    )
-    |> List.map complexCToP
-    
+    if (errorMessage = "") then
+        Ok toReturn
+    else
+        Error errorMessage 
+
 
 
 /// helper function used for finding the thevenin parameters
@@ -766,25 +851,40 @@ let transformForHFGain (comps,conns) =
 /// Performs time domain analysis on a circuit with no Reactive Components
 let DCTimeAnalysis (comps,conns) inputNode outputNode =
     let vsIndex = comps |> List.tryFindIndex (fun c->match c.Type with |VoltageSource _ -> true |_ -> false)
+    let mutable errorMessage = ""
+
     match vsIndex with
     |Some i ->
         let vs = comps[i]
         let f = match vs.Type with |VoltageSource (Sine (_,_,f,_)) -> f |_ -> 0.
         let dts = if f=0. then [0.0..(1./100.)..10.] else [0.0..(1./(100.*f))..5./f]
-
         let mutable prevDiodeModes = []
         let y =
             dts
             |> List.map (fun t->
                 let vIn = findInputAtTime (Some vs) t 
-                let comps' = List.updateAt i {vs with Type = VoltageSource (DC vIn)} comps
-                let res,_,_,dm = modifiedNodalAnalysisDC (comps',conns) prevDiodeModes
-                prevDiodeModes <- dm
-                res[outputNode-1]
+
+                match vIn with
+                 | Error m -> 
+                    errorMessage <- m
+                    0.0
+                 | Ok value ->
+                    let comps' = List.updateAt i {vs with Type = VoltageSource (DC value)} comps
+                    match (modifiedNodalAnalysisDC (comps',conns) prevDiodeModes) with
+                    | Error m -> 
+                        errorMessage <- m
+                        0.0
+                    | Ok (res,_,_,dm) ->
+                        prevDiodeModes <- dm
+                        res[outputNode-1]
             )
-        {TimeSteps=dts;Transient=[];SteadyState=y;Tau=0;Alpha=0;HFGain=0;DCGain=0}
         
-    |_ -> failwithf "No voltage Source present in the circuit"
+        if (errorMessage = "") then
+            Ok {TimeSteps=dts;Transient=[];SteadyState=y;Tau=0;Alpha=0;HFGain=0;DCGain=0}
+        else
+            Error errorMessage
+        
+    |_ -> Error "No voltage Source present in the circuit"
 
 
 /// Helper function to find the thevenin parameters
@@ -793,30 +893,47 @@ let DCTimeAnalysis (comps,conns) inputNode outputNode =
 /// line that goes through these two points
 /// (same as finding thevenin with nodal analysis)
 let findTheveninParams (comps,conns) compId node1 node2 =
+        
+        let mutable errorMessage = "" 
+    
         let result1,_,_,_ =
             (comps,conns)
             |> replaceCompWithCS 1. compId
-            |> (fun cs -> modifiedNodalAnalysisDC cs [])
+            |> (fun cs -> 
+                match (modifiedNodalAnalysisDC cs []) with
+                | Error m ->
+                    Error m 
+                    (Array.empty, Map.empty, [], [] )
+                | Ok (v1, v2, v3, v4) -> v1, v2, v3, v4)
         
         let result2,_,_,_ =
             (comps,conns)
             |> replaceCompWithCS 2. compId
-            |> (fun cs -> modifiedNodalAnalysisDC cs [])
+            |> (fun cs -> 
+                match (modifiedNodalAnalysisDC cs []) with
+                | Error m ->
+                    Error m
+                    (Array.empty, Map.empty, [], [] )
+                | Ok (v1, v2, v3, v4) -> v1, v2, v3, v4)
+            
 
-        let v1 =
-            if node1=0 then result1[node2-1]
-            else if node2=0 then result1[node1-1]
-            else result1[node2-1] - result1[node1-1]
-        
-        let v2 =
-            if node1=0 then result2[node2-1]
-            else if node2=0 then result2[node1-1]
-            else result1[node2-1] - result2[node1-1]
+        if (errorMessage = "") then
+            let v1 =
+                if node1=0 then result1[node2-1]
+                else if node2=0 then result1[node1-1]
+                else result1[node2-1] - result1[node1-1]
+            
+            let v2 =
+                if node1=0 then result2[node2-1]
+                else if node2=0 then result2[node1-1]
+                else result1[node2-1] - result2[node1-1]
 
-        let rth = abs(v2-v1)
-        let vth = if v2-v1 > 0 then (v1 - rth) else (v1 + rth)
-        let ino = vth/rth
-        {Resistance=rth;Voltage=vth;Current=ino}
+            let rth = abs(v2-v1)
+            let vth = if v2-v1 > 0 then (v1 - rth) else (v1 + rth)
+            let ino = vth/rth
+            Ok {Resistance=rth;Voltage=vth;Current=ino}
+        else
+            Error errorMessage
 
 /// Main transient analysis function
 /// (i) finds tau from Thevenin Resistance
@@ -829,31 +946,37 @@ let transientAnalysis (comps,conns) inputSource inputNode outputNode =
     let findTau param =
         let CL = comps' |> List.tryFind (fun c-> match c.Type with |Capacitor _ |Inductor _ -> true |_ ->false)
         match CL with
-        |None -> failwithf "No Capacitor/Inductor present in the circuit"
+        |None -> Error "No Capacitor/Inductor present in the circuit"
         |Some cl ->
             let pair = findNodesOfComp (createNodetoCompsList (comps',conns')) cl.Id
             match pair with
             |Some (node1,node2) ->
                 let thevParams = findTheveninParams (comps,conns) cl.Id  node1 node2
-                match cl.Type with
-                |Capacitor (c,_) -> thevParams.Resistance*c
-                |Inductor (l,_) -> l/thevParams.Resistance
-                |_ -> failwithf "No Capacitor/Inductor present in the circuit"
-            |None -> 0.
+                match thevParams with
+                | Error m -> Error m
+                | Ok value ->
+                    match cl.Type with
+                    |Capacitor (c,_) -> Ok (value.Resistance*c)
+                    |Inductor (l,_) -> Ok (l/value.Resistance)
+                    |_ -> Error "No Capacitor/Inductor present in the circuit"
+            |None -> Ok 0.
 
     let findDCGain nodeX nodeY =
-        let result,_,_,_ = modifiedNodalAnalysisDC (comps',conns') []
-        if result[nodeX-1] <> 0
-            then result[nodeY-1]/result[nodeX-1]
-        else 0.
+        match (modifiedNodalAnalysisDC (comps',conns') []) with
+         | Error m -> Error m
+         | Ok (result,_,_,_) ->
+            if result[nodeX-1] <> 0
+                then Ok (result[nodeY-1]/result[nodeX-1])
+            else (Ok 0.)
     
     let findHFGain nodeX nodeY =
-        let comps',conns' = (comps',conns') |> transformForHFGain //replaceCLWithWire
-        let result,_,_,_ = modifiedNodalAnalysisDC (comps',conns') []
-        
-        if result[nodeX-1] <> 0 //DC source or Sine with DC offset
-            then result[nodeY-1]/result[nodeX-1]
-        else result[nodeY-1]
+        let comps',conns' = (comps',conns') |> transformForHFGain //replaceCLWithWire        
+        match (modifiedNodalAnalysisDC (comps',conns') []) with
+        | Error m -> Error m
+        | Ok (result,_,_,_) ->
+            if result[nodeX-1] <> 0 //DC source or Sine with DC offset
+                then Ok (result[nodeY-1]/result[nodeX-1])
+            else Ok (result[nodeY-1])
 
     match List.exists (fun c->match c.Type with |Capacitor _ |Inductor _ -> true |_ -> false) comps' with
     |true -> //one reactive component
@@ -862,13 +985,14 @@ let transientAnalysis (comps,conns) inputSource inputNode outputNode =
         
         // represent yss as a Voltage Source to find
         // its value at each time point
-        let yssAsVS =
+        let yssAsVSVal =
             match vs with
             |Some comp ->
                 match comp.Type with
                 |VoltageSource (DC v) ->
-                    let res,_,_,_ = modifiedNodalAnalysisDC (comps',conns') []
-                    {comp with Type = VoltageSource (DC res[outputNode-1])}
+                    match (modifiedNodalAnalysisDC (comps',conns') []) with
+                    | Error m -> Error m
+                    | Ok (res,_,_,_) -> Ok {comp with Type = VoltageSource (DC res[outputNode-1])}
                 |VoltageSource (Sine (a,o,f,p)) -> 
                     let comps'',_ = convertACInputToDC1VS (comps',conns') inputSource
                     let nodeLst = createNodetoCompsList (comps'',conns')
@@ -889,31 +1013,70 @@ let transientAnalysis (comps,conns) inputSource inputNode outputNode =
                         |> Array.mapi (fun i v -> (calcVectorBElement (i+1) comps'' nodeLst [||]))
 
                     // find magnitude and phase using the source frequency 
-                    let res = acAnalysis matrix nodeLst comps'' vecB (2.*System.Math.PI*f) outputNode |> complexCToP
-                    {comp with Type = VoltageSource (Sine (a*res.Mag,o*dcGain,f,p+res.Phase))}
+
+                    match (acAnalysis matrix nodeLst comps'' vecB (2.*System.Math.PI*f) outputNode) with
+                    | Error m -> Error m
+                    | Ok value ->
+                        match dcGain with
+                        | Error m -> Error m
+                        | Ok dc ->
+                            let res = complexCToP value
+                            Ok {comp with Type = VoltageSource (Sine (a*res.Mag,o*dc,f,p+res.Phase))}
 
 
-                |_ -> failwithf "Impossible"
-            |None -> failwithf "No Voltage Source present in the circuit"
+                |_ -> Error "Impossible"
+            |None -> Error "No Voltage Source present in the circuit"
+
+        match yssAsVSVal with
+            | Error m -> Error m
+            | Ok yssAsVS ->
+                let HFGainFound = findHFGain inputNode outputNode
+                match (HFGainFound) with
+                | Error m -> Error m
+                | Ok HFGain ->
+                    let tauFound = findTau ()
+                    let f = match yssAsVS.Type with |VoltageSource (Sine (_,_,f,_)) -> f |_ -> 0.
 
 
-        let HFGain = findHFGain inputNode outputNode
+                    match tauFound with
+                    | Error m -> Error m
+                    | Ok value when value = 0 -> Error "Time constant is zero"
+                    | Ok tau ->
+                        match (findInputAtTime vs 0.) with
+                            |Error m -> Error m 
+                            |Ok inputVs -> 
+                                match (findInputAtTime (Some yssAsVS) 0.) with
+                                    | Error m -> Error m
+                                    | Ok inputAs ->
 
-        let tau = findTau ()
-        let f = match yssAsVS.Type with |VoltageSource (Sine (_,_,f,_)) -> f |_ -> 0.
+                                        let mutable errorMessage = ""
 
-        let alpha = HFGain * findInputAtTime vs 0. - findInputAtTime (Some yssAsVS) 0.
-    
-        let dts = if f=0. then [0.0..(tau/20.)..tau*10.] else [0.0..(1./(40.*f))..5./f]
-        let ytr,yss =
-            dts
-            |> List.map (fun t->
-                let y_tr = alpha*exp(-t/tau)
-                let y_ss = findInputAtTime (Some yssAsVS) t
-                (y_tr,y_ss)
-            )
-            |> List.unzip
-        {TimeSteps=dts;Transient=ytr;SteadyState=yss;Tau=tau;Alpha=alpha;HFGain=HFGain;DCGain=dcGain}
+                                        let alpha = HFGain * inputVs - inputAs
+                                    
+                                        let dts = if f=0. then [0.0..(tau/20.)..tau*10.] else [0.0..(1./(40.*f))..5./f]
+                                        let ytr,yss =
+                                            dts
+                                            |> List.map (fun t->
+                                                let y_tr = alpha*exp(-t/tau)
+                                                let y_ss = 
+                                                    match (findInputAtTime (Some yssAsVS) t) with
+                                                    | Error m -> 
+                                                        errorMessage <- m
+                                                        0.0
+                                                    | Ok value ->
+                                                        value
+                                                (y_tr,y_ss)
+                                            )
+                                            |> List.unzip
+
+                                        if (errorMessage = "") then
+
+                                            match dcGain with
+                                            | Error m -> Error m
+                                            | Ok value ->  Ok {TimeSteps=dts;Transient=ytr;SteadyState=yss;Tau=tau;Alpha=alpha;HFGain=HFGain;DCGain=value}
+
+                                        else
+                                            Error errorMessage
 
 
     |_ -> DCTimeAnalysis (comps',conns') inputNode outputNode

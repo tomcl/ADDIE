@@ -11,6 +11,8 @@ open NumberHelpers
 open CanvasStateAnalyser
 open DiagramStyle
 open Fulma
+open Optics
+open Optic
 
 /// transforms the DC Simulation results into the DC Table
 /// which appears under the DC Sim Subtab. The order is: 
@@ -247,7 +249,7 @@ let runSimulation (model:Model) dispatch =
     match CS with
     |[],[] -> 
         dispatch ForceStopSim
-        dispatch <| SetGraphVisibility false
+        Optic.set showGraphArea_ false |> updateModelNew dispatch "Sets the graph visibility"
     |_ ->
         let canvasState = CS |> combineGrounds
         let compsNo,connsNo= List.length (fst canvasState),List.length (snd canvasState)
@@ -260,52 +262,69 @@ let runSimulation (model:Model) dispatch =
                     |[] ->
                         ClosePropertiesNotification |> dispatch
                         CircuitHasNoErrors |> dispatch
-                        SimulationUpdated |> dispatch
-                        let res,componentCurrents,nodeLst,dm = Simulation.modifiedNodalAnalysisDC canvasState model.PreviousDiodeModes
+                        Optic.set UpdateSim_ false |> updateModelSheet dispatch "updating the simulation"
+                        //let res,componentCurrents,nodeLst,dm = Simulation.modifiedNodalAnalysisDC canvasState model.PreviousDiodeModes
+                        match (Simulation.modifiedNodalAnalysisDC canvasState model.PreviousDiodeModes) with
+                         | Error m -> dispatch <| SetPopupDialogText (Some m)
+                         | Ok (res,componentCurrents,nodeLst,dm) ->
                         let equations = [] //getDCEquations model.Sheet.DCSim (fst CS)
-                        UpdateVoltages (Array.toList res) |> dispatch
-                        UpdateCurrents componentCurrents |> dispatch
-                        UpdateDiodeModes dm |> dispatch
-                        UpdateDCSim {MNA=res;ComponentCurrents=componentCurrents;NodeList=nodeLst;Equations=equations} |> dispatch
-                        
+                        Optic.set NodeVoltages_ (Array.toList res) |> updateModelSheet dispatch "updates the node voltage"
+                        // UpdateVoltages (Array.toList res) |> dispatch
+                        //UpdateCurrents componentCurrents |> dispatch
+                        Optic.set ComponentCurrents_ componentCurrents |> updateModelSheet dispatch "updates the node current"
+
+                        Optic.set PreviousDiodeModes_ dm |> updateModelNew dispatch "Pervious diode modes"
+                        Optic.set DCSim_ {MNA=res;ComponentCurrents=componentCurrents;NodeList=nodeLst;Equations=equations} |> updateModelSheet dispatch "Updating the dc sim" 
+                        // UpdateDCSim {MNA=res;ComponentCurrents=componentCurrents;NodeList=nodeLst;Equations=equations} |> dispatch
                         match res with
                         |[||] -> 
                             dispatch ForceStopSim
                             dispatch CircuitHasErrors
-                            dispatch (SetPropertiesNotification (Notifications.errorPropsNotification "Unknown error in Circuit. Cannot run Simulation")) 
+                            Optic.set FromProperties_ (Some (Notifications.errorPropsNotification "Unknown error in Circuit. Cannot run Simulation")) |> updateModelNotifications dispatch "updates the properties tab" 
+                            Optic.set showGraphArea_ false |> updateModelNew dispatch "Sets the graph visibility"
                         |_ ->
                             match model.SimSubTabVisible with
                             |DCsim -> ()
                             |ACsim -> 
-                                dispatch UpdateNodes
-                                dispatch <| ShowNodesOrVoltagesExplicitState Nodes
+                                Optic.set ShowNodesOrVoltages_ Nodes |> updateModelSheet dispatch "edits sheet"
+                                //dispatch <| ShowNodesOrVoltagesExplicitState Nodes
                                 if model.showGraphArea then
                                     let outputNode = model.SimulationData.ACOutput |> Option.defaultValue "1" |> int
                                     let inputSource = model.SimulationData.ACSource |> Option.defaultValue ""
                                     let res = (frequencyResponse canvasState inputSource outputNode)
-                                    UpdateACSim res |> dispatch
+                                    //UpdateACSim res |> dispatch
+                                    match res with
+                                        | Error m -> dispatch <| SetPopupDialogText (Some m)
+                                        | Ok value ->  Optic.set ACSim_ value |> updateModelSheet dispatch "update ac sim"
                                 else ()
                             |TimeSim ->
                                 dispatch UpdateNodes
-                                dispatch <| ShowNodesOrVoltagesExplicitState Nodes
+                                Optic.set ShowNodesOrVoltages_ Nodes |> updateModelSheet dispatch "edits sheet"
+
+                                //dispatch <| ShowNodesOrVoltagesExplicitState Nodes
                                 if model.showGraphArea then
                                     let inputSource = model.SimulationData.TimeInput |> Option.defaultValue "VS1" 
                                     let inputNode = inputSource |> findInputNodeFromComp nodeLst
                                     let outputNode = model.SimulationData.TimeOutput |> Option.defaultValue "1" |> int
                                     let timeSim = (transientAnalysis canvasState inputSource inputNode outputNode)
-                                    UpdateTimeSim timeSim |> dispatch
+                                    match timeSim with 
+                                    | Error m ->  
+                                                Optic.set FromProperties_ (Some (Notifications.errorPropsNotification m)) |> updateModelNotifications dispatch "updates the properties tab" 
+                                                Optic.set showGraphArea_ false |> updateModelNew dispatch "Sets the graph visibility"
+                                    | Ok value -> Optic.set TimeSim_ value |> updateModelSheet dispatch "Sets the time simulation"
                                 else ()
                     |err ->
                         dispatch ForceStopSim
                         dispatch CircuitHasErrors
-                        dispatch (SetPropertiesNotification (Notifications.errorPropsNotification err[0].Msg))
+                        Optic.set FromProperties_ (Some (Notifications.errorPropsNotification err[0].Msg)) |> updateModelNotifications dispatch "updates the properties tab" 
                         dispatch (Sheet (DrawModelType.SheetT.Msg.Wire (BusWireT.Msg.ErrorWires err[0].ConnectionsAffected) ))
                         dispatch (Sheet (DrawModelType.SheetT.Msg.Wire (BusWireT.Msg.Symbol (SymbolT.Msg.ErrorSymbols (err[0].ComponentsAffected,err[0].ComponentsAffected,false) ))))
         |false ->
             dispatch <| UpdateCanvasStateSizes (compsNo,connsNo)
             dispatch ForceStopSim
             //dispatch <| CircuitHasErrors
-            dispatch <| SetGraphVisibility false
+            Optic.set showGraphArea_ false |> updateModelNew dispatch "Show graph area"
+            // dispatch <| SetGraphVisibility false
 
 
 
@@ -320,7 +339,8 @@ let startStopSimDiv model dispatch =
             Button.Color startStopState
             Button.OnClick (fun _-> 
                 dispatch startStopMsg
-                dispatch <| SetGraphVisibility false
+                Optic.set showGraphArea_ false |> updateModelNew dispatch "Sets graph visibility to false"
+                // dispatch <| SetGraphVisibility false
                 dispatch <| UpdateNodes
                 
                 )
@@ -394,9 +414,11 @@ let createACSimSubTab model comps dispatch =
             br []
 
             Button.button 
-                [   Button.OnClick (fun _ -> 
-                        RunSim |> dispatch
-                        SetGraphVisibility true |> dispatch); 
+                [   Button.OnClick (fun _ ->
+                        Optic.set UpdateSim_ true |> updateModelSheet dispatch "Updates the simulation" 
+                        //RunSim |> dispatch
+                        //SetGraphVisibility true |> dispatch
+                        Optic.set showGraphArea_ true |> updateModelNew dispatch "Sets the graph visibility to true"); 
                         Button.Color IsPrimary;
                         Button.Disabled isDisabled] 
                 [str "Show"]
@@ -455,8 +477,9 @@ let createTimeSimSubTab model comps dispatch =
                 br []
                 Button.button 
                     [   Button.OnClick (fun _ -> 
-                            RunSim |> dispatch
-                            SetGraphVisibility true |> dispatch); 
+                            Optic.set UpdateSim_ true |> updateModelSheet dispatch "Updates the simulation" 
+                            Optic.set showGraphArea_ true |> updateModelNew dispatch "Sets the graph visibility to true"); 
+                          //  SetGraphVisibility true |> dispatch
                             Button.Color IsPrimary;
                             Button.Disabled isDisabled] 
                     [str "Show"]
@@ -478,8 +501,10 @@ let createDCSubTab model (comps,conns) dispatch =
             Button.Color startStopState
             Button.OnClick (fun _-> 
                 dispatch startStopMsg
-                dispatch <| RunSim
-                dispatch <| SetGraphVisibility false
+                Optic.set UpdateSim_ true |> updateModelSheet dispatch "Updates the simulation" 
+                Optic.set showGraphArea_ false |> updateModelNew dispatch "Sets the graph visibility to false"
+
+            //    dispatch <| SetGraphVisibility false
                     )
             ] [str startStopStr]
             br []
@@ -499,14 +524,14 @@ let createDCSubTab model (comps,conns) dispatch =
                 div [] [
 
                 Menu.menu [Props [Class "py-1";]]  [
-                    details [Open true;OnClick (fun _ -> dispatch RunSim)] [
+                    details [Open true;OnClick (fun _ -> Optic.set UpdateSim_ true |> updateModelSheet dispatch "Updates the simulation" )] [
                         summary [menuLabelStyle] [ str "Table Results" ]
                         Menu.list [] [getDCTable model.Sheet.DCSim (model.Sheet.SimulationRunning && model.Sheet.CanRunSimulation) (comps,conns) ]
                     ]
                 ]
                 
                 Menu.menu [Props [Class "py-1";]]  [
-                    details [Open false;OnClick (fun _ -> dispatch RunSim)] [
+                    details [Open false;OnClick (fun _ ->  Optic.set UpdateSim_ true |> updateModelSheet dispatch "Updates the simulation" )] [
                         summary [menuLabelStyle] [ str "Equations" ]
                         Menu.list [] [(getDCEquationsTable model.Sheet.DCSim.Equations)]
                     ]

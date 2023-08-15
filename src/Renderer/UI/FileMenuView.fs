@@ -11,6 +11,7 @@ open Fable.Core
 open Fable.React
 open Fable.React.Props
 open Fulma.Extensions.Wikiki
+open Optics 
 
 open Helpers
 open JSHelpers
@@ -135,7 +136,7 @@ let writeComponentToBackupFile (numCircuitChanges: int) (numHours:float) comp (d
 
 let private displayFileErrorNotification err dispatch =
     let note = errorFilesNotification err
-    dispatch <| SetFilesNotification note
+    updateModelNotifications dispatch "updating model notifications"  (Optic.set FromFiles_ (Some note) )
 
 /// Send messages to change Diagram Canvas and specified sheet waveSim in model
 let private loadStateIntoModel (finishUI:bool) (compToSetup:LoadedComponent) ldComps (model:Model) dispatch =
@@ -935,9 +936,8 @@ let viewTopMenu model dispatch =
                   Navbar.Item.Props
                       [ OnClick(fun _ ->
                           //printSheetNames model
-                          if model.TopMenuOpenState = Files then Closed else Files
-                          |> SetTopMenu
-                          |> dispatch) ] ]
+                          let currentMenu = if model.TopMenuOpenState = Files then Closed else Files
+                          Optic.set TopMenuOpenState_ currentMenu |> updateModelNew dispatch "Top Menu Open State") ] ]
                 [ Navbar.Link.a [] [ str "Sheets" ]
                   Navbar.Dropdown.div
                       [ Navbar.Dropdown.Props
@@ -981,9 +981,10 @@ let viewTopMenu model dispatch =
                         [ Navbar.Item.HasDropdown
                           Navbar.Item.Props
                               [ OnClick(fun _ ->
-                                  if model.TopMenuOpenState = Project then Closed else Project
-                                  |> SetTopMenu
-                                  |> dispatch) ] ]
+                                  let currentMenu = if model.TopMenuOpenState = Project then Closed else Project
+                                  Optic.set TopMenuOpenState_ currentMenu |> updateModelNew dispatch "Top Menu Open State") ] ]
+
+
                           [ Navbar.Link.a [] [ str "Project" ]
                             Navbar.Dropdown.div
                                 [ Navbar.Dropdown.Props

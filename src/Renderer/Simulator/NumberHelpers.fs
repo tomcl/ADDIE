@@ -148,7 +148,7 @@ let popupTextToFloat (popupUnitSuffix: string option) (text:string) =
 
 
 
-
+/// Converts a given float to it's 6sf string value
 let floatValueToText (value:float) =
 
     let rec normaliseValue (value:float) (exponent:int) =
@@ -178,10 +178,10 @@ let floatValueToText (value:float) =
     let stringValue = string originalValue
 
     match exponent with
-    | e when e >= -3 && e <= -1 -> $"{stringValue} M"
-    | e when e >= 0 && e <= 2 -> $"{stringValue} k"
+    | e when e >= -3 && e <= -1 -> $"{stringValue}M"
+    | e when e >= 0 && e <= 2 -> $"{stringValue}k"
     | e when e >= 3 && e <= 5 -> stringValue
-    | e when e >= 6 && e <= 8 -> $"{stringValue} m"
+    | e when e >= 6 && e <= 8 -> $"{stringValue}m"
     | e when e >= 9 && e <= 11 -> $"{stringValue}{muString}"
-    | _ -> $"{stringValue} n"
+    | _ -> $"{stringValue}n"
     |> fun x -> if hasMinus then "-" + x else x

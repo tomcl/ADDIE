@@ -3,6 +3,8 @@ open Fulma
 
 open Fable.React
 open Fable.React.Props
+open Optics
+open Optic
 
 open DiagramStyle
 open ModelType
@@ -11,6 +13,7 @@ open DrawModelType
 open CommonTypes
 open Simulation
 open SimulationHelpers
+
 
 open Browser.Dom
 open System
@@ -127,7 +130,9 @@ let private viewRightTab canvasState model dispatch =
     
     match pane with
     | Catalogue ->
-        SetLastViewedPropertiesTab true |> dispatch
+       // SetLastViewedPropertiesTab true |> dispatch
+        Optic.set LastViewedPropertiesTab_ true |> updateModelNew dispatch "Last viewed the propety tab"
+
         div [ Style [Width "90%"; MarginLeft "5%"; MarginTop "15px" ; Height "calc(100%-100px)"] ] [
             Heading.h4 [] [ str "Catalogue" ]
             div [ Style [ MarginBottom "15px" ; Height "100%"; OverflowY OverflowOptions.Auto] ] 
@@ -135,15 +140,19 @@ let private viewRightTab canvasState model dispatch =
             CatalogueView.viewCatalogue model dispatch
         ]
     | Properties ->
-        let propertieTab = SelectedComponentView.viewSelectedComponent model dispatch
-        SetLastViewedPropertiesTab false |> dispatch
+        let propertyTab  = SelectedComponentView.viewSelectedComponent model dispatch
+        //SetLastViewedPropertiesTab false |> dispatch
+        Optic.set LastViewedPropertiesTab_ false |> updateModelNew dispatch "Last viewed the propety tab"
+
         div [ Style [Width "90%"; MarginLeft "5%"; MarginTop "15px" ] ] [
             Heading.h4 [] [ str "Component properties" ]
-            propertieTab
+            propertyTab 
         ]
 
     | Simulation ->
-        SetLastViewedPropertiesTab true |> dispatch
+        //SetLastViewedPropertiesTab true |> dispatch
+        Optic.set LastViewedPropertiesTab_ true |> updateModelNew dispatch "Last viewed the propety tab"
+
 
         let subtabs = 
             Tabs.tabs [ Tabs.IsFullWidth; Tabs.IsBoxed; Tabs.CustomClass "rightSectionTabs";
@@ -155,11 +164,11 @@ let private viewRightTab canvasState model dispatch =
 
                     (Tabs.tab // truth table tab to display truth table for combinational logic
                     [ Tabs.Tab.IsActive (model.SimSubTabVisible = ACsim) ]
-                    [ a [  OnClick (fun _ -> dispatch <| ChangeSimSubTab ACsim; dispatch <| ShowNodesOrVoltagesExplicitState Nodes; dispatch <|SetGraphVisibility false) ] [str "Frequency Response"] ])
+                    [ a [  OnClick (fun _ -> dispatch <| ChangeSimSubTab ACsim; Optic.set ShowNodesOrVoltages_ Nodes |> updateModelSheet dispatch "edits sheet"; Optic.set showGraphArea_ false |> updateModelNew dispatch "Sets the graph area visibility to false") ] [str "Frequency Response"] ])
 
                     (Tabs.tab // wavesim tab
                     [ Tabs.Tab.IsActive (model.SimSubTabVisible = TimeSim) ]
-                    [ a [  OnClick (fun _ -> dispatch <| ChangeSimSubTab TimeSim; dispatch <| ShowNodesOrVoltagesExplicitState Nodes; dispatch <|SetGraphVisibility false) ] [str "Transient Analysis"] ])
+                    [ a [  OnClick (fun _ -> dispatch <| ChangeSimSubTab TimeSim; Optic.set ShowNodesOrVoltages_ Nodes |> updateModelSheet dispatch "edits sheet"; Optic.set showGraphArea_ false |> updateModelNew dispatch "Sets the graph area visibility to false") ] [str "Transient Analysis"] ])
                     ]
         div [ HTMLAttr.Id "RightSelection"; Style [Height "100%"]] 
             [
@@ -168,7 +177,8 @@ let private viewRightTab canvasState model dispatch =
                 viewSimSubTab canvasState model dispatch
             ]
     | Tests ->
-        SetLastViewedPropertiesTab true |> dispatch
+        Optic.set LastViewedPropertiesTab_ true |> updateModelNew dispatch "Sets last viewed property tab to true"
+       // SetLastViewedPropertiesTab true |> dispatch
 
         let tdTests = model.Tests |> List.mapi (fun i b -> tr [] [td [] [str (sprintf "Test %i" (i+1))]; td [] [str (if b then "Pass" else "Fail")]])
         div [ Style [Width "90%"; MarginLeft "5%"; MarginTop "15px" ]] 
@@ -188,9 +198,11 @@ let inline setDragMode (modeIsOn:bool) (model:Model) dispatch =
         //printfn "START X=%d, buttons=%d, mode=%A, width=%A, " (int ev.clientX) (int ev.buttons) model.DragMode model.ViewerWidth
         match modeIsOn, model.DividerDragMode with
         | true, DragModeOff ->  
-            dispatch <| SetDragMode (DragModeOn (int ev.clientX))
+            Optic.set DividerDragMode_ (DragModeOn (int ev.clientX)) |> updateModelNew dispatch "Sets the drag mode for x"
+            // dispatch <| SetDragMode (DragModeOn (int ev.clientX))
         | false, DragModeOn _ -> 
-            dispatch <| SetDragMode DragModeOff
+            Optic.set DividerDragMode_ DragModeOff |> updateModelNew dispatch "Sets the drag mode to off"
+          //  dispatch <| SetDragMode DragModeOff
         | _ -> ()
 
 /// Draggable vertivcal bar used to divide Wavesim window from Diagram window
@@ -301,7 +313,8 @@ let displayView model dispatch =
 
     let inline processAppClick topMenu dispatch (ev: Browser.Types.MouseEvent) =
         if topMenu <> Closed then 
-            dispatch <| Msg.SetTopMenu Closed
+            Optic.set TopMenuOpenState_ Closed |> updateModelNew dispatch "will close the top menu state"
+          //  dispatch <| Msg.SetTopMenu Closed
     /// used only to make the divider bar draggable
     let inline processMouseMove (keyUp: bool) (ev: Browser.Types.MouseEvent) =
         //printfn "X=%d, buttons=%d, mode=%A, width=%A, " (int ev.clientX) (int ev.buttons) model.DragMode model.ViewerWidth
@@ -325,7 +338,8 @@ let displayView model dispatch =
 
     match model.Spinner with
     | Some fn -> 
-        dispatch <| UpdateModel fn
+        updateModelNew dispatch "Updating the model" fn
+        //dispatch <| UpdateModel fn
     | None -> ()
     div [ HTMLAttr.Id "WholeApp"
           Key cursorText

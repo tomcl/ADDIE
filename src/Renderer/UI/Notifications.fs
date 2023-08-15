@@ -6,6 +6,8 @@
 
 open Fulma
 open Fulma.Extensions.Wikiki
+open Optics
+open Optic
 
 
 open Fable.React
@@ -55,7 +57,7 @@ let warningPropsNotification text = warningNotification text ClosePropertiesNoti
 let displayAlertOnError (dispatch: Msg -> Unit) res =
     match res with
     | Error e -> 
-        dispatch <| SetFilesNotification (errorFilesNotification e)
+        updateModelNotifications dispatch "updating model notifications"  (Optic.set FromFiles_ (Some (errorFilesNotification e)) )
     | _ -> ()
 
 let viewNotifications model dispatch =

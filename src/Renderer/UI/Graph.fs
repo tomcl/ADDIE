@@ -10,6 +10,8 @@ open System
 open ModelType
 open CommonTypes
 open Fulma
+open Optics
+open Optic
 
 let formTransientParameters notTrans (tau:float,alpha:float,hf:float,dc:float) =
     if notTrans then
@@ -102,7 +104,9 @@ let viewGraph (model:Model) dispatch =
                         ]
                         ]
                         ]
-                div [Style [Width "20%"; Float FloatOptions.Left; Padding "20px"]] [Delete.delete [ Delete.Size IsMedium; Delete.OnClick(fun _ -> SetGraphVisibility false |> dispatch) ] [ ]]
+                div [Style [Width "20%"; Float FloatOptions.Left; Padding "20px"]] [Delete.delete [ Delete.Size IsMedium; Delete.OnClick(fun _ -> Optic.set showGraphArea_ false |> updateModelNew dispatch "function to show graph") ] [ ]]
+
+                // SetGraphVisibility false |> dispatch
             ]
         
         |TimeSim ->
@@ -129,92 +133,112 @@ let viewGraph (model:Model) dispatch =
                     else [0.;0.] @ List.map2 (fun x y -> x+y) ytr yss
                 let t_y = [-t[(List.length t/5)|> int]]@[0.0]@t
                 let vs = comps |> List.find (fun c->match c.Type with |VoltageSource _ -> true |_ -> false)
-                
-                // x = input source
-                let x = [0.;0.] @ List.map (Simulation.findInputAtTime (Some vs)) t
-                [
-                    div [Style [Width "80%"; Float FloatOptions.Left]] [
-                            Plotly.plot [
-                                plot.traces [
-                                    traces.scatter [
-                                        scatter.x t_y
-                                        scatter.y y
-                                        scatter.name "y"
-                                    ]
-                                    traces.scatter [
-                                        scatter.x t
-                                        scatter.y yss
-                                        scatter.name "y_ss"
-                                        scatter.line [
-                                        line.dash.dot
-                                        line.width 1
-                                        line.color "green"]
+
+
+                let rec processInputList inputList =
+                    match inputList with
+                    | [] -> Ok 0.0
+                    | Error m :: _ -> Error m
+                    | _ :: rest -> processInputList rest
+
+
+                let inputAtTimeList = List.map (Simulation.findInputAtTime (Some vs)) t
+
+
+                match (processInputList inputAtTimeList) with
+                 | Error m -> 
+                    dispatch <| SetPopupDialogText (Some m)
+                    [div [][]]
+                 | Ok _    ->
+                    let x = [0.;0.] @ (inputAtTimeList |> List.map (fun (Ok item) -> item))
+                    [
+                        div [Style [Width "80%"; Float FloatOptions.Left]] [
+                                Plotly.plot [
+                                    plot.traces [
+                                        traces.scatter [
+                                            scatter.x t_y
+                                            scatter.y y
+                                            scatter.name "y"
                                         ]
-                                    traces.scatter [
-                                        scatter.x t
-                                        scatter.y ytr
-                                        scatter.name "y_tr"
-                                        scatter.line [
+                                        traces.scatter [
+                                            scatter.x t
+                                            scatter.y yss
+                                            scatter.name "y_ss"
+                                            scatter.line [
                                             line.dash.dot
                                             line.width 1
-                                            line.color "red"
+                                            line.color "green"]
+                                            ]
+                                        traces.scatter [
+                                            scatter.x t
+                                            scatter.y ytr
+                                            scatter.name "y_tr"
+                                            scatter.line [
+                                                line.dash.dot
+                                                line.width 1
+                                                line.color "red"
+                                            ]
                                         ]
-                                    ]
-                                    traces.scatter [
-                                        scatter.x t_y
-                                        scatter.y x
-                                        scatter.name "x"
-                                        scatter.line [
-                                        line.color "black"
+                                        traces.scatter [
+                                            scatter.x t_y
+                                            scatter.y x
+                                            scatter.name "x"
+                                            scatter.line [
+                                            line.color "black"
+                                            ]
                                         ]
+                                
                                     ]
-                            
-                                ]
-                                plot.layout [
-                                    layout.height 350
-                                    layout.width 1300
-                                    layout.title [
-                                        title.text "Time Analysis"
-                                    ]
-                                    layout.yaxis [
-                                        yaxis.title [
-                                            title.text "Voltage (V)"
+                                    plot.layout [
+                                        layout.height 350
+                                        layout.width 1300
+                                        layout.title [
+                                            title.text "Time Analysis"
                                         ]
-                                        yaxis.autorange.true'
-                                        yaxis.zeroline false
+                                        layout.yaxis [
+                                            yaxis.title [
+                                                title.text "Voltage (V)"
+                                            ]
+                                            yaxis.autorange.true'
+                                            yaxis.zeroline false
+                                        ]
+                                ]
+                                ]
+                                ]
+                    
+                        // transient parameters table
+                        div [Style [Width "20%"; Float FloatOptions.Left; Padding "20px"]] 
+                            [   
+                                div [Style [MarginLeft "auto"; MarginRight "0"; Float FloatOptions.Right]] [ 
+                                    Delete.delete  [Delete.Size IsMedium; Delete.OnClick(fun _ -> Optic.set showGraphArea_ false |> updateModelNew dispatch "function to show graph") ] [ ]
+                                // Delete.delete  [Delete.Size IsMedium; Delete.OnClick(fun _ -> SetGraphVisibility false |> dispatch) ] [ ]
+                                ]
+                                Heading.h5 [] [str "Transient Parameters"]
+                                Table.table [] [
+                                    tr [] [
+                                        td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str "tau"]
+                                        td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str tau]
                                     ]
-                            ]
-                            ]
-                            ]
-                   
-                    // transient parameters table
-                    div [Style [Width "20%"; Float FloatOptions.Left; Padding "20px"]] 
-                        [   
-                            div [Style [MarginLeft "auto"; MarginRight "0"; Float FloatOptions.Right]] [ 
-                                Delete.delete  [Delete.Size IsMedium; Delete.OnClick(fun _ -> SetGraphVisibility false |> dispatch) ] [ ]
-                            ]
-                            Heading.h5 [] [str "Transient Parameters"]
-                            Table.table [] [
-                                tr [] [
-                                    td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str "tau"]
-                                    td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str tau]
+                                    tr [] [
+                                        td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str "Transient Amplitude"]
+                                        td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str alpha]
+                                    ]
+                                    tr [] [
+                                            td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str "HF Gain"]
+                                            td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str hf]
+                                    ]
+                                    tr [] [
+                                            td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str "DC Gain"]
+                                            td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str dc]                                ]
+                                
                                 ]
-                                tr [] [
-                                    td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str "Transient Amplitude"]
-                                    td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str alpha]
-                                ]
-                                tr [] [
-                                        td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str "HF Gain"]
-                                        td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str hf]
-                                ]
-                                tr [] [
-                                        td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str "DC Gain"]
-                                        td [Style [Color "Black"; VerticalAlign "Middle"; WhiteSpace WhiteSpaceOptions.Pre]] [str dc]                                ]
-                            
                             ]
-                        ]
-                
-                ]
+                    
+                    ]
+
+                    
+
         |_ -> 
-            SetGraphVisibility false |> dispatch
+            Optic.set showGraphArea_ false |> updateModelNew dispatch "function to show graph"
+           // SetGraphVisibility false |> dispatch
             [div [] []] 

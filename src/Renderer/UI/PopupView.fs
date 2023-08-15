@@ -51,6 +51,8 @@ open Fable.React
 open Fable.React.Props
 open Browser.Types
 open ElectronAPI
+open Optics
+open Optic
 
 open JSHelpers
 open NumberHelpers
@@ -176,8 +178,12 @@ let private buildPopup title body foot close extraStyle =
 /// content of PopupDialogText (i.e. in a dialog popup, the string is the
 /// current value of the input box.).
 let dynamicClosablePopup title (body:PopupDialogData -> ReactElement) (foot: PopupDialogData -> ReactElement) (extraStyle: CSSProp list) (dispatch: Msg->Unit) =
-    buildPopup title (fun _ -> body) (fun _ -> foot) (fun dispatch _ -> dispatch ClosePopup) extraStyle
-    |> ShowPopup |> dispatch
+    
+    Optic.set PopupViewFunc_ (Some (buildPopup title (fun _ -> body) (fun _ -> foot) (fun dispatch _ -> dispatch ClosePopup) extraStyle)) |> updateModelNew dispatch "Sets up the new popup"
+    
+    
+   // buildPopup title (fun _ -> body) (fun _ -> foot) (fun dispatch _ -> dispatch ClosePopup) extraStyle
+   // |> ShowPopup |> dispatch
 
 /// As dynamicClosablePopup but accept functions of dispatch and return the popup function
 let private dynamicClosablePopupFunc title body foot extraStyle =
@@ -540,12 +546,13 @@ let choicePopupFunc
 /// A static choice dialog popup.
 let choicePopup title (body:ReactElement) buttonTrueText buttonFalseText (buttonAction: bool -> Browser.Types.MouseEvent -> Unit) dispatch =
     let popup = choicePopupFunc title (fun _ -> body) buttonTrueText buttonFalseText (fun bool dispatch-> buttonAction bool)
-    dispatch <| ShowPopup popup
+    Optic.set PopupViewFunc_ (Some popup) |> updateModelNew dispatch "Showing the popup"
+    //dispatch <| ShowPopup popup
 
 
 /// Popup to implement spinner for long operations
 let viewSpinnerPopup (spinPayload:SpinPayload) (model: Model) (dispatch: (Msg -> Unit)) =
-    dispatch <| UpdateModel spinPayload.Payload
+    updateModelNew dispatch "Updating the model" spinPayload.Payload
     let body (dispatch: Msg->Unit) (dialog: PopupDialogData) =
         Progress.progress
             [   Progress.Color IsSuccess

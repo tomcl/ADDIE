@@ -10,6 +10,8 @@ open Fulma
 open Fable.React
 open Fable.React.Props
 open Fulma.Extensions.Wikiki
+open Optics
+open Optic
 
 
 open JSHelpers
@@ -145,7 +147,7 @@ let private makeScaleAdjustmentField model (comp:Component) dispatch =
                 if newWidth < 0.0
                 then
                     let props = errorPropsNotification "Invalid number of bits."
-                    dispatch <| SetPropertiesNotification props
+                    Optic.set FromProperties_  (Some props)  |> updateModelNotifications dispatch "properties notifications "
                 else
                     model.Sheet.ChangeScale sheetDispatch (ComponentId comp.Id) newWidth Horizontal
                     dispatch ClosePropertiesNotification
@@ -155,7 +157,9 @@ let private makeScaleAdjustmentField model (comp:Component) dispatch =
                 if newWidth < 0.0
                 then
                     let props = errorPropsNotification "Invalid number of bits."
-                    dispatch <| SetPropertiesNotification props
+                    Optic.set FromProperties_  (Some props)  |> updateModelNotifications dispatch "properties notifications "
+
+                    //dispatch <| SetPropertiesNotification props
                 else
                     model.Sheet.ChangeScale sheetDispatch (ComponentId comp.Id) newWidth Vertical
                     dispatch ClosePropertiesNotification
@@ -206,12 +210,15 @@ let private makeSliderField model (comp:Component) text dispatch =
             if textToFloatValue newValue = None
             then
                 let props = errorPropsNotification "Invalid number value"
-                dispatch <| SetPropertiesNotification props
+                Optic.set FromProperties_  (Some props)  |> updateModelNotifications dispatch "properties notifications "
+
+                //dispatch <| SetPropertiesNotification props
             else
                 model.Sheet.ChangeRLCIValue sheetDispatch (ComponentId comp.Id) (Option.get (textToFloatValue newValue)) (floatValueToText (Option.get (textToFloatValue newValue)))
                 //SetComponentLabelFromText model comp text' // change the JS component label
                 let lastUsedWidth = model.LastUsedDialogWidth 
-                dispatch (ReloadSelectedComponent (lastUsedWidth)) // reload the new component
+                Optic.set LastUsedDialogWidth_ lastUsedWidth |> updateModelNew dispatch "Last use width"
+                // dispatch (ReloadSelectedComponent (lastUsedWidth)) // reload the new component
                 dispatch <| SetPopupDialogText (Some newValue)
                 //sheetDispatch <| SheetT.CanvasChanged
                 dispatch ClosePropertiesNotification
@@ -225,8 +232,11 @@ let private makeSliderField model (comp:Component) text dispatch =
 
     let (min, max, step) = 
         if (model.LastViewedPropertiesTab || model.AppendedToTextBox) then
-            SetLastStoredValue extractedValue |> dispatch
-            SetAppendedToTextBox false |> dispatch
+            Optic.set LastStoredValue_ extractedValue |> updateModelNew dispatch "Updates last stored value"
+            Optic.set AppendedToTextBox_ false |> updateModelNew dispatch "Updates if we last appended to a text box"
+
+    //        SetLastStoredValue extractedValue |> dispatch
+    //        SetAppendedToTextBox false |> dispatch
 
             computeValues extractedValue
 
@@ -265,13 +275,18 @@ let private makeValueField model (comp:Component) text dispatch =
             if textToFloatValue newValue = None
             then
                 let props = errorPropsNotification "Invalid number value"
-                dispatch <| SetPropertiesNotification props
+                Optic.set FromProperties_  (Some props)  |> updateModelNotifications dispatch "properties notifications "
+
+                //dispatch <| SetPropertiesNotification props
             else
-                SetAppendedToTextBox true |> dispatch
+                Optic.set AppendedToTextBox_ true |> updateModelNew dispatch "Updates if we added to the text box"
+            //    SetAppendedToTextBox true |> dispatch
                 model.Sheet.ChangeRLCIValue sheetDispatch (ComponentId comp.Id) (Option.get (textToFloatValue newValue)) newValue
                 //SetComponentLabelFromText model comp text' // change the JS component label
                 let lastUsedWidth = model.LastUsedDialogWidth 
-                dispatch (ReloadSelectedComponent (lastUsedWidth)) // reload the new component
+                Optic.set LastUsedDialogWidth_ lastUsedWidth |> updateModelNew dispatch "Reloads the new component"
+
+                //dispatch (ReloadSelectedComponent (lastUsedWidth)) // reload the new component
                 dispatch <| SetPopupDialogText (Some newValue)
                 dispatch ClosePropertiesNotification
     )
@@ -400,7 +415,8 @@ let viewSelectedComponent (model: ModelType.Model) dispatch=
                         setComponentLabel model sheetDispatch comp label
                         dispatch <| SetPopupDialogText (Some label)
                         dispatch <| SetPopupDialogBadLabel (false)
-                    dispatch (ReloadSelectedComponent model.LastUsedDialogWidth)) // reload the new component
+                    Optic.set LastUsedDialogWidth_  model.LastUsedDialogWidth |> updateModelNew dispatch "Updates last use dialog width")
+                   // dispatch (ReloadSelectedComponent model.LastUsedDialogWidth)) // reload the new component
                 ( fun () -> // onDeleteAtEndOfBox
                     let sheetDispatch sMsg = dispatch (Sheet sMsg)
                     let dispatchKey = SheetT.KeyPress >> sheetDispatch
