@@ -6,9 +6,6 @@ open Fable.Core
 [<Emit("($1 === $0)")>]
 let referenceEquality (a1: obj) (a2:obj): bool = jsNative
 
-
-
-
 let sortQBy (byFun: 'a -> 'b) (ids: 'a list) =
     let mutable isSorted = true
     for i = 0 to ids.Length - 2 do

@@ -785,6 +785,8 @@ let update (msg : Msg) (model : Model): Model*Cmd<'a>  =
 
         let newsymbol = set (component_ >-> type_) newcompotype symbol
         (replaceSymbol model newsymbol compId), Cmd.none
+        
+
     | ResetModel -> 
         { model with Symbols = Map.empty; Ports = Map.empty; }, Cmd.none
     

@@ -107,10 +107,6 @@ let findNodeLocation (connsOnNode: Connection list) =
                 connsOnNode[0].Vertices |> removeDuplicates |> removeSticks |> findMid
         )
 
-
-
-
-
 /// Given a port on a component, return the other port on this component 
 /// (If it exists: Option, otherwise None)
 let findOtherEndPort (port:Port) (comps: Component List) : Port option =

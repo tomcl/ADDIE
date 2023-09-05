@@ -182,6 +182,9 @@ type Msg =
     | UpdateCanvasStateSizes of int*int
     | UpdateDiodeModes of bool list
     | RunTests
+    | SetLastViewedPropertiesTab of bool
+    | SetAppendedToTextBox of bool
+    | SetLastStoredValue of float
 
 
 //================================//
@@ -287,6 +290,13 @@ type Model = {
     Tests: bool list
     /// Contains the thevenin parameters of a particular circuit
     TheveninParams: TheveninParameters option
+    /// Contains boolean for if the last clicked tab was properties or not
+    LastViewedPropertiesTab: bool
+    /// Contains boolean corrosponding to if a manual text input was entered
+    AppendedToTextBox: bool
+    /// Contains the last stored value in the properties tab
+    LastStoredValue : float
+
 } 
 
     
@@ -294,6 +304,3 @@ let sheet_ = Lens.create (fun a -> a.Sheet) (fun s a -> {a with Sheet = s})
 let popupDialogData_ = Lens.create (fun a -> a.PopupDialogData) (fun p a -> {a with PopupDialogData = p})
 let simulationData_ = Lens.create (fun a -> a.SimulationData) (fun p a -> {a with SimulationData = p})
 let currentProj_ = Lens.create (fun a -> a.CurrentProj) (fun s a -> {a with CurrentProj = s})
-
-
-    

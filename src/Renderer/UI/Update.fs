@@ -506,6 +506,12 @@ let update (msg : Msg) oldModel =
         //ignore the exectue message
         else 
             model, Cmd.none
+    | SetLastViewedPropertiesTab b ->
+        {model with LastViewedPropertiesTab = b}, Cmd.none
+    | SetAppendedToTextBox b ->
+        {model with AppendedToTextBox = b}, Cmd.none
+    | SetLastStoredValue b ->
+        {model with LastStoredValue = b}, Cmd.none
     // Various messages here that are not implemented as yet, or are no longer used
     // should be sorted out
     | DoNothing -> //Acts as a placeholder to propergrate the ExecutePendingMessages message in a Cmd

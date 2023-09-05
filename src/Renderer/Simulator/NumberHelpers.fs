@@ -6,6 +6,11 @@
 *)
 
 module NumberHelpers
+
+open System
+open System.Globalization
+
+
 open CommonTypes
 open EEExtensions
 
@@ -73,7 +78,7 @@ let textToFloatValue (text:string) =
     match String.length text with
     | 0 -> Some 0.0
     | length ->
-        match System.Double.TryParse(text, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture) with
+        match Double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture) with
         | true, result -> Some result
         | _ ->
             let beginning = text.Remove (length-1)
@@ -132,7 +137,7 @@ let popupTextToFloat (popupUnitSuffix: string option) (text:string) =
         |> List.tryPick (fun (exp, name) -> if name = siUnit then Some (Ok (10.0**float exp)) else None)
         |> Option.defaultValue (Error $"{siUnit} is not a valid SI unit multiplier - did you mean one of {Constants.validSISuffixes}?")
       
-    match knownBadUnitMsg, String.tryParseWith System.Double.TryParse digits, multiplier with
+    match knownBadUnitMsg, String.tryParseWith Double.TryParse digits, multiplier with
     | Some badUnitMsg, _, _ -> badUnitMsg
     | _, _, Error multiplierMsg  -> 
         Error multiplierMsg
@@ -143,45 +148,39 @@ let popupTextToFloat (popupUnitSuffix: string option) (text:string) =
 
 
 
+let floatValueToText (value:float) =
 
+    let rec normaliseValue (value:float) (exponent:int) =
+        match value with
+            |value when (value = 0) -> (0.0, 1)
+            |value when (value < 100000) -> normaliseValue (value * 10.0) (exponent + 1)
+            |value when (value >= 100000.0 && value < 999999.5) -> ((int (Math.Round(value))), exponent)
+            |value when (value >= 999999.5 && value < 1000000) -> (100000.0, exponent-1)
+            | _ ->  normaliseValue (value / 10.0) (exponent - 1)
 
-let floatValueToText (value:float) :string =
-    let asStr = if ((string value) |> Seq.exists (fun c -> c = 'e' || c = 'E')) then sprintf "%.10f" value else string value
-    let hasDot = asStr |> Seq.contains '.'
-    let hasMinus = asStr[0]='-'
+    let rec computePositiveMultiplier curr =
+        match curr with 
+        | e when (e <= 0) -> computePositiveMultiplier (e+3)
+        | _ -> curr
 
-    let str = if hasMinus then asStr[1..(String.length asStr)] else asStr
-    let length = Seq.length str   
+    let hasMinus = value < 0
+    let (value, exponent) = normaliseValue (abs(value)) 0 
 
-    let result=
-        match hasDot with
-        |true ->
-            let dotIndex = str |> Seq.findIndex (fun ch -> ch='.')
-            let intPart = str[0..(dotIndex-1)]//str[dotIndex..(Seq.length str-dotIndex)]
-            let floatPart = str[(dotIndex+1)..(String.length str-1)]//str |> Seq.removeManyAt 0 (dotIndex+1) |> string
-            // case <1
-            if intPart = "0" then
-                let cut = 
-                    match floatPart with
-                    |x when x[0..5] = "000000" -> x[6..(Seq.length floatPart-1)]+" n"
-                    |y when y[0..2] = "000" -> y[3..(Seq.length floatPart-1)]+" "+muString
-                    |_ -> floatPart+" m"
-                let cut' =
-                    if String.length cut > 5 then cut[0..2]+"."+cut[3..(String.length cut-1)] 
-                    else if String.length cut = 5 then cut
-                    else if String.length cut = 4 then cut[0..1]+"0"+cut[2..3]
-                    else (string cut[0])+"00"+cut[1..2]
-                ("",cut') ||> Seq.fold (fun s v -> if (s="" && v='0') then s else s+(string v))
-            else str
-        |false ->
-            match str with
-            |x when x[(length-6)..(length-1)] = "000000" -> x[0..(length-7)]+" M"
-            |y when y[(length-3)..(length-1)] = "000" -> y[0..(length-4)]+" k"
-            |_ -> str+" "
-    
-    match hasMinus with
-    |true -> "-"+result
-    |false -> result
+    let divider curr= 
+        match (computePositiveMultiplier curr) with
+        | e when e % 3 = 0 -> 3
+        | e when e % 3 = 1 -> 4
+        | _                -> 5
 
+    let originalValue = value / (10.0**(divider exponent))
 
+    let stringValue = string originalValue
 
+    match exponent with
+    | e when e >= -3 && e <= -1 -> $"{stringValue} M"
+    | e when e >= 0 && e <= 2 -> $"{stringValue} k"
+    | e when e >= 3 && e <= 5 -> stringValue
+    | e when e >= 6 && e <= 8 -> $"{stringValue} m"
+    | e when e >= 9 && e <= 11 -> $"{stringValue}{muString}"
+    | _ -> $"{stringValue} n"
+    |> fun x -> if hasMinus then "-" + x else x
